@@ -21,6 +21,9 @@ import com.lemon.erp.modules.wms.entity.WmsLocation;
 import com.lemon.erp.modules.wms.entity.WmsAssembly;
 import com.lemon.erp.modules.wms.entity.WmsAssemblyItem;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
+import com.lemon.erp.modules.wms.entity.WmsMaterialWarehouseLimit;
+import com.lemon.erp.modules.wms.dto.StockLimitBatchRequest;
+import com.lemon.erp.modules.wms.model.StockAlertMode;
 import com.lemon.erp.modules.wms.mapper.WmsAssemblyItemMapper;
 import com.lemon.erp.modules.wms.mapper.WmsAssemblyMapper;
 import com.lemon.erp.modules.wms.entity.WmsVariantValue;
@@ -54,7 +57,7 @@ public class WmsMaterialService {
 
     /** 记录变更历史的字段 */
     private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("code", "物料编码", "name", "物料名称", "spec", "规格型号", "unit", "计量单位", "category", "分类", "brand", "品牌", // i18n-ignore 字段名写入变更记录
-            "batchEnabled", "批次管理", "serialEnabled", "序列号管理", "iqcRequired", "来料检验", "safetyStock", "安全库存", "reorderPoint", "再订货点", "reorderQty", "再订货量", "barcode", "条码", "defaultWarehouseId", "默认仓库", "refCost", "参考成本价", "costMethod", "计价方法", "remark", "备注", // i18n-ignore
+            "batchEnabled", "批次管理", "serialEnabled", "序列号管理", "iqcRequired", "来料检验", "safetyStock", "安全库存", "maxStock", "库存上限", "alertMode", "库存预警方式", "reorderPoint", "再订货点", "reorderQty", "再订货量", "barcode", "条码", "defaultWarehouseId", "默认仓库", "refCost", "参考成本价", "costMethod", "计价方法", "remark", "备注", // i18n-ignore
             "retailPrice", "零售价", "wholesalePrice1", "批发价1", "wholesalePrice2", "批发价2", "wholesalePrice3", "批发价3", // i18n-ignore
             "wholesalePrice4", "批发价4", "wholesalePrice5", "批发价5", "wholesalePrice6", "批发价6", "wholesalePrice7", "批发价7", // i18n-ignore
             "wholesalePrice8", "批发价8"); // i18n-ignore
@@ -85,6 +88,7 @@ public class WmsMaterialService {
     private final WmsMaterialCategoryService categoryService;
     private final SearchKeyTable<WmsMaterial> searchKeys;
     private final WmsMaterialImageService imageService;
+    private final WmsStockLimitService limitService;
 
     /**
      * @param keyword    编码、名称、规格、条码、拼音首字母或去掉分隔符的缩写，规则见 {@link SearchKeys}
@@ -273,7 +277,9 @@ public class WmsMaterialService {
         checkExtras(material, null);
         categoryService.checkUsable(material.getCategory(), null);
         if (material.getStatus() == null) material.setStatus(EnableStatus.ENABLED);
+        List<WmsMaterialWarehouseLimit> limits = limitService.prepare(material, null);
         materialMapper.insert(material);
+        limitService.save(material, limits);
         if (source != null) {
             for (WmsMaterialUnit u : units(source.getId())) {
                 WmsMaterialUnit copy = new WmsMaterialUnit();
@@ -308,6 +314,10 @@ public class WmsMaterialService {
         normalize(material);
         checkExtras(material, id);
         categoryService.checkUsable(material.getCategory(), old.getCategory());
+        if (material.getAlertMode() == null) {
+            material.setAlertMode(old.getAlertMode());
+        }
+        List<WmsMaterialWarehouseLimit> limits = limitService.prepare(material, id);
         boolean trackingChanged = !Objects.equals(old.getBatchEnabled(), material.getBatchEnabled())
                 || !Objects.equals(old.getSerialEnabled(), material.getSerialEnabled());
         if (trackingChanged && flowMapper.existsByMaterialId(id)) {
@@ -330,6 +340,7 @@ public class WmsMaterialService {
         // 可为空的字段：updateById 会跳过 null，单独更新以便清空
         materialMapper.update(Wrappers.<WmsMaterial>lambdaUpdate()
                 .set(WmsMaterial::getSafetyStock, material.getSafetyStock())
+                .set(WmsMaterial::getMaxStock, material.getMaxStock())
                 .set(WmsMaterial::getReorderPoint, material.getReorderPoint())
                 .set(WmsMaterial::getReorderQty, material.getReorderQty())
                 .set(WmsMaterial::getBarcode, material.getBarcode())
@@ -348,6 +359,7 @@ public class WmsMaterialService {
                 .set(WmsMaterial::getWholesalePrice7, material.getWholesalePrice7())
                 .set(WmsMaterial::getWholesalePrice8, material.getWholesalePrice8())
                 .eq(WmsMaterial::getId, id));
+        limitService.save(material, limits);
         WmsMaterial after = materialMapper.selectById(id);
         searchKeys.refresh(after);
         changeLogger.log("wms_material", id, before, after, CHANGE_FIELDS);
@@ -381,6 +393,7 @@ public class WmsMaterialService {
         }
         materialMapper.deleteByIds(ids);
         imageService.deleteByMaterials(ids);
+        limitService.deleteByMaterials(ids);
         variantValueMapper.delete(Wrappers.<WmsVariantValue>lambdaQuery().in(WmsVariantValue::getMaterialId, ids));
     }
 
@@ -415,6 +428,49 @@ public class WmsMaterialService {
                 throw new BizException("wms.error.defaultLocationDoesNotBelongDefault");
             }
         }
+    }
+
+    /** 物料详情：带分仓库的库存上下限 */
+    public WmsMaterial detail(Long id) {
+        WmsMaterial material = get(id);
+        material.setWarehouseLimits(limitService.list(id));
+        return material;
+    }
+
+    /**
+     * 批量设置库存上下限（规则见 {@link StockLimitBatchRequest}），记入各物料的变更记录
+     *
+     * @return 设置的物料数
+     */
+    @Transactional
+    public int batchSetLimits(StockLimitBatchRequest req) {
+        List<Long> ids = req.materialIds().stream().filter(Objects::nonNull).distinct().toList();
+        Map<Long, WmsMaterial> before = mapByIds(ids);
+        if (before.size() != ids.size()) {
+            throw new BizException("wms.error.materialNotFound");
+        }
+        WmsStockLimitService.checkRange(req.minQty(), req.maxQty());
+        if (req.alertMode() == StockAlertMode.WAREHOUSE) {
+            limitService.setWarehouse(ids, req.warehouseId(), req.minQty(), req.maxQty());
+            materialMapper.update(Wrappers.<WmsMaterial>lambdaUpdate()
+                    .set(WmsMaterial::getAlertMode, StockAlertMode.WAREHOUSE)
+                    .set(WmsMaterial::getUpdateTime, java.time.LocalDateTime.now())
+                    .in(WmsMaterial::getId, ids));
+            limitService.refreshTotals(ids);
+        } else {
+            limitService.deleteByMaterials(ids);
+            materialMapper.update(Wrappers.<WmsMaterial>lambdaUpdate()
+                    .set(WmsMaterial::getAlertMode, StockAlertMode.TOTAL)
+                    .set(WmsMaterial::getSafetyStock, req.minQty())
+                    .set(WmsMaterial::getMaxStock, req.maxQty())
+                    .set(WmsMaterial::getUpdateTime, java.time.LocalDateTime.now())
+                    .in(WmsMaterial::getId, ids));
+        }
+        Map<Long, WmsMaterial> after = mapByIds(ids);
+        for (Long id : ids) {
+            changeLogger.log("wms_material", id, before.get(id), after.get(id), CHANGE_FIELDS);
+        }
+        return ids.size();
     }
 
     // ---------------------------------------------------------------- 商品价格批量维护

@@ -312,6 +312,7 @@ export const AwardTarget = Object.freeze({
 export const BiAlertMetric = Object.freeze({
   AR_OVERDUE: 'AR_OVERDUE',
   STOCK_BELOW_SAFETY: 'STOCK_BELOW_SAFETY',
+  STOCK_ABOVE_MAX: 'STOCK_ABOVE_MAX',
   SLOW_MOVING: 'SLOW_MOVING',
   GROSS_MARGIN: 'GROSS_MARGIN',
   TICKET_OVERDUE: 'TICKET_OVERDUE',
@@ -1248,6 +1249,13 @@ export const OrderStatus = Object.freeze({
   CLOSED: 'CLOSED', // 已关闭
 })
 
+/** com.lemon.erp.modules.bi.model.OverstockBase */
+export const OverstockBase = Object.freeze({
+  MAX_STOCK: 'MAX_STOCK', // 库存上限
+  LAST_MONTH: 'LAST_MONTH', // 上个月销量
+  RECENT_DAYS: 'RECENT_DAYS', // 最近 N 天销量
+})
+
 /** com.lemon.erp.modules.hr.model.OvertimeComp（字典 hr_overtime_comp） */
 export const OvertimeComp = Object.freeze({
   PAY: 'PAY', // 加班费
@@ -1599,6 +1607,18 @@ export const StatementStatus = Object.freeze({
 export const StdCostStatus = Object.freeze({
   DRAFT: 'DRAFT',
   RELEASED: 'RELEASED',
+})
+
+/** com.lemon.erp.modules.wms.model.StockAlert */
+export const StockAlert = Object.freeze({
+  LOW: 'LOW', // 低于安全库存
+  HIGH: 'HIGH', // 高于库存上限
+})
+
+/** com.lemon.erp.modules.wms.model.StockAlertMode（字典 wms_stock_alert_mode） */
+export const StockAlertMode = Object.freeze({
+  TOTAL: 'TOTAL', // 按总库存
+  WAREHOUSE: 'WAREHOUSE', // 分仓库
 })
 
 /** com.lemon.erp.modules.wms.model.StockBizType（字典 wms_biz_type） */

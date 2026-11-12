@@ -793,6 +793,11 @@ export default {
     'SHIPPED': 'Shipped', // 已出库
     'CANCELLED': 'Canceled', // 已取消
   },
+  // 库存预警方式
+  wms_stock_alert_mode: {
+    'TOTAL': 'By Total Stock', // 按总库存
+    'WAREHOUSE': 'Per Warehouse', // 分仓库
+  },
   // 仓库类型
   wms_warehouse_type: {
     'NORMAL': 'General', // 普通仓

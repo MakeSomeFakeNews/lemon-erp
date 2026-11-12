@@ -132,7 +132,7 @@ public class WmsCheckService {
     public List<WmsCheckItem> snapshot(Long warehouseId, Long locationId, String keyword, String category) {
         refs.warehouse(warehouseId, "wms.label.countWarehouse");
         List<StockView> stocks = stockMapper.selectStockList(
-                new StockQuery(warehouseId, locationId, null, keyword, null, category, false, null));
+                new StockQuery(warehouseId, locationId, null, keyword, null, category, false, null, null));
         Set<Long> serialMaterialIds = stocks.stream().filter(s -> Integer.valueOf(1).equals(s.getSerialEnabled()))
                 .map(StockView::getMaterialId).collect(Collectors.toSet());
         Map<String, Set<String>> serials = inStockSerials(warehouseId, serialMaterialIds);

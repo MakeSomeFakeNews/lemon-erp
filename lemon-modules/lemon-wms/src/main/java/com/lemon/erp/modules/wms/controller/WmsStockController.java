@@ -16,7 +16,9 @@ import com.lemon.erp.modules.wms.dto.StockHistoryView;
 import com.lemon.erp.modules.wms.dto.StockQuery;
 import com.lemon.erp.modules.wms.dto.StockSummaryView;
 import com.lemon.erp.modules.wms.dto.StockView;
+import com.lemon.erp.modules.wms.service.WmsStockLimitService;
 import com.lemon.erp.modules.wms.service.WmsStockQueryService;
+import com.lemon.erp.modules.wms.dto.WarehouseAlertView;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -46,6 +48,7 @@ public class WmsStockController {
             + "'scm:salesOut:add', 'scm:purchaseReturn:add', 'mes:wo:issue', 'mes:supplement:issue', 'pm:cost:issue')";
 
     private final WmsStockQueryService queryService;
+    private final WmsStockLimitService limitService;
 
     @GetMapping("/stock")
     @PreAuthorize(STOCK_READ_PERMS)
@@ -61,6 +64,13 @@ public class WmsStockController {
                                                        @RequestParam(defaultValue = "10") long size,
                                                        StockQuery query) {
         return R.ok(queryService.summaryPage(current, size, query));
+    }
+
+    /** 分仓库预警的明细：物料各仓库的当前库存与上下限（只含设置了上下限的仓库） */
+    @GetMapping("/stock/limits")
+    @PreAuthorize("@ss.hasPerm('wms:stock:list')")
+    public R<List<WarehouseAlertView>> warehouseAlerts(@RequestParam Long materialId) {
+        return R.ok(limitService.warehouseAlerts(materialId));
     }
 
     /** 库存查询的合计（全部页）：{qty, amount}，金额需要「查看成本金额」权限 */

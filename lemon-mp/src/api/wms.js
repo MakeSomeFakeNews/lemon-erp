@@ -11,8 +11,16 @@ export const materialByBarcode = (code) => get('/wms/material/barcode', { code }
 
 /** 库存明细（仓库 + 库位 + 物料 + 批次）：{ current, size, warehouseId, locationId, materialId, keyword, batchNo } */
 export const pageStock = (params) => get('/wms/stock', params)
-/** 按物料汇总的库存：{ current, size, warehouseId, materialId, keyword, lowStock } */
+/**
+ * 按物料汇总的库存：{ current, size, warehouseId, materialId, keyword, lowStock, highStock }；
+ * 每行带 safetyStock、maxStock、alertMode、stockAlert（LOW / HIGH）、lowWarehouses、highWarehouses（分仓库预警）
+ */
 export const pageStockSummary = (params) => get('/wms/stock/summary', params)
+/**
+ * 积压分析（与 Web 端相同的接口，需要 bi:jxc:overstock）：{ current, size, warehouseId, keyword, date, base（OverstockBase）, days }
+ * → { records, total, summary, salesBegin, salesEnd, costVisible }
+ */
+export const pageOverstock = (params) => get('/bi/jxc/overstock', params)
 /** 经营历史：{ materialId, warehouseId?, beginDate?, endDate? } → { openingQty, openingAmount, rows, costVisible, ... } */
 export const stockHistory = (params) => get('/wms/stock/history', params)
 /** 在库序列号：{ warehouseId, locationId, materialId, batchNo } */

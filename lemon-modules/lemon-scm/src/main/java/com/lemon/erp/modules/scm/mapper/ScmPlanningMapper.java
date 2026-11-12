@@ -26,7 +26,8 @@ public interface ScmPlanningMapper {
     /**
      * 设置了再订货点的启用物料及其订单供需：可用库存（不含不良品仓）、采购在途、销售待发
      *
-     * @return [{materialId, code, name, spec, unit, safetyStock, reorderPoint, reorderQty, available, poOpen, soOpen}]
+     * @return [{materialId, code, name, spec, unit, safetyStock, reorderPoint, reorderQty, alertMode, lowWarehouses, available, poOpen, soOpen}]，
+     *         分仓库预警的物料 safetyStock 为各仓库下限之和，lowWarehouses 为低于下限的仓库数
      */
     List<Map<String, Object>> selectReorderMaterials(@Param("keyword") String keyword);
 }

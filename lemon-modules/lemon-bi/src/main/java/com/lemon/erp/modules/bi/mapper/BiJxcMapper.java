@@ -3,6 +3,7 @@ package com.lemon.erp.modules.bi.mapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.modules.bi.dto.JxcQuery;
 import com.lemon.erp.modules.bi.dto.JxcViews;
+import com.lemon.erp.modules.bi.dto.OverstockQuery;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -62,4 +63,10 @@ public interface BiJxcMapper {
     Page<JxcViews.GoodsRow> selectGoodsTurnover(Page<JxcViews.GoodsRow> page, @Param("q") JxcQuery q);
 
     List<JxcViews.RfmRow> selectRfm(@Param("q") JxcQuery q);
+
+    /** 积压分析（issue #111）：积压数量大于 0 的物料，有成本权限时按资金占用排序 */
+    Page<JxcViews.OverstockRow> selectOverstock(Page<JxcViews.OverstockRow> page, @Param("q") OverstockQuery q);
+
+    /** 积压分析的合计（全部积压物料） */
+    JxcViews.OverstockRow selectOverstockTotal(@Param("q") OverstockQuery q);
 }

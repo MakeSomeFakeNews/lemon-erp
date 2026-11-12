@@ -330,6 +330,49 @@ public final class JxcViews {
         private BigDecimal turnoverDays;
     }
 
+    // ---------------------------------------------------------------- 积压分析（issue #111）
+
+    /**
+     * 积压分析的一行：积压数量 = 库存数量 − 积压基数（只列出大于 0 的）。合计行只有数量、资金占用
+     */
+    @Data
+    public static class OverstockRow {
+        private Long materialId;
+        private String code;
+        private String name;
+        private String spec;
+        private String unit;
+        private String category;
+        private String brand;
+        /** 登记日期（物料资料的创建日期） */
+        private LocalDate createDate;
+        /** 最新进货（截至日之前最近一次采购入库）、最新出库（最近一次销售出库）的日期，全部仓库 */
+        private LocalDate lastPurchaseDate;
+        private LocalDate lastSaleDate;
+        /** 截至日的库存数量（所选仓库，不含供应商寄售仓） */
+        private BigDecimal stockQty;
+        /** 在库天数 = 截至日 − 最新进货日期（没有进货时取登记日期） */
+        private Long stockDays;
+        private BigDecimal baseQty;
+        /** 积压系数 = 库存数量 ÷ 积压基数，基数为 0 时为空 */
+        private BigDecimal ratio;
+        private BigDecimal overQty;
+        /** 资金占用 = 积压数量 × 库存均价（实时移动加权平均，没有时取最近一期核算单价、参考成本价），需要「查看成本金额」权限 */
+        private BigDecimal amount;
+        /** 合计行：积压的物料数 */
+        private Long materialCount;
+    }
+
+    /**
+     * 积压分析的分页结果
+     *
+     * @param summary    全部积压物料的合计（materialCount、stockQty、baseQty、overQty、amount）
+     * @param salesBegin 积压基数为销量时的统计期间，库存上限时为空
+     */
+    public record OverstockPage(List<OverstockRow> records, long total, OverstockRow summary, LocalDate date,
+                                LocalDate salesBegin, LocalDate salesEnd, boolean costVisible) {
+    }
+
     // ---------------------------------------------------------------- RFM
 
     @Data

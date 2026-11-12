@@ -50,6 +50,9 @@
           <a-button v-perm="'wms:material:priceLevel'" @click="priceLevelRef.open()">
             <template #icon><DollarOutlined /></template>{{ $t('pricing.level.title') }}
           </a-button>
+          <a-button v-perm="'wms:material:edit'" :disabled="!selectedKeys.length" @click="stockLimitRef.open(selectedKeys)">
+            <template #icon><AlertOutlined /></template>{{ $t('wms.stockLimit.batch') }}{{ selectedKeys.length ? ` (${selectedKeys.length})` : '' }}
+          </a-button>
           <a-button :disabled="!selectedKeys.length" @click="openLabels">
             <template #icon><BarcodeOutlined /></template>{{ $t('wms.material.printLabel') }}{{ selectedKeys.length ? ` (${selectedKeys.length})` : '' }}
           </a-button>
@@ -112,7 +115,12 @@
                 <span v-if="!planRule(record.plan).length" class="sub-text">-</span>
               </template>
             </template>
-            <template v-else-if="column.key === 'safetyStock'">{{ formatQty(record.safetyStock) }}</template>
+            <template v-else-if="column.key === 'safetyStock' || column.key === 'maxStock'">
+              {{ record[column.key] == null ? '-' : formatQty(record[column.key]) }}
+              <a-tooltip v-if="record.alertMode === StockAlertMode.WAREHOUSE && record[column.key] != null" :title="$t('wms.stockLimit.sumOfWarehouses')">
+                <a-tag color="purple" :bordered="false" class="ml">{{ $t('wms.stockLimit.warehouse') }}</a-tag>
+              </a-tooltip>
+            </template>
             <template v-else-if="column.key === 'barcode'">{{ record.barcode || '-' }}</template>
             <template v-else-if="column.key === 'status'">
               <StatusSwitch
@@ -176,11 +184,6 @@
               </a-form-item>
             </a-col>
             <a-col :xs="24" :sm="colSpan">
-              <a-form-item :label="$t('wms.stock.safetyStock')" name="safetyStock" :extra="$t('wms.material.safetyTip')">
-                <a-input-number v-model:value="form.safetyStock" :min="0" :precision="4" class="full" :placeholder="$t('wms.material.noAlert')" :disabled="basicReadonly" />
-              </a-form-item>
-            </a-col>
-            <a-col :xs="24" :sm="colSpan">
               <a-form-item name="reorderPoint" :extra="$t('wms.material.reorderPointExtra')">
                 <template #label>
                   {{ $t('wms.material.reorderPoint') }}
@@ -221,6 +224,7 @@
                 <LocationSelect v-model:value="form.defaultLocationId" :warehouse-id="form.defaultWarehouseId" :disabled="basicReadonly" />
               </a-form-item>
             </a-col>
+            <MaterialStockLimits :form="form" :disabled="basicReadonly" :col-span="colSpan" />
             <a-col v-if="enabledLevels.length" :span="24">
               <div class="sub-title">{{ $t('pricing.level.prices') }}</div>
               <a-row :gutter="16">
@@ -360,6 +364,12 @@
                   {{ detail.safetyStock != null ? formatQty(detail.safetyStock) : '-' }} {{ detail.unit }}
                 </span>
               </a-descriptions-item>
+              <a-descriptions-item :label="$t('wms.stockLimit.maxStock')">
+                <span>
+                  <span :class="{ danger: aboveMax(detail) }">{{ detail.maxStock != null ? `${formatQty(detail.maxStock)} ${detail.unit || ''}` : '-' }}</span>
+                  <DictTag v-if="detail.alertMode === StockAlertMode.WAREHOUSE" type="wms_stock_alert_mode" :value="detail.alertMode" class="ml" />
+                </span>
+              </a-descriptions-item>
               <a-descriptions-item :label="$t('wms.material.supplyType')">
                 <span>
                   <DictTag type="mes_supply_type" :value="detail.effectiveSupplyType" />
@@ -423,7 +433,7 @@
         :title="$t('wms.common.material')"
         :columns="importColumns"
         :importer="importMaterial"
-        :sample="{ code: 'M0001', name: $t('wms.material.sampleName'), spec: 'M3*8', unit: $t('wms.material.sampleUnit'), batchEnabled: $t('wms.material.sampleNo'), serialEnabled: $t('wms.material.sampleNo'), safetyStock: 100 }"
+        :sample="{ code: 'M0001', name: $t('wms.material.sampleName'), spec: 'M3*8', unit: $t('wms.material.sampleUnit'), batchEnabled: $t('wms.material.sampleNo'), serialEnabled: $t('wms.material.sampleNo'), safetyStock: 100, maxStock: 500 }"
         @success="onImported"
       />
       <MaterialUnitsModal v-model:open="unitsOpen" :material="unitsMaterial" :editable="canEdit" />
@@ -439,6 +449,7 @@
       <StockHistory ref="historyRef" />
       <MaterialImagesModal ref="imagesRef" :editable="canEdit" @changed="load" />
       <MaterialTrackingModal ref="trackingRef" @saved="load" />
+      <StockLimitBatchModal ref="stockLimitRef" @saved="load" />
     </div>
   </div>
 </template>
@@ -449,7 +460,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { isZh } from '@/locales'
 import { message } from 'ant-design-vue'
-import { AppstoreAddOutlined, BarcodeOutlined, DeleteOutlined, DollarOutlined, ImportOutlined, MenuFoldOutlined, MenuUnfoldOutlined, PaperClipOutlined, PictureOutlined, PlusOutlined, QuestionCircleOutlined, SafetyCertificateOutlined, SwapOutlined } from '@ant-design/icons-vue'
+import { AlertOutlined, AppstoreAddOutlined, BarcodeOutlined, DeleteOutlined, DollarOutlined, ImportOutlined, MenuFoldOutlined, MenuUnfoldOutlined, PaperClipOutlined, PictureOutlined, PlusOutlined, QuestionCircleOutlined, SafetyCertificateOutlined, SwapOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import ImportModal from '@/components/ImportModal.vue'
@@ -484,9 +495,11 @@ import { price } from '@/utils/number'
 import PriceLevelModal from './PriceLevelModal.vue'
 import MaterialImagesModal from './MaterialImagesModal.vue'
 import MaterialTrackingModal from './MaterialTrackingModal.vue'
+import MaterialStockLimits from './MaterialStockLimits.vue'
+import StockLimitBatchModal from './StockLimitBatchModal.vue'
 import MaterialImages from '@/components/wms/MaterialImages.vue'
 
-import { CostMethod, SupplyType } from '@/constants/enums'
+import { CostMethod, StockAlertMode, SupplyType } from '@/constants/enums'
 import AiExtractButton from '@/components/ai/AiExtractButton.vue'
 import AiPrefillAlert from '@/components/ai/AiPrefillAlert.vue'
 import { useAiPrefill } from '@/composables/useAiPrefill'
@@ -507,7 +520,7 @@ watch(showCategory, (v) => savePref('material-page:show-category', v))
 const categoryTreeRef = ref()
 /** 物料有增删改、导入后刷新分类树上的物料数 */
 const refreshCounts = () => categoryTreeRef.value?.refresh()
-const dict = useDict('sys_common_status', 'wms_material_category', 'wms_material_brand', 'mes_supply_type', 'mes_wo_status', 'wms_cost_method')
+const dict = useDict('sys_common_status', 'wms_material_category', 'wms_material_brand', 'mes_supply_type', 'mes_wo_status', 'wms_cost_method', 'wms_stock_alert_mode')
 const UNITS = (isZh() ? ['个', '件', '台', '箱', '包', '桶', '瓶', '袋', 'kg', 'g', 'L', 'm'] : ['pcs', 'set', 'box', 'pack', 'bag', 'bottle', 'drum', 'kg', 'g', 'L', 'm']).map((value) => ({ value })) // i18n-ignore
 const SUPPLY_HINTS = {
   AUTO: t('wms.material.supplyHint.AUTO'),
@@ -519,7 +532,9 @@ const SUPPLY_HINTS = {
 const supplyOptions = computed(() => [{ value: '', label: t('wms.material.auto') }, ...toOptions(dict.mes_supply_type)])
 const QTY_KEYS = ['requiredQty', 'issuedQty', 'toIssueQty', 'allocatedQty']
 
-const belowSafety = (r) => r.safetyStock != null && Number(r.onHandQty) < Number(r.safetyStock)
+// 详情中的合计判断（分仓库预警按仓库判断，见库存查询）
+const belowSafety = (r) => r.alertMode !== StockAlertMode.WAREHOUSE && r.safetyStock != null && Number(r.onHandQty) < Number(r.safetyStock)
+const aboveMax = (r) => r.alertMode !== StockAlertMode.WAREHOUSE && r.maxStock != null && Number(r.onHandQty) > Number(r.maxStock)
 const leadText = (p) => {
   if (p.leadDays != null) return t('wms.material.days', { n: p.leadDays })
   if (p.effectiveSupplyType === SupplyType.MAKE && p.bomLeadDays != null) return t('wms.material.daysBom', { n: p.bomLeadDays })
@@ -582,6 +597,7 @@ const importColumns = computed(() => [
   { title: t('wms.material.serialManaged'), key: 'serialEnabled', type: 'bool' },
   { title: t('wms.material.iqc'), key: 'iqcRequired', type: 'bool' },
   { title: t('wms.stock.safetyStock'), key: 'safetyStock', type: 'number' },
+  { title: t('wms.stockLimit.maxStock'), key: 'maxStock', type: 'number' },
   ...enabledLevels.value.map((l) => ({ title: l.name, key: l.field, type: 'number' })),
   { title: t('common.field.remark'), key: 'remark' }
 ])
@@ -597,7 +613,8 @@ const columns = [
   { title: t('wms.material.tracking'), key: 'tracking', width: 120 },
   { title: t('wms.material.supplyType'), key: 'supplyType', width: 110 },
   { title: t('wms.material.planParams'), key: 'planRule', width: 150 },
-  { title: t('wms.stock.safetyStock'), key: 'safetyStock', width: 120, align: 'right' },
+  { title: t('wms.stock.safetyStock'), key: 'safetyStock', width: 130, align: 'right' },
+  { title: t('wms.stockLimit.maxStock'), key: 'maxStock', width: 130, align: 'right' },
   { title: t('common.field.status'), key: 'status', width: 90 },
   { title: t('common.field.createTime'), dataIndex: 'createTime', width: 170 },
   // 编辑、删除直接显示；资料、单位、变更记录、款式变体在「更多」中
@@ -673,6 +690,8 @@ const MATERIAL_FIELDS = [
   'serialEnabled',
   'iqcRequired',
   'safetyStock',
+  'maxStock',
+  'alertMode',
   'reorderPoint',
   'reorderQty',
   'barcode',
@@ -698,6 +717,9 @@ const drawerOptions = cf.wrap({
     serialEnabled: 0,
     iqcRequired: 0,
     safetyStock: null,
+    maxStock: null,
+    alertMode: StockAlertMode.TOTAL,
+    warehouseLimits: [],
     reorderPoint: null,
     reorderQty: null,
     barcode: '',
@@ -718,7 +740,9 @@ const drawerOptions = cf.wrap({
   }),
   fetch: async (record) => {
     const [m, p] = await Promise.all([getMaterial(record.id), canEditPlan.value ? getMaterialPlan(record.id) : null])
-    const form = { ...m, safetyStock: num(m.safetyStock), reorderPoint: num(m.reorderPoint), reorderQty: num(m.reorderQty), refCost: num(m.refCost), barcode: m.barcode || '' }
+    const form = { ...m, safetyStock: num(m.safetyStock), maxStock: num(m.maxStock), alertMode: m.alertMode || StockAlertMode.TOTAL,
+      warehouseLimits: (m.warehouseLimits || []).map((r) => ({ key: rowKey(), warehouseId: r.warehouseId, minQty: num(r.minQty), maxQty: num(r.maxQty) })),
+      reorderPoint: num(m.reorderPoint), reorderQty: num(m.reorderQty), refCost: num(m.refCost), barcode: m.barcode || '' }
     PRICE_FIELDS.forEach((k) => (form[k] = num(m[k])))
     if (p) {
       Object.assign(form, {
@@ -754,6 +778,10 @@ const drawerOptions = cf.wrap({
     copyFrom: f.copyFrom,
     material: {
       ...Object.fromEntries(MATERIAL_FIELDS.map((k) => [k, f[k]])),
+      safetyStock: f.safetyStock ?? null,
+      maxStock: f.maxStock ?? null,
+      warehouseLimits:
+        f.alertMode === StockAlertMode.WAREHOUSE ? f.warehouseLimits.map(({ warehouseId, minQty, maxQty }) => ({ warehouseId, minQty: minQty ?? null, maxQty: maxQty ?? null })) : [],
       reorderPoint: f.reorderPoint ?? null,
       reorderQty: f.reorderQty ?? null,
       refCost: f.refCost ?? null,
@@ -808,6 +836,7 @@ const rowActions = (record) => [
 // 复制：带出原物料的资料、计划属性、替代料和自定义字段，编码留空（按编码规则生成）、条码不带；保存时后端复制辅助单位（不含包装条码）和图片
 const imagesRef = ref()
 const trackingRef = ref()
+const stockLimitRef = ref()
 async function copyMaterial(record) {
   const src = await drawerOptions.fetch(record)
   const data = omitKeys(src, ['id', 'code', 'barcode', 'createTime', 'updateTime', 'createBy', 'status', 'isTemplate', 'templateId', 'variantText', 'imageUrl', 'searchKey'])

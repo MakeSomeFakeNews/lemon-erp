@@ -161,7 +161,7 @@ public class ScmQuickLookupService {
 
     /** 库存分布：各仓库、库位、批次的数量（不显示 0 库存；成本单价、金额按「查看成本金额」权限返回） */
     public List<StockView> stock(Long materialId) {
-        return stockQueryService.stockPage(1, STOCK_LIMIT, new StockQuery(null, null, materialId, null, null, null, false, null)).records();
+        return stockQueryService.stockPage(1, STOCK_LIMIT, new StockQuery(null, null, materialId, null, null, null, false, null, null)).records();
     }
 
     /**

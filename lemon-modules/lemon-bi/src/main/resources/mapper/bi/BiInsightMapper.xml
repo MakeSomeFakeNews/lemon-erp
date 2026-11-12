@@ -124,10 +124,16 @@
                 SELECT COALESCE(SUM(amount - settled_amount), 0) FROM fin_bill
                 WHERE kind = 'AR' AND status &lt;&gt; 'SETTLED' AND due_date &lt; #{today}
             </when>
+            <!-- 库存预警口径见 wms 的 WmsMaterialWarehouseLimitMapper.materialAlerts（按总库存比较合计，分仓库按仓库判断） -->
             <when test="metric == 'STOCK_BELOW_SAFETY'">
                 SELECT COUNT(*) FROM wms_material m
-                WHERE m.status = 1 AND m.safety_stock &gt; 0
-                  AND COALESCE((SELECT SUM(s.qty) FROM wms_stock s WHERE s.material_id = m.id), 0) &lt; m.safety_stock
+                JOIN (<include refid="com.lemon.erp.modules.wms.mapper.WmsMaterialWarehouseLimitMapper.materialAlerts"><property name="wh" value="null"/></include>) sa ON sa.material_id = m.id
+                WHERE m.status = 1 AND sa.alert = 'LOW'
+            </when>
+            <when test="metric == 'STOCK_ABOVE_MAX'">
+                SELECT COUNT(*) FROM wms_material m
+                JOIN (<include refid="com.lemon.erp.modules.wms.mapper.WmsMaterialWarehouseLimitMapper.materialAlerts"><property name="wh" value="null"/></include>) sa ON sa.material_id = m.id
+                WHERE m.status = 1 AND (sa.alert = 'HIGH' OR sa.high_count &gt; 0)
             </when>
             <when test="metric == 'SLOW_MOVING'">
                 SELECT COUNT(*) FROM (

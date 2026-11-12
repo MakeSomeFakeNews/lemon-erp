@@ -8,6 +8,8 @@
       </block>
       <text class="stock__low">{{ t('wms.stock.lowOnly') }}</text>
       <switch :checked="lowStock" style="transform: scale(0.7)" @change="changeLow" />
+      <text>{{ t('wms.stock.highOnly') }}</text>
+      <switch :checked="highStock" style="transform: scale(0.7)" @change="changeHigh" />
     </view>
     <view v-for="s in paged.list" :key="s.materialId" class="m-card" @click="toggle(s)">
       <view class="stock__head">
@@ -16,14 +18,14 @@
         <view class="stock__head-text">
           <view class="m-row">
             <text class="m-title">{{ s.materialCode }} {{ s.materialName }}</text>
-            <l-tag v-if="isLow(s)" :text="t('wms.stock.low')" color="red" />
+            <l-tag v-if="alertText(s)" :text="alertText(s)" :color="isLow(s) ? 'red' : 'orange'" />
           </view>
           <view v-if="s.spec" class="m-sub">{{ s.spec }}</view>
         </view>
       </view>
       <view class="stock__nums">
         <view class="stock__num">
-          <text class="stock__num-value" :class="{ 'stock__num-value--low': isLow(s) }">{{ qty(s.qty) }}</text>
+          <text class="stock__num-value" :class="{ 'stock__num-value--low': isLow(s), 'stock__num-value--high': isHigh(s) }">{{ qty(s.qty) }}</text>
           <text class="stock__num-label">{{ t('wms.stock.qty') }}{{ s.unit ? ` (${s.unit})` : '' }}</text>
         </view>
         <view class="stock__num">
@@ -31,8 +33,8 @@
           <text class="stock__num-label">{{ t('wms.stock.available') }}</text>
         </view>
         <view class="stock__num">
-          <text class="stock__num-value">{{ Number(s.safetyStock) > 0 ? qty(s.safetyStock) : '-' }}</text>
-          <text class="stock__num-label">{{ t('wms.stock.safety') }}</text>
+          <text class="stock__num-value">{{ limitText(s) }}</text>
+          <text class="stock__num-label">{{ t('wms.stock.limits') }}{{ s.alertMode === StockAlertMode.WAREHOUSE ? t('wms.stock.perWarehouse') : '' }}</text>
         </view>
       </view>
       <!-- 均价、库存金额：有「查看成本金额」权限时后端才返回 -->
@@ -75,10 +77,11 @@ import { vibrate } from '@/composables/useAction'
 import { money, price, qty, today } from '@/utils/format'
 import { availableQty, locationText } from '../mobile'
 import { fileUrl } from '@/utils/request'
+import { StockAlert, StockAlertMode } from '@web/constants/enums'
 
 /**
  * 库存查询：扫描物料条码 / 包装条码，或输入物料编码、名称，按物料汇总显示库存；点开查看各仓库、库位、批次的数量。
- * 低于安全库存的物料标红，可只看低于安全库存的物料；有「查看成本金额」权限时显示均价、库存金额。展开后可进入经营历史
+ * 低于下限的物料标红、高于上限的标橙（分仓库预警显示低于 / 高于的仓库数），可只看低于下限或高于上限的物料；有「查看成本金额」权限时显示均价、库存金额。展开后可进入经营历史
  */
 const { t } = useI18n()
 useTitle('wms.entry.stock')
@@ -87,18 +90,33 @@ const materialId = ref(null)
 const keyword = ref('')
 const filterText = ref('')
 const lowStock = ref(false)
+const highStock = ref(false)
 const expanded = reactive({})
 
 const paged = usePaged((p) =>
-  pageStockSummary({ ...p, materialId: materialId.value || undefined, keyword: keyword.value || undefined, lowStock: lowStock.value || undefined })
+  pageStockSummary({ ...p, materialId: materialId.value || undefined, keyword: keyword.value || undefined, lowStock: lowStock.value || undefined,
+    highStock: highStock.value || undefined })
 )
 
 const available = (s) => availableQty(s)
-const isLow = (s) => Number(s.safetyStock) > 0 && Number(s.qty) < Number(s.safetyStock)
+// 预警由后端按物料的预警方式判断：按总库存比较所有仓库的合计；分仓库按仓库判断，给出低于 / 高于的仓库数
+const isLow = (s) => s.stockAlert === StockAlert.LOW
+const isHigh = (s) => s.stockAlert === StockAlert.HIGH
+function alertText(s) {
+  if (s.alertMode === StockAlertMode.WAREHOUSE) {
+    if (s.lowWarehouses) return t('wms.stock.lowWarehouses', { n: s.lowWarehouses })
+    if (s.highWarehouses) return t('wms.stock.highWarehouses', { n: s.highWarehouses })
+    return ''
+  }
+  return isLow(s) ? t('wms.stock.low') : isHigh(s) ? t('wms.stock.high') : ''
+}
+/** 下限 ~ 上限（分仓库时为各仓库之和），都没有设置时为 - */
+const limitText = (s) => (s.safetyStock == null && s.maxStock == null ? '-' : `${s.safetyStock == null ? '-' : qty(s.safetyStock)} ~ ${s.maxStock == null ? '-' : qty(s.maxStock)}`)
 
 onLoad((q) => {
-  // 首页待办「库存低于安全库存」带 lowStock=1（与 Web 端参数相同）
+  // 首页待办「库存低于安全库存」「库存高于库存上限」带 lowStock=1 / highStock=1（与 Web 端参数相同）
   lowStock.value = q?.lowStock === '1'
+  highStock.value = q?.highStock === '1'
   paged.refresh()
 })
 onPullDownRefresh(() => reload())
@@ -136,6 +154,11 @@ function clearFilter() {
 
 function changeLow(e) {
   lowStock.value = e.detail.value
+  reload()
+}
+
+function changeHigh(e) {
+  highStock.value = e.detail.value
   reload()
 }
 
@@ -203,6 +226,9 @@ async function toggle(s) {
     font-weight: 600;
     &--low {
       color: $l-danger;
+    }
+    &--high {
+      color: #fa8c16;
     }
   }
   &__num-label {

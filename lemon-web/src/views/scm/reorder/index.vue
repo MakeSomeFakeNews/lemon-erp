@@ -52,7 +52,15 @@
           </template>
           <template v-else-if="column.key === 'point'">
             <div>{{ formatQty(record.reorderPoint) }}</div>
-            <div class="sub-text">{{ $t('scm.reorder.safetyStock', { qty: formatQty(record.safetyStock) }) }}</div>
+            <div class="sub-text">
+              {{ $t('scm.reorder.safetyStock', { qty: formatQty(record.safetyStock) }) }}
+              <a-tooltip v-if="record.alertMode === StockAlertMode.WAREHOUSE" :title="$t('scm.reorder.warehouseSumTip')">
+                <span class="dotted">{{ $t('scm.reorder.warehouseSum') }}</span>
+              </a-tooltip>
+            </div>
+            <a-tooltip v-if="record.lowWarehouses > 0" :title="$t('scm.reorder.lowWarehousesTip')">
+              <a-tag color="orange" :bordered="false">{{ $t('scm.reorder.lowWarehouses', { n: record.lowWarehouses }) }}</a-tag>
+            </a-tooltip>
           </template>
           <template v-else-if="['available', 'poOpen', 'soOpen', 'woNet', 'reorderQty'].includes(column.key)">
             {{ formatQty(record[column.key]) }}
@@ -116,7 +124,7 @@ import { useDict } from '@/composables/useDict'
 import { findDict } from '@/utils/dict'
 import { writeExcel } from '@/utils/excel'
 
-import { SupplyType } from '@/constants/enums'
+import { StockAlertMode, SupplyType } from '@/constants/enums'
 const { t } = useI18n()
 
 const router = useRouter()
@@ -232,6 +240,10 @@ async function exportList(cols) {
 </script>
 
 <style scoped>
+.dotted {
+  border-bottom: 1px dashed var(--app-text-3);
+  cursor: help;
+}
 .tip {
   margin-bottom: 12px;
 }

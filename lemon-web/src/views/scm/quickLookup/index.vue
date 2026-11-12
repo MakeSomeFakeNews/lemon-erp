@@ -74,7 +74,7 @@ import { getQuickLookupSetting, quickPriceOptions, saveQuickLookupSetting, searc
 import { QuickPrice } from '@/constants/enums'
 import { price, qty } from '@/utils/number'
 import { kindOfPrice } from './lookup'
-import QuickLookupStock from './QuickLookupStock.vue'
+import QuickLookupStock from '@/components/wms/StockDistributionModal.vue'
 import QuickLookupImages from './QuickLookupImages.vue'
 import QuickLookupHistory from './QuickLookupHistory.vue'
 

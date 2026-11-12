@@ -21,6 +21,7 @@ public class WmsTodoProvider implements TodoProvider {
     private static final List<Def> DEFS = List.of(
             new Def("docDraft", "wms:in:add", "wms.text.todoDocDraft", "/wms/in", "info"),
             new Def("belowSafety", "wms:stock:list", "wms.text.todoBelowSafety", "/wms/stock?lowStock=1", "warning"),
+            new Def("aboveMax", "wms:stock:list", "wms.text.todoAboveMax", "/wms/stock?highStock=1", "info"),
             new Def("batchExpiring", "wms:trace:list", "wms.text.todoBatchExpiring", "/wms/trace", "warning"),
             new Def("holdPending", "mes:qc:add", "wms.text.todoHoldPending", "/qms/inspection", "info"),
             new Def("holdRejected", "wms:hold:list", "wms.text.todoHoldRejected", "/wms/hold", "danger")
