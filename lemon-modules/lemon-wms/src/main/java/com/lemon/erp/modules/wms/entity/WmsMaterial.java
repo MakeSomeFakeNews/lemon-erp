@@ -48,6 +48,13 @@ public class WmsMaterial extends BaseEntity implements Searchable {
     @Size(max = 64, message = "{wms.valid.brandTooLong}")
     private String brand;
 
+    /**
+     * 是否虚拟商品（服务项目，1 是），如洗车、安装调试、延保：只用于销售开单和收入统计，不管库存——
+     * 销售出库不扣库存、不校验库存、不生成库存流水，出库成本为 0；不能采购、入库、盘点、调拨、用于 BOM 和生产。
+     * 不能启用批次、序列号、来料检验，安全库存、默认仓库等库存属性不保存。切换规则见 WmsMaterialService#checkVirtualSwitch
+     */
+    private Integer isVirtual;
+
     /** 是否启用批次管理：出入库必须填写批次号。产生库存业务后不能修改 */
     private Integer batchEnabled;
 
@@ -138,6 +145,11 @@ public class WmsMaterial extends BaseEntity implements Searchable {
 
     public boolean isTemplateMaterial() {
         return Integer.valueOf(1).equals(isTemplate);
+    }
+
+    /** 虚拟商品（服务项目）：不管库存，见 {@link #isVirtual} */
+    public boolean isVirtualGoods() {
+        return Integer.valueOf(1).equals(isVirtual);
     }
 
     public boolean isBatchManaged() {

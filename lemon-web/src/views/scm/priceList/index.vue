@@ -93,7 +93,7 @@
     <a-modal v-model:open="formOpen" :title="form.id ? $t('scm.priceList.editTitle') : $t('scm.priceList.add')" :confirm-loading="saving" @ok="submit">
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-form-item :label="$t('scm.priceList.material')" name="materialId">
-          <MaterialSelect v-model:value="form.materialId" :label="form.materialLabel" />
+          <MaterialSelect virtual v-model:value="form.materialId" :label="form.materialLabel" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">

@@ -64,6 +64,8 @@ class WmsReferenceLoader {
             if (requireEnabled && material.getStatus() != EnableStatus.ENABLED) {
                 throw new BizException("wms.error.materialDisabled", material.getCode(), material.getName());
             }
+            // 虚拟商品（服务项目）不管库存，不能出入库、调拨、盘点
+            WmsMaterialService.checkStockable(material);
         }
         return map;
     }

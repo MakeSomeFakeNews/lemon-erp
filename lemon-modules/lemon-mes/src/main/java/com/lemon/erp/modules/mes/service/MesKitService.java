@@ -206,7 +206,7 @@ public class MesKitService {
         MesMaterialSubstitute sub = materialPlanService.substitutes(List.of(req.materialId())).getOrDefault(req.materialId(), List.of())
                 .stream().filter(s -> s.getSubstituteId().equals(req.substituteId())).findFirst()
                 .orElseThrow(() -> new BizException("mes.error.doesNotHaveSubstitute", main.getMaterialCode(), main.getMaterialName()));
-        WmsMaterial subMaterial = materialService.getEnabled(List.of(req.substituteId())).get(req.substituteId());
+        WmsMaterial subMaterial = materialService.getStockable(List.of(req.substituteId())).get(req.substituteId());
         BigDecimal toIssue = main.getRequiredQty().add(main.getSupplementQty()).subtract(main.getIssuedQty()).max(BigDecimal.ZERO);
         if (req.qty().compareTo(toIssue) > 0) {
             throw new BizException("mes.error.substitutionQuantityCannotExceedPrimaryMaterial", toIssue.stripTrailingZeros().toPlainString());

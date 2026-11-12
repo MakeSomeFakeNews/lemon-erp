@@ -51,7 +51,7 @@ public class ScmSupplierPriceService {
     @Transactional
     public void create(SupplierPriceRequest req) {
         supplierService.get(req.supplierId());
-        materialService.get(req.materialId());
+        WmsMaterialService.checkStockable(materialService.get(req.materialId()));
         ScmSupplierPrice price = toEntity(req);
         try {
             priceMapper.insert(price);

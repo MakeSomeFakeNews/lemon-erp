@@ -208,7 +208,7 @@ public class ScmPurchaseContractService {
         if (req.contractType() == ContractType.FIXED && req.items().stream().anyMatch(i -> i.qtyLimit() == null)) {
             throw new BizException("scm.error.fixedQuantityContractsRequireQuantityEach");
         }
-        materialService.getEnabled(req.items().stream().map(SrmRequests.ContractItem::materialId).toList());
+        materialService.getStockable(req.items().stream().map(SrmRequests.ContractItem::materialId).toList());
         BigDecimal defaultRate = taxRates.defaultRate();
         return req.items().stream().map(r -> {
             ScmPurchaseContractItem item = new ScmPurchaseContractItem();

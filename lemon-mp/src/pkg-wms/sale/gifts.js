@@ -38,7 +38,7 @@ export function useGiftRows({ newRow, reloadSlots, activeRow }) {
       const code = g.materialCode || ''
       const m = {
         id: g.materialId, code, name: code && name.startsWith(`${code} `) ? name.slice(code.length + 1) : name,
-        unit: g.unit, spec: g.spec, batchEnabled: g.batchEnabled, serialEnabled: g.serialEnabled
+        unit: g.unit, spec: g.spec, batchEnabled: g.batchEnabled, serialEnabled: g.serialEnabled, isVirtual: g.isVirtual
       }
       next.push(newRow(m, { gift: true, qty: total, price: 0, priceAuto: false, promotionId, promotionName: g.promotionName || null, giftKey: key, giftTotal: total }))
     })
@@ -61,7 +61,7 @@ export function useGiftRows({ newRow, reloadSlots, activeRow }) {
     row.qty = qty4(Number(row.qty) - move)
     trimSerials(row)
     const added = { ...newRow({ id: row.materialId, code: row.materialCode, name: row.materialName, unit: row.unit, spec: row.spec,
-      batchEnabled: row.batchEnabled, serialEnabled: row.serialEnabled }), gift: true, qty: move, price: 0, priceAuto: false,
+      batchEnabled: row.batchEnabled, serialEnabled: row.serialEnabled, isVirtual: row.isVirtual }), gift: true, qty: move, price: 0, priceAuto: false,
       promotionId: row.promotionId, promotionName: row.promotionName, giftKey: row.giftKey, giftTotal: row.giftTotal }
     const list = [...giftRows.value]
     list.splice(list.indexOf(row) + 1, 0, added)

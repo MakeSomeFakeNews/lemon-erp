@@ -30,6 +30,7 @@ const giftRow = (g, extra) => ({
   unit: g.unit,
   batchEnabled: g.batchEnabled,
   serialEnabled: g.serialEnabled,
+  isVirtual: g.isVirtual,
   price: 0,
   priceAuto: false,
   promotionName: g.promotionName,
@@ -40,7 +41,8 @@ const giftRow = (g, extra) => ({
 /** 按先到期先出拆成一行或多行（库存不够时剩余数量留在最后一行，不选库位，由用户处理） */
 async function pickRows(g, warehouseId) {
   const total = Number(g.qty)
-  if (!warehouseId || g.serialEnabled === 1) return [giftRow(g, { qty: total })]
+  // 虚拟商品（服务项目）不选库位批次
+  if (!warehouseId || g.serialEnabled === 1 || g.isVirtual === 1) return [giftRow(g, { qty: total })]
   const rows = []
   let left = total
   for (const s of await fefoSlots(warehouseId, g.materialId)) {

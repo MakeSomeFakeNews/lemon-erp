@@ -181,6 +181,7 @@ public class WmsAssemblyService {
         materials.values().stream().filter(WmsMaterial::isTemplateMaterial).findFirst().ifPresent(m -> {
             throw new BizException("wms.error.multiVariantStyleSelectSpecificVariant2", m.getCode());
         });
+        materials.values().forEach(WmsMaterialService::checkStockable);
     }
 
     private static void fill(WmsAssembly a, AssemblyRequest req) {

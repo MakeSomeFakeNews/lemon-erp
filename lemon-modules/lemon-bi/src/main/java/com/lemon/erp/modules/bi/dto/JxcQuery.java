@@ -36,6 +36,8 @@ public class JxcQuery {
     private Long warehouseId;
     /** 物料编码 / 名称 */
     private String keyword;
+    /** 商品类型：true 只看虚拟商品（服务项目），false 只看实物，为空不限 */
+    private Boolean virtual;
     /** 只取某张出入库单（单据列表穿透到该单的明细，与其他条件同时生效） */
     private Long docId;
     /** 明细中调整项（整单优惠、本公司运费、收付款折让、坏账）的显示方式，不传为汇总到底部（issue #93） */

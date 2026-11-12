@@ -91,6 +91,8 @@ public class StockService {
         materials.values().stream().filter(WmsMaterial::isTemplateMaterial).findFirst().ifPresent(m -> {
             throw new BizException("wms.error.multiVariantStyleSelectSpecificVariant", m.getCode(), m.getName());
         });
+        // 虚拟商品（服务项目）不管库存：业务单据生成库存变动前已排除，这里兜底
+        materials.values().forEach(WmsMaterialService::checkStockable);
         Long userId = SecurityUtils.getUserId();
         LocalDateTime now = LocalDateTime.now();
         List<StockFlow> flows = new ArrayList<>(sorted.size());

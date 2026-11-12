@@ -4,7 +4,7 @@
 
     <select id="selectByOrderId" resultType="com.lemon.erp.modules.scm.entity.ScmOrderItem">
         SELECT i.*, m.code AS material_code, m.name AS material_name, m.spec, m.unit, m.batch_enabled, m.serial_enabled,
-               p.name AS promotion_name
+               m.is_virtual, p.name AS promotion_name
         FROM scm_order_item i
         JOIN wms_material m ON m.id = i.material_id
         LEFT JOIN scm_promotion p ON p.id = i.promotion_id

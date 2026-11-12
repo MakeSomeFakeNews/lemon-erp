@@ -61,6 +61,10 @@ public class ScmTradeDocItem extends BaseEntity {
     @TableField(exist = false)
     private Integer gift;
 
+    /** 物料是否虚拟商品（服务项目，1 是）：没有库存流水，出库成本为 0 */
+    @TableField(exist = false)
+    private Integer isVirtual;
+
     /** 批次登记的生产日期、有效期（销售出库等随批次带出显示） */
     @TableField(exist = false)
     private LocalDate batchProductionDate;

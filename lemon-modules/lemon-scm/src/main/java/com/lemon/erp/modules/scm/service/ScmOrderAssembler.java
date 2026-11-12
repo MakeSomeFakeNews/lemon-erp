@@ -65,7 +65,9 @@ public class ScmOrderAssembler {
                 throw new BizException("scm.error.warehouseDisabled", warehouse.getName());
             }
         }
-        Map<Long, WmsMaterial> materials = materialService.getEnabled(req.items().stream().map(OrderItemRequest::materialId).toList());
+        // 虚拟商品（服务项目）只能销售，不能采购
+        List<Long> materialIds = req.items().stream().map(OrderItemRequest::materialId).toList();
+        Map<Long, WmsMaterial> materials = kind == OrderKind.PURCHASE ? materialService.getStockable(materialIds) : materialService.getEnabled(materialIds);
         // 明细未填写税率时：发票类型的税率 → 默认税率
         BigDecimal fallbackRate = taxRates.fallback(req.invoiceKind());
         return req.items().stream().map(r -> {

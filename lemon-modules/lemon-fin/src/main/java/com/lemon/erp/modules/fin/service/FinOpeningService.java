@@ -242,7 +242,8 @@ public class FinOpeningService {
             c.setUnitCost(item.amount().divide(item.qty(), UNIT_COST_SCALE, Decimals.ROUNDING));
             rows.add(c);
         }
-        materialService.mapByIds(seen);
+        // 虚拟商品（服务项目）没有存货成本
+        materialService.mapByIds(seen).values().forEach(WmsMaterialService::checkStockable);
         FinCostRun run = new FinCostRun();
         run.setPeriod(openPeriod);
         run.setKind(CostRunKind.OPENING);

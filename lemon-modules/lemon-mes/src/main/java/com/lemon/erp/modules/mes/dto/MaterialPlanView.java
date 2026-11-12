@@ -21,6 +21,8 @@ public class MaterialPlanView {
     private String category;
     private Integer batchEnabled;
     private Integer serialEnabled;
+    /** 虚拟商品（服务项目，1 是） */
+    private Integer isVirtual;
     private BigDecimal safetyStock;
     private EnableStatus status;
     private String remark;

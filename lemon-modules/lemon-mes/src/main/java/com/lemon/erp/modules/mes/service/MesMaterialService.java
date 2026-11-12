@@ -70,7 +70,7 @@ public class MesMaterialService {
     /** 保存计划属性和替代料（替代料整体替换） */
     @Transactional
     public void savePlan(Long id, MaterialPlanRequest req) {
-        materialService.get(id);
+        WmsMaterialService.checkStockable(materialService.get(id));
         List<SubstituteRequest> subs = req.substitutes() == null ? List.of() : req.substitutes();
         Set<Long> seen = new HashSet<>();
         for (SubstituteRequest s : subs) {
@@ -81,7 +81,7 @@ public class MesMaterialService {
                 throw new BizException("mes.error.duplicateSubstitute");
             }
         }
-        materialService.getEnabled(seen);
+        materialService.getStockable(seen);
         SupplyType type = req.supplyType();
         if (type == SupplyType.PHANTOM && !subs.isEmpty()) {
             throw new BizException("mes.error.phantomItemsNeitherStockedNorIssued");

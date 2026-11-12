@@ -210,7 +210,7 @@ public class ScmRequisitionService {
     }
 
     private void saveItems(Long id, RequisitionRequest req) {
-        materialService.getEnabled(req.items().stream().map(RequisitionRequest.Item::materialId).toList());
+        materialService.getStockable(req.items().stream().map(RequisitionRequest.Item::materialId).toList());
         for (RequisitionRequest.Item i : req.items()) {
             ScmRequisitionItem item = new ScmRequisitionItem();
             item.setRequisitionId(id);

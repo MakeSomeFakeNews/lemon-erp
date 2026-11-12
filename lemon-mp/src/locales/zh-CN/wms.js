@@ -118,6 +118,8 @@ export default {
     baseEquals: '= {qty} {unit}，单价 {price}',
     sameAsHeader: '同表头仓库',
     gift: '赠品',
+    virtualTag: '服务',
+    virtualNoStock: '虚拟商品（服务项目），不扣库存',
     giftOf: '买赠：{name}',
     giftSerialFull: '{name}：序列号已达到赠品数量',
     giftSerialCount: '{name}：请扫描 {n} 个赠品序列号',

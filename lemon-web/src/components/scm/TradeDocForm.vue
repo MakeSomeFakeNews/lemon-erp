@@ -291,7 +291,7 @@ function searchSources(keyword) {
 /** 订单明细 → 表单行的公共部分 */
 const base = (i) => ({
   key: rowKey(), orderItemId: i.id, materialId: i.materialId, materialCode: i.materialCode, materialName: i.materialName,
-  spec: i.spec, unit: i.unit, batchEnabled: i.batchEnabled, serialEnabled: i.serialEnabled, price: Number(i.price), grossPrice: grossPrice(i),
+  spec: i.spec, unit: i.unit, batchEnabled: i.batchEnabled, serialEnabled: i.serialEnabled, isVirtual: i.isVirtual, price: Number(i.price), grossPrice: grossPrice(i),
   warehouseId: null, locationId: null, batchNo: undefined, slot: undefined, slotLabel: undefined, available: undefined, serialNos: undefined
 })
 
@@ -400,7 +400,7 @@ async function loadDraft(id) {
     const items = d.items.map((i) => ({
       ...newTradeRow(), key: rowKey(), materialId: i.materialId, materialLabel: [i.materialCode, i.materialName].filter(Boolean).join(' '),
       materialCode: i.materialCode, materialName: i.materialName, spec: i.spec, unit: i.unit, batchEnabled: i.batchEnabled,
-      serialEnabled: i.serialEnabled, price: i.price != null ? Number(i.price) : undefined,
+      serialEnabled: i.serialEnabled, isVirtual: i.isVirtual, price: i.price != null ? Number(i.price) : undefined,
       taxRate: i.taxRate != null ? Number(i.taxRate) : i.gift === 1 ? undefined : tax.fallback(d.invoiceKind),
       priceAuto: false, gift: i.gift === 1, unitName: i.unitName || undefined, ...draftSlot(i)
     }))

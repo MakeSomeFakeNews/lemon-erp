@@ -122,7 +122,7 @@ public class ScmPromotionService {
                 gifts.add(new ScmPriceViews.PreviewGift(i.getMaterialId(), i.getPrice(), i.getOrigPrice(), promotionName,
                         m == null ? null : m.getCode() + " " + m.getName(), i.getQty(), i.getPromotionId(),
                         m == null ? null : m.getCode(), m == null ? null : m.getSpec(), m == null ? null : m.getUnit(),
-                        m == null ? null : m.getBatchEnabled(), m == null ? null : m.getSerialEnabled()));
+                        m == null ? null : m.getBatchEnabled(), m == null ? null : m.getSerialEnabled(), m == null ? null : m.getIsVirtual()));
             } else {
                 lines.add(new ScmPriceViews.PreviewLine(i.getMaterialId(), i.getPrice(), i.getOrigPrice(), promotionName));
             }

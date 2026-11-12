@@ -16,6 +16,24 @@
         END
     </select>
 
+    <select id="findStockUse" resultType="java.lang.String">
+        SELECT CASE
+            WHEN EXISTS (SELECT 1 FROM scm_order_item i JOIN scm_order o ON o.id = i.order_id
+                         WHERE i.material_id = #{id} AND o.kind = 'PURCHASE') THEN 'scm.label.purchaseOrder'
+            WHEN EXISTS (SELECT 1 FROM scm_requisition_item WHERE material_id = #{id}) THEN 'scm.label.purchaseRequisition'
+            WHEN EXISTS (SELECT 1 FROM scm_inquiry_item WHERE material_id = #{id}) THEN 'scm.label.rfq'
+            WHEN EXISTS (SELECT 1 FROM scm_supplier_price WHERE material_id = #{id}) THEN 'scm.label.supplyPrice'
+            WHEN EXISTS (SELECT 1 FROM scm_delivery_item WHERE material_id = #{id}) THEN 'scm.label.deliveryNotice'
+        END
+    </select>
+
+    <select id="findVirtualUse" resultType="java.lang.String">
+        SELECT CASE
+            WHEN EXISTS (SELECT 1 FROM scm_trade_doc_item WHERE material_id = #{id}) THEN 'scm.label.inboundOutboundDocument'
+            WHEN EXISTS (SELECT 1 FROM scm_trade_draft_item WHERE material_id = #{id}) THEN 'scm.label.inboundOutboundDraft'
+        END
+    </select>
+
     <select id="findWarehouse" resultType="java.lang.String">
         SELECT CASE
             WHEN EXISTS (SELECT 1 FROM scm_order WHERE warehouse_id = #{id}) THEN 'scm.label.purchaseSalesOrder'

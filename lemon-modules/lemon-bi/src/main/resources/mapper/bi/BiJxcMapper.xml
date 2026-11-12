@@ -55,8 +55,13 @@
     <sql id="lineDiscount">ROUND(i.discount_share * 100 / (100 + i.tax_rate), 2)</sql>
     <sql id="lineGoods">(i.amount - i.tax_amount + <include refid="lineDiscount"/>)</sql>
 
-    <!-- 销售成本单价：实时出库成本 → 期间核算单价 → 参考成本价 -->
-    <sql id="saleUnitCost">COALESCE(fc.amount / NULLIF(fc.qty, 0), mc.unit_cost, m.ref_cost, 0)</sql>
+    <!-- 销售成本单价：实时出库成本 → 期间核算单价 → 参考成本价；虚拟商品（服务项目）不管库存，成本为 0、毛利 = 收入 -->
+    <sql id="saleUnitCost">CASE WHEN m.is_virtual = 1 THEN 0 ELSE COALESCE(fc.amount / NULLIF(fc.qty, 0), mc.unit_cost, m.ref_cost, 0) END</sql>
+
+    <!-- 商品类型筛选（m 为物料表）：虚拟商品 / 实物 -->
+    <sql id="virtualFilter">
+        <if test="q.virtual != null">AND m.is_virtual = <choose><when test="q.virtual">1</when><otherwise>0</otherwise></choose></if>
+    </sql>
 
     <sql id="tradeFrom">
         FROM scm_trade_doc_item i
@@ -98,6 +103,7 @@
         <if test="q.keyword != null and q.keyword != ''">
             AND (m.code LIKE CONCAT('%', #{q.keyword}, '%') OR m.name LIKE CONCAT('%', #{q.keyword}, '%'))
         </if>
+        <include refid="virtualFilter"/>
     </sql>
 
     <sql id="measures">
@@ -113,7 +119,7 @@
         <choose>
             <when test="sales">
                 SUM(<include refid="sign"/> * i.qty * <include refid="saleUnitCost"/>) AS "cost",
-                SUM(CASE WHEN fc.amount IS NULL AND mc.unit_cost IS NULL THEN 1 ELSE 0 END) AS "missingCost",
+                SUM(CASE WHEN fc.amount IS NULL AND mc.unit_cost IS NULL AND m.is_virtual = 0 THEN 1 ELSE 0 END) AS "missingCost",
                 SUM(COALESCE(bd.amount, 0) * <include refid="docShare"/>) AS "badDebt",
                 SUM(<include refid="freightAmount"/> * <include refid="docShare"/>) AS "freight",
             </when>
@@ -181,7 +187,7 @@
                <include refid="sign"/> * i.discount_share AS "discountTaxed",
                <if test="sales">
                    <include refid="sign"/> * i.qty * <include refid="saleUnitCost"/> AS "cost",
-                   CASE WHEN fc.amount IS NULL AND mc.unit_cost IS NULL THEN 0 ELSE 1 END AS "costed",
+                   CASE WHEN fc.amount IS NULL AND mc.unit_cost IS NULL AND m.is_virtual = 0 THEN 0 ELSE 1 END AS "costed",
                    COALESCE(bd.amount, 0) * <include refid="docShare"/> AS "badDebt",
                    <include refid="freightAmount"/> * <include refid="docShare"/> AS "freight",
                </if>
@@ -216,7 +222,7 @@
                SUM(COALESCE(sd.amount, 0) * <include refid="docShare"/>) AS "settleDiscount"
                <if test="sales">,
                    SUM(<include refid="sign"/> * i.qty * <include refid="saleUnitCost"/>) AS "cost",
-                   SUM(CASE WHEN fc.amount IS NULL AND mc.unit_cost IS NULL THEN 1 ELSE 0 END) AS "missingCost",
+                   SUM(CASE WHEN fc.amount IS NULL AND mc.unit_cost IS NULL AND m.is_virtual = 0 THEN 1 ELSE 0 END) AS "missingCost",
                    SUM(COALESCE(bd.amount, 0) * <include refid="docShare"/>) AS "badDebt",
                    SUM(<include refid="freightAmount"/> * <include refid="docShare"/>) AS "freight"
                </if>
@@ -398,7 +404,7 @@
         SELECT i.material_id,
                SUM(CASE WHEN d.kind = 'SALES_OUT' THEN i.qty ELSE -i.qty END) AS qty,
                SUM(CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * (i.amount - i.tax_amount)) AS amount,
-               SUM(CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * i.qty * COALESCE(fc.amount / NULLIF(fc.qty, 0), mc.unit_cost, sm.ref_cost, 0)) AS cost
+               SUM(CASE WHEN d.kind = 'SALES_OUT' THEN 1 ELSE -1 END * i.qty * CASE WHEN sm.is_virtual = 1 THEN 0 ELSE COALESCE(fc.amount / NULLIF(fc.qty, 0), mc.unit_cost, sm.ref_cost, 0) END) AS cost
         FROM scm_trade_doc_item i
         JOIN scm_trade_doc d ON d.id = i.doc_id
         JOIN wms_material sm ON sm.id = i.material_id
@@ -422,6 +428,7 @@
 
     <sql id="materialFilters">
         AND m.is_template = 0
+        <include refid="virtualFilter"/>
         <if test="q.category != null and q.category != ''">
             <choose>
                 <when test="q.categoryExact">AND m.category = #{q.category}</when>
@@ -503,7 +510,7 @@
         LEFT JOIN (<include refid="stock"/>) st ON st.material_id = m.id
         LEFT JOIN (<include refid="openOrders"><property name="orderKind" value="SALES"/></include>) so ON so.material_id = m.id
         LEFT JOIN (<include refid="openOrders"><property name="orderKind" value="PURCHASE"/></include>) po ON po.material_id = m.id
-        WHERE m.status = 1
+        WHERE m.status = 1 AND m.is_virtual = 0
           AND ((m.safety_stock &gt; 0 AND COALESCE(st.available, 0) &lt; m.safety_stock)
                OR COALESCE(st.available, 0) &lt; COALESCE(so.qty, 0))
         <include refid="materialFilters"/>
@@ -536,7 +543,7 @@
             FROM wms_material m
             LEFT JOIN (<include refid="flows"/>) fl ON fl.material_id = m.id
             LEFT JOIN (<include refid="periodSales"/>) sl ON sl.material_id = m.id
-            WHERE (fl.material_id IS NOT NULL OR sl.material_id IS NOT NULL)
+            WHERE (fl.material_id IS NOT NULL OR sl.material_id IS NOT NULL) AND m.is_virtual = 0
             <include refid="materialFilters"/>
         ) x
         WHERE x.open_qty &lt;&gt; 0 OR x.close_qty &lt;&gt; 0 OR x.sales_qty &lt;&gt; 0

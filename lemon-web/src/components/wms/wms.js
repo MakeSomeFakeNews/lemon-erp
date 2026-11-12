@@ -133,7 +133,8 @@ export { rowKey } from '@/composables/useLineItems'
  * @param key 库位字段，调拨的调入库位为 toLocationId
  */
 export async function fillPutaway(warehouseId, rows, key = 'locationId') {
-  const targets = rows.filter((r) => r.materialId && !r[key])
+  // 虚拟商品（服务项目）不入库，不推荐库位
+  const targets = rows.filter((r) => r.materialId && !r[key] && r.isVirtual !== 1)
   if (!warehouseId || !targets.length) return 0
   const res = await suggestPutaway({ warehouseId, lines: targets.map((r) => ({ materialId: r.materialId, batchNo: r.batchNo || null })) })
   let filled = 0

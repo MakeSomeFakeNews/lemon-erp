@@ -271,7 +271,7 @@ const sheetItems = ref([])
 const sheetLoading = ref(false)
 const sheetTitle = computed(() => (sheet.value ? t(`wms.sale.sheet.${sheet.value}`) : ''))
 // 商品主图（物料资料中排在第一张的图片）作为缩略图
-const materialItem = (m) => ({ id: m.id, title: m.name, sub: [m.code, m.spec, m.unit].filter(Boolean).join(' · '), image: m.imageUrl ? fileUrl(m.imageUrl) : '', raw: m })
+const materialItem = (m) => ({ id: m.id, title: m.name, sub: [m.code, m.spec, m.unit, m.isVirtual === 1 ? t('wms.sale.virtualTag') : null].filter(Boolean).join(' · '), image: m.imageUrl ? fileUrl(m.imageUrl) : '', raw: m })
 
 function openSheet(type) {
   sheetItems.value = []
@@ -302,7 +302,7 @@ async function searchSheet(keyword, more = false) {
       items = (res?.records || []).map((u) => ({ id: u.id, title: u.nickname || u.username, sub: [u.username, u.deptName].filter(Boolean).join(' · ') }))
       hasMore = page * OPTION_PAGE_SIZE < (res?.total || 0)
     } else if (type === 'material') {
-      const list = (await materialOptions(keyword, page).catch(() => [])) || []
+      const list = (await materialOptions(keyword, page, true).catch(() => [])) || []
       items = list.map(materialItem)
       hasMore = list.length >= OPTION_PAGE_SIZE
     }
@@ -345,7 +345,7 @@ async function onScan(code) {
     }
     return tip.show(t('wms.common.serialAdded', { name: row.materialName, code, n: row.serials.length }))
   }
-  const list = (await materialOptions(code).catch(() => [])) || []
+  const list = (await materialOptions(code, 1, true).catch(() => [])) || []
   const exact = list.find((m) => m.code === code)
   if (exact || list.length === 1) return addMaterial(exact || list[0], 1)
   if (!list.length) return tip.show(t('wms.common.unknownCode', { code }), false)
@@ -358,7 +358,7 @@ async function onScan(code) {
 function newRow(m, extra) {
   return {
     key: rowKey(), materialId: m.id, materialCode: m.code, materialName: m.name, spec: m.spec, unit: m.unit,
-    batchEnabled: m.batchEnabled, serialEnabled: m.serialEnabled, qty: 0, price: null, taxRate: newRowTaxRate(),
+    batchEnabled: m.batchEnabled, serialEnabled: m.serialEnabled, isVirtual: m.isVirtual, qty: 0, price: null, taxRate: newRowTaxRate(),
     unitName: null, unitRatio: 1, units: [], warehouseId: null,
     priceSource: null, priceAuto: true, slots: [], slotIndex: 0, slotsLoading: false, serials: [], gift: false,
     ...extra
@@ -538,7 +538,7 @@ function toItem(r, slot = r.slots[r.slotIndex], qtyOverride) {
  * 序列号赠品不拆（序列号所在的库位批次由所选项决定）
  */
 function giftItems(r) {
-  if (r.serialEnabled === 1 || !overStock(r)) return [toItem(r)]
+  if (r.serialEnabled === 1 || r.isVirtual === 1 || !overStock(r)) return [toItem(r)]
   const order = [r.slots[r.slotIndex], ...r.slots.filter((_, i) => i !== r.slotIndex)]
   const items = []
   let left = baseQty(r)
@@ -561,6 +561,8 @@ async function submit(mode) {
     if (r.price == null) return toast(t('wms.sale.inputPrice', { name: r.materialName }))
   }
   for (const r of allRows()) {
+    // 虚拟商品（服务项目）不管库存，不选库位批次
+    if (r.isVirtual === 1) continue
     if (r.slotsLoading) return toast(t('common.loading'))
     if (!r.slots.length) return toast(t('wms.sale.noStockOf', { name: r.materialName }))
     if (r.gift && !(Number(r.qty) > 0)) continue

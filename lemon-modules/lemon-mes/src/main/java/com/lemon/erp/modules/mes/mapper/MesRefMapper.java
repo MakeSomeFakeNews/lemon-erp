@@ -21,4 +21,7 @@ public interface MesRefMapper {
 
     /** 物料分类（分类 ID） */
     String findMaterialCategory(@Param("id") Long id);
+
+    /** 物料改为虚拟商品前：BOM、替代料、生产计划、委外、工单中的引用 */
+    String findStockUse(@Param("id") Long id);
 }

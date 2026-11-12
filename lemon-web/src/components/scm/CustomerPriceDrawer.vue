@@ -11,7 +11,7 @@
           <template #cell="{ column, record, index }">
             <template v-if="column.key === 'material'">
               <a-form-item v-if="editable" :name="['items', index, 'materialId']" :rules="[{ required: true, message: $t('pricing.customerPrice.selectMaterial') }]" class="cell-item">
-                <MaterialSelect v-model:value="record.materialId" :label="record.materialLabel" @select="(m) => (record.materialLabel = m.label)" />
+                <MaterialSelect virtual v-model:value="record.materialId" :label="record.materialLabel" @select="(m) => (record.materialLabel = m.label)" />
               </a-form-item>
               <span v-else>{{ record.materialLabel }}</span>
             </template>

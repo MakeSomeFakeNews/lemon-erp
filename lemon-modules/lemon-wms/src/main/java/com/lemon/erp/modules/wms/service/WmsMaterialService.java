@@ -35,6 +35,7 @@ import com.lemon.erp.modules.wms.mapper.WmsMaterialUnitMapper;
 import com.lemon.erp.modules.wms.mapper.WmsStockDocItemMapper;
 import com.lemon.erp.modules.wms.mapper.WmsStockFlowMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -54,6 +55,7 @@ public class WmsMaterialService {
 
     /** 记录变更历史的字段 */
     private static final Map<String, String> CHANGE_FIELDS = ChangeLogger.fields("code", "物料编码", "name", "物料名称", "spec", "规格型号", "unit", "计量单位", "category", "分类", "brand", "品牌", // i18n-ignore 字段名写入变更记录
+            "isVirtual", "虚拟商品", // i18n-ignore
             "batchEnabled", "批次管理", "serialEnabled", "序列号管理", "iqcRequired", "来料检验", "safetyStock", "安全库存", "reorderPoint", "再订货点", "reorderQty", "再订货量", "barcode", "条码", "defaultWarehouseId", "默认仓库", "refCost", "参考成本价", "costMethod", "计价方法", "remark", "备注", // i18n-ignore
             "retailPrice", "零售价", "wholesalePrice1", "批发价1", "wholesalePrice2", "批发价2", "wholesalePrice3", "批发价3", // i18n-ignore
             "wholesalePrice4", "批发价4", "wholesalePrice5", "批发价5", "wholesalePrice6", "批发价6", "wholesalePrice7", "批发价7", // i18n-ignore
@@ -85,24 +87,28 @@ public class WmsMaterialService {
     private final WmsMaterialCategoryService categoryService;
     private final SearchKeyTable<WmsMaterial> searchKeys;
     private final WmsMaterialImageService imageService;
+    private final ObjectProvider<MaterialVirtualGuard> virtualGuards;
 
     /**
      * @param keyword    编码、名称、规格、条码、拼音首字母或去掉分隔符的缩写，规则见 {@link SearchKeys}
      * @param templateId 只看某个款式的 SKU
      */
     public PageResult<WmsMaterial> page(long current, long size, String keyword, String category, EnableStatus status, Long templateId) {
-        return page(current, size, keyword, category, null, status, templateId);
+        return page(current, size, keyword, category, null, status, templateId, null);
     }
 
     /**
      * @param category 分类编码，包含其下级分类的物料；为空不限
      * @param brand    品牌，为空不限
+     * @param virtual  true 只看虚拟商品（服务项目），false 只看实物，为空不限
      */
-    public PageResult<WmsMaterial> page(long current, long size, String keyword, String category, String brand, EnableStatus status, Long templateId) {
+    public PageResult<WmsMaterial> page(long current, long size, String keyword, String category, String brand, EnableStatus status, Long templateId,
+                                        Boolean virtual) {
         Page<WmsMaterial> page = materialMapper.selectPage(Page.of(current, size), Wrappers.<WmsMaterial>lambdaQuery()
                 .and(StringUtils.hasText(keyword), keywordMatch(keyword))
                 .in(StringUtils.hasText(category), WmsMaterial::getCategory, categoryCodes(category))
                 .eq(StringUtils.hasText(brand), WmsMaterial::getBrand, brand)
+                .eq(virtual != null, WmsMaterial::getIsVirtual, Boolean.TRUE.equals(virtual) ? 1 : 0)
                 .eq(status != null, WmsMaterial::getStatus, status)
                 .eq(templateId != null, WmsMaterial::getTemplateId, templateId)
                 .orderByDesc(WmsMaterial::getId));
@@ -142,6 +148,24 @@ public class WmsMaterialService {
         return map;
     }
 
+    /**
+     * 按 ID 批量加载启用的实物物料，供采购、库存、生产类单据校验：不存在、已停用或是虚拟商品（服务项目）时报错
+     *
+     * @return ID → 物料
+     */
+    public Map<Long, WmsMaterial> getStockable(Collection<Long> ids) {
+        Map<Long, WmsMaterial> map = getEnabled(ids);
+        map.values().forEach(WmsMaterialService::checkStockable);
+        return map;
+    }
+
+    /** 虚拟商品（服务项目）不管库存，不能用于采购、库存、生产类业务 */
+    public static void checkStockable(WmsMaterial material) {
+        if (material != null && material.isVirtualGoods()) {
+            throw new BizException("wms.error.virtualMaterialNotStockable", material.getCode(), material.getName());
+        }
+    }
+
     /** 按 ID 批量加载物料（含停用的），ID → 物料 */
     public Map<Long, WmsMaterial> mapByIds(Collection<Long> ids) {
         if (ids.isEmpty()) {
@@ -164,22 +188,29 @@ public class WmsMaterialService {
                 .collect(Collectors.toMap(WmsMaterial::getCode, Function.identity()));
     }
 
-    /** 启用的物料，按关键字搜索，最多 {@value #OPTION_LIMIT} 条，供单据明细选择、AI 识别物料 */
+    /** 启用的物料（含虚拟商品），按关键字搜索，最多 {@value #OPTION_LIMIT} 条，供单据明细选择、AI 识别物料 */
     public List<WmsMaterial> options(String keyword) {
         return options(keyword, 1, OPTION_LIMIT);
+    }
+
+    /** 启用的物料下拉（含虚拟商品），见 {@link #options(String, long, long, boolean)} */
+    public List<WmsMaterial> options(String keyword, long current, long size) {
+        return options(keyword, current, size, true);
     }
 
     /**
      * 启用的物料下拉：按关键字（规则见 {@link SearchKeys}）分页搜索，按编码排序，不查总数；
      * 第一页中编码或条码与关键字完全一致的物料排在最前
      *
-     * @param size 每页条数，最多 {@value #OPTION_LIMIT}
+     * @param size           每页条数，最多 {@value #OPTION_LIMIT}
+     * @param includeVirtual 是否包含虚拟商品（服务项目）：销售类单据包含，采购、库存、生产类单据不包含
      */
-    public List<WmsMaterial> options(String keyword, long current, long size) {
+    public List<WmsMaterial> options(String keyword, long current, long size, boolean includeVirtual) {
         List<WmsMaterial> rows = materialMapper.selectPage(Page.of(Math.max(current, 1), Math.min(Math.max(size, 1), OPTION_LIMIT), false),
                 optionQuery().eq(WmsMaterial::getStatus, EnableStatus.ENABLED)
                         // 多规格款式不能直接用于单据，选择具体的 SKU
                         .eq(WmsMaterial::getIsTemplate, 0)
+                        .eq(!includeVirtual, WmsMaterial::getIsVirtual, 0)
                         .and(StringUtils.hasText(keyword), keywordMatch(keyword))
                         .orderByAsc(WmsMaterial::getCode)).getRecords();
         if (!StringUtils.hasText(keyword) || current > 1) {
@@ -188,6 +219,7 @@ public class WmsMaterialService {
         String kw = keyword.trim();
         WmsMaterial exact = Queries.first(materialMapper, optionQuery().eq(WmsMaterial::getStatus, EnableStatus.ENABLED)
                 .eq(WmsMaterial::getIsTemplate, 0)
+                .eq(!includeVirtual, WmsMaterial::getIsVirtual, 0)
                 .and(w -> w.eq(WmsMaterial::getCode, kw).or().eq(WmsMaterial::getBarcode, kw))
                 .orderByAsc(WmsMaterial::getCode));
         return SearchKeys.exactFirst(rows, exact, WmsMaterial::getId);
@@ -205,7 +237,7 @@ public class WmsMaterialService {
                 .select(WmsMaterial::getId, WmsMaterial::getCode, WmsMaterial::getName, WmsMaterial::getSpec,
                         WmsMaterial::getUnit, WmsMaterial::getBatchEnabled, WmsMaterial::getSerialEnabled,
                         WmsMaterial::getBarcode, WmsMaterial::getDefaultWarehouseId, WmsMaterial::getDefaultLocationId,
-                        WmsMaterial::getImageUrl);
+                        WmsMaterial::getImageUrl, WmsMaterial::getIsVirtual);
     }
 
     /**
@@ -271,6 +303,7 @@ public class WmsMaterialService {
         material.setImageUrl(null);
         normalize(material);
         checkExtras(material, null);
+        checkVirtualFields(material);
         categoryService.checkUsable(material.getCategory(), null);
         if (material.getStatus() == null) material.setStatus(EnableStatus.ENABLED);
         materialMapper.insert(material);
@@ -307,6 +340,8 @@ public class WmsMaterialService {
         checkCodeUnique(material.getCode(), id);
         normalize(material);
         checkExtras(material, id);
+        checkVirtualFields(material);
+        checkVirtualSwitch(old, material.isVirtualGoods());
         categoryService.checkUsable(material.getCategory(), old.getCategory());
         boolean trackingChanged = !Objects.equals(old.getBatchEnabled(), material.getBatchEnabled())
                 || !Objects.equals(old.getSerialEnabled(), material.getSerialEnabled());
@@ -366,12 +401,7 @@ public class WmsMaterialService {
     public void delete(List<Long> ids) {
         for (WmsMaterial material : materialMapper.selectByIds(ids)) {
             Long id = material.getId();
-            boolean used = flowMapper.existsByMaterialId(id)
-                    || docItemMapper.exists(Wrappers.<WmsStockDocItem>lambdaQuery().eq(WmsStockDocItem::getMaterialId, id))
-                    || checkItemMapper.exists(Wrappers.<WmsCheckItem>lambdaQuery().eq(WmsCheckItem::getMaterialId, id))
-                    || assemblyMapper.exists(Wrappers.<WmsAssembly>lambdaQuery().eq(WmsAssembly::getMaterialId, id))
-                    || assemblyItemMapper.exists(Wrappers.<WmsAssemblyItem>lambdaQuery().eq(WmsAssemblyItem::getMaterialId, id));
-            if (used) {
+            if (usedInStock(id)) {
                 throw new BizException("wms.error.materialUsedDocumentsCannotDeletedDisable", material.getName());
             }
             if (material.isTemplateMaterial() && materialMapper.exists(Wrappers.<WmsMaterial>lambdaQuery().eq(WmsMaterial::getTemplateId, id))) {
@@ -384,8 +414,63 @@ public class WmsMaterialService {
         variantValueMapper.delete(Wrappers.<WmsVariantValue>lambdaQuery().in(WmsVariantValue::getMaterialId, ids));
     }
 
+    /** 已发生库存业务（库存流水），或被仓库单据、盘点、组装拆卸引用（含草稿） */
+    private boolean usedInStock(Long id) {
+        return flowMapper.existsByMaterialId(id)
+                || docItemMapper.exists(Wrappers.<WmsStockDocItem>lambdaQuery().eq(WmsStockDocItem::getMaterialId, id))
+                || checkItemMapper.exists(Wrappers.<WmsCheckItem>lambdaQuery().eq(WmsCheckItem::getMaterialId, id))
+                || assemblyMapper.exists(Wrappers.<WmsAssembly>lambdaQuery().eq(WmsAssembly::getMaterialId, id))
+                || assemblyItemMapper.exists(Wrappers.<WmsAssemblyItem>lambdaQuery().eq(WmsAssemblyItem::getMaterialId, id));
+    }
+
+    /**
+     * 虚拟商品（服务项目）不管库存：不能启用批次、序列号、来料检验；安全库存、再订货点 / 量、默认仓库库位、参考成本价不保存（出库成本为 0）
+     */
+    private static void checkVirtualFields(WmsMaterial material) {
+        if (!material.isVirtualGoods()) {
+            return;
+        }
+        if (material.isBatchManaged() || material.isSerialManaged() || material.needsIqc()) {
+            throw new BizException("wms.error.virtualMaterialNoTracking");
+        }
+        material.setSafetyStock(null);
+        material.setReorderPoint(null);
+        material.setReorderQty(null);
+        material.setDefaultWarehouseId(null);
+        material.setDefaultLocationId(null);
+        material.setRefCost(null);
+    }
+
+    /**
+     * 切换「虚拟商品」标识：
+     * <ul>
+     *   <li>多规格款式、SKU 不能设为虚拟商品</li>
+     *   <li>实物改为虚拟：已发生库存业务（有库存流水，或被仓库单据、盘点、组装拆卸引用），或被其他模块的采购、生产等业务引用（{@link MaterialVirtualGuard}）时不允许</li>
+     *   <li>虚拟改为实物：已有销售出库 / 退货等业务时不允许（这些单据没有库存流水和出库成本），需要实物管理时新建物料</li>
+     * </ul>
+     */
+    private void checkVirtualSwitch(WmsMaterial old, boolean toVirtual) {
+        if (old.isVirtualGoods() == toVirtual) {
+            return;
+        }
+        if (toVirtual && (old.isTemplateMaterial() || old.getTemplateId() != null)) {
+            throw new BizException("wms.error.variantMaterialCannotBeVirtual");
+        }
+        if (toVirtual && usedInStock(old.getId())) {
+            throw new BizException("wms.error.materialHasStockCannotBeVirtual", old.getCode(), old.getName());
+        }
+        for (MaterialVirtualGuard guard : virtualGuards) {
+            String blocker = guard.findBlocker(old.getId(), toVirtual);
+            if (blocker != null) {
+                throw new BizException(toVirtual ? "wms.error.materialUsedCannotBeVirtual" : "wms.error.virtualMaterialUsedCannotBePhysical",
+                        old.getCode(), old.getName(), blocker);
+            }
+        }
+    }
+
     private static void normalize(WmsMaterial material) {
         material.setCategory(StringUtils.hasText(material.getCategory()) ? material.getCategory().trim() : null);
+        material.setIsVirtual(Integer.valueOf(1).equals(material.getIsVirtual()) ? 1 : 0);
         material.setBatchEnabled(Integer.valueOf(1).equals(material.getBatchEnabled()) ? 1 : 0);
         material.setSerialEnabled(Integer.valueOf(1).equals(material.getSerialEnabled()) ? 1 : 0);
         material.setIqcRequired(Integer.valueOf(1).equals(material.getIqcRequired()) ? 1 : 0);

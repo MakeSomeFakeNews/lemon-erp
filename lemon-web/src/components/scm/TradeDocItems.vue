@@ -28,7 +28,7 @@
             <div class="sub-text">{{ record.spec }}</div>
           </template>
           <a-form-item v-else-if="direct" :name="lines.itemName(record, 'materialId')" :rules="requiredRule($t('scm.trade.selectMaterial'))" class="cell-item">
-            <MaterialSelect v-model:value="record.materialId" :label="record.materialLabel" @select="(m) => applyMaterial(record, m)" />
+            <MaterialSelect v-model:value="record.materialId" :virtual="conf.orderKind === 'sales'" :label="record.materialLabel" @select="(m) => applyMaterial(record, m)" />
           </a-form-item>
           <template v-else>
             <div>{{ record.materialCode }} {{ record.materialName }}</div>
@@ -36,6 +36,7 @@
           </template>
           <div class="row-tags">
             <a-tag v-if="record.gift" color="green" :bordered="false">{{ $t('scm.trade.giftTag') }}</a-tag>
+            <a-tag v-if="record.isVirtual === 1" color="cyan" :bordered="false">{{ $t('wms.material.virtualTag') }}</a-tag>
             <a-tag v-if="record.batchEnabled === 1" color="blue" :bordered="false">{{ $t('scm.trade.batch') }}</a-tag>
             <a-tag v-if="record.serialEnabled === 1" color="purple" :bordered="false">{{ $t('scm.trade.serialNo') }}</a-tag>
           </div>
@@ -44,6 +45,8 @@
           <div>{{ formatQty(record.limit) }} {{ record.unit }}</div>
           <div class="sub-text">¥{{ formatMoney(record.grossPrice ?? record.price) }} / {{ record.unit || $t('common.field.unit') }}</div>
         </template>
+        <!-- 虚拟商品（服务项目）不管库存：不选仓库、库位、批次 -->
+        <span v-else-if="record.isVirtual === 1 && STOCK_KEYS.includes(column.key)" class="sub-text">{{ $t('scm.trade.virtualNoStock') }}</span>
         <template v-else-if="column.key === 'warehouse'">
           <WarehouseSelect
             :value="record.warehouseId"
@@ -142,32 +145,7 @@
       {{ $t('scm.trade.promoTotal', { amount: formatMoney(promo.discountAmount) }) }}
     </div>
     <WholeDiscountBar v-if="direct && form.items.length" v-model:value="form.wholeDiscount" :total="discountBase" />
-    <!-- 引用订单 / 原单：明细按优惠前单价显示（不改单价），订单优惠在合计处整单扣减（退货即扣回原单的优惠），金额以保存后的单据为准；
-         采购入库可按供应商实际给的优惠修改本单的订单优惠 -->
-    <div v-if="!direct && form.items.length && (refDiscount > 0 || discountEditable)" class="ref-discount">
-      <span>{{ $t('scm.wholeDiscount.total') }} <b>¥{{ formatMoney(totalAmount) }}</b></span>
-      <span class="discount-cell">
-        <a-tooltip :title="discountHint">
-          <span class="dashed">{{ conf.returns ? $t('scm.wholeDiscount.returnShare') : $t('scm.wholeDiscount.orderShare') }}</span>
-        </a-tooltip>
-        <template v-if="discountEditable">
-          <a-input-number
-            :value="docDiscount"
-            :min="0"
-            :max="totalAmount"
-            :precision="2"
-            prefix="−¥"
-            size="small"
-            class="discount-input"
-            @update:value="(v) => (form.orderDiscount = v ?? 0)"
-          />
-          <a v-if="form.orderDiscount != null" class="reset-link" @click="form.orderDiscount = undefined">{{ $t('scm.wholeDiscount.orderDiscountReset') }}</a>
-        </template>
-        <b v-else>−¥{{ formatMoney(refDiscount) }}</b>
-      </span>
-      <span>{{ conf.returns ? $t('scm.wholeDiscount.refundAfter') : $t('scm.wholeDiscount.after') }} <b class="after">¥{{ formatMoney(afterAmount) }}</b></span>
-    </div>
-    <div v-if="discountChanged" class="discount-warn">{{ $t('scm.wholeDiscount.orderDiscountChanged', { amount: formatMoney(refDiscount) }) }}</div>
+    <TradeRefDiscount v-if="!direct" :kind="kind" :form="form" :total="totalAmount" :returns="conf.returns" />
     <PriceReference ref="referenceRef" pickable @pick="pickPrice" />
   </div>
 </template>
@@ -185,6 +163,7 @@ import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import StockSlotSelect from './StockSlotSelect.vue'
 import PriceReference from './PriceReference.vue'
 import WholeDiscountBar from './WholeDiscountBar.vue'
+import TradeRefDiscount from './TradeRefDiscount.vue'
 import TaxRateTitle from './TaxRateTitle.vue'
 import { applyTaxRate, useTaxRates } from './taxRate'
 import { defaultPrices } from '@/api/scm/pricing'
@@ -216,6 +195,7 @@ const priceKind = computed(() => (conf.value.orderKind === 'sales' ? 'SALES' : '
 /** 入库类单据（采购入库、销售退货）可按上架策略推荐库位 */
 const inbound = computed(() => props.kind === 'purchaseIn' || props.kind === 'salesReturn')
 const requiredRule = (msg) => [{ required: true, message: msg }]
+const STOCK_KEYS = ['warehouse', 'slot', 'location', 'batchNo']
 
 // 新明细的税率：表头发票类型的税率，没有时为业务参数「默认税率」（issue #82）
 const tax = useTaxRates()
@@ -254,19 +234,6 @@ const columns = computed(() => {
 const totalQty = computed(() => props.form.items.reduce((sum, i) => sum + (Number(i.qty) || 0), 0))
 /** 明细合计：直接开单按录入的单价；引用订单按优惠前单价（整单优惠在合计处扣减） */
 const totalAmount = computed(() => round2(props.form.items.reduce((sum, i) => sum + lineAmount(i.qty, i.grossPrice ?? i.price), 0)))
-/** 引用订单时按成交价（已扣除整单优惠分摊）估算的金额，以及与优惠前合计的差额（订单 / 原单的整单优惠分摊） */
-const netAmount = computed(() => round2(props.form.items.reduce((sum, i) => sum + lineAmount(i.qty, i.price), 0)))
-const refDiscount = computed(() => round2(totalAmount.value - netAmount.value))
-/** 引用订单的采购入库可以修改本单的订单优惠（form.orderDiscount，为空按订单） */
-const discountEditable = computed(() => props.kind === 'purchaseIn')
-const docDiscount = computed(() => (discountEditable.value && props.form.orderDiscount != null ? Number(props.form.orderDiscount) : refDiscount.value))
-const afterAmount = computed(() => round2(totalAmount.value - docDiscount.value))
-const discountChanged = computed(() => discountEditable.value && props.form.orderDiscount != null && round2(props.form.orderDiscount) !== refDiscount.value)
-const discountHint = computed(() =>
-  conf.value.returns
-    ? t('scm.wholeDiscount.returnShareHint')
-    : t(props.kind === 'purchaseIn' ? 'scm.wholeDiscount.orderSharePurchaseHint' : 'scm.wholeDiscount.orderShareHint')
-)
 
 async function putaway() {
   const n = await fillPutaway(props.form.warehouseId, props.form.items)
@@ -326,6 +293,7 @@ function applyMaterial(row, m) {
     unit: m.unit,
     batchEnabled: m.batchEnabled,
     serialEnabled: m.serialEnabled,
+    isVirtual: m.isVirtual,
     priceAuto: true,
     batchNo: undefined
   })
@@ -467,37 +435,5 @@ defineExpose({ addRow, fillPrices })
 }
 .amount {
   font-weight: 500;
-}
-.ref-discount {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px 24px;
-  margin-top: 12px;
-}
-.ref-discount .dashed {
-  border-bottom: 1px dashed var(--app-text-3);
-  cursor: help;
-}
-.discount-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.discount-input {
-  width: 140px;
-}
-.reset-link {
-  font-size: 12px;
-}
-.discount-warn {
-  margin-top: 4px;
-  text-align: right;
-  color: var(--ant-color-warning, #faad14);
-  font-size: 12px;
-}
-.ref-discount .after {
-  font-size: 16px;
-  color: var(--ant-color-primary, #1677ff);
 }
 </style>
