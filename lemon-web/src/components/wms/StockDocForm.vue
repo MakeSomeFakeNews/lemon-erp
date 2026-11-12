@@ -64,6 +64,7 @@
           </a-form-item>
         </a-col>
       </a-row>
+      <TransferTerms v-if="kind === 'transfer'" ref="termsRef" :form="form" />
 
       <div class="items-head">
         <span class="section-title">{{ $t('wms.doc.itemsTitle', { n: form.items.length, total: formatQty(totalQty) }) }}</span>
@@ -143,6 +144,12 @@
           <template v-else-if="column.key === 'costPrice'">
             <a-input-number v-model:value="record.costPrice" :min="0" :max="999999999999" :precision="4" class="full" :placeholder="$t('wms.doc.costPricePh')" />
           </template>
+          <TransferPriceCell
+            v-else-if="TRANSFER_PRICE_KEYS.includes(column.key)"
+            :column-key="column.key"
+            :row="record"
+            :differential="differential"
+          />
           <template v-else-if="column.key === 'serialNos'">
             <SerialInput
               v-if="record.serialEnabled === 1"
@@ -179,6 +186,8 @@ import LocationSelect from './LocationSelect.vue'
 import MaterialSelect from './MaterialSelect.vue'
 import SerialInput from './SerialInput.vue'
 import StockPicker from './StockPicker.vue'
+import TransferPriceCell from './TransferPriceCell.vue'
+import TransferTerms from './TransferTerms.vue'
 import WarehouseSelect from './WarehouseSelect.vue'
 import { addDoc, getDoc, updateDoc } from '@/api/wms/doc'
 import { unitCosts } from '@/api/wms/stock'
@@ -187,8 +196,9 @@ import { useFormDrawer } from '@/composables/useFormDrawer'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { DOC_KINDS, availableQty, docTypeOptions, fillPutaway, formatQty, ioCategoryDict, locationText, rowKey, today } from './wms'
+import { TRANSFER_PRICE_KEYS, docFormColumns, pickItem, toRow, transferForm, transferPayload } from './wms'
 
-import { StockInType } from '@/constants/enums'
+import { StockInType, TransferPricing } from '@/constants/enums'
 /**
  * 新增 / 编辑出入库单（草稿）。入库手工录入物料；出库、调拨从仓库现有库存中选择。
  * 通过 ref 调用 openCreate() / openEdit(record)，保存成功后触发 success
@@ -213,40 +223,13 @@ const consignIn = computed(() => props.kind === 'in' && form.value.bizType === S
 const categoryDict = computed(() => ioCategoryDict(props.kind, form.value.bizType))
 const categoryLabel = computed(() => (props.kind === 'in' ? t('wms.doc.inCategory') : t('wms.doc.outCategory')))
 
-const COLUMNS = {
-  in: [
-    { title: t('wms.common.material'), key: 'material', width: 290 },
-    { title: t('wms.common.location'), key: 'location', width: 200 },
-    { title: t('wms.common.batchNo'), key: 'batchNo', width: 150 },
-    { title: t('wms.common.productionDate'), key: 'productionDate', width: 140 },
-    { title: t('wms.common.expiryDate'), key: 'expiryDate', width: 140 },
-    { title: t('common.field.quantity'), key: 'qty', width: 150 },
-    { title: t('wms.doc.costPrice'), key: 'costPrice', width: 140 },
-    { title: t('wms.common.serialNo'), key: 'serialNos', width: 260 },
-    { title: t('common.field.remark'), key: 'remark', width: 150 }
-  ],
-  out: [
-    { title: t('wms.common.material'), key: 'material', width: 240 },
-    { title: t('wms.common.location'), key: 'location', width: 110 },
-    { title: t('wms.common.batch'), key: 'batchNo', width: 130 },
-    { title: t('common.field.quantity'), key: 'qty', width: 160 },
-    { title: t('wms.common.serialNo'), key: 'serialNos', width: 300 },
-    { title: t('common.field.remark'), key: 'remark', width: 160 }
-  ],
-  transfer: [
-    { title: t('wms.common.material'), key: 'material', width: 240 },
-    { title: t('wms.doc.fromLocation'), key: 'location', width: 120 },
-    { title: t('wms.common.batch'), key: 'batchNo', width: 130 },
-    { title: t('wms.doc.toLocation'), key: 'toLocation', width: 200 },
-    { title: t('common.field.quantity'), key: 'qty', width: 160 },
-    { title: t('wms.common.serialNo'), key: 'serialNos', width: 280 },
-    { title: t('common.field.remark'), key: 'remark', width: 150 }
-  ]
-}
 /** 成本价：其他入库填写入库成本（默认当前均价，可改为 0）；寄售入库不计存货成本，不填写 */
 const showCost = computed(() => props.kind === 'in' && !consignIn.value)
+/** 调拨的调出成本价、调拨价、调拨金额只给有「查看成本金额」权限的人 */
+const canCost = computed(() => userStore.hasPerm('wms:stock:cost'))
+const differential = computed(() => !!form.value.transferPricing && form.value.transferPricing !== TransferPricing.SAME)
 const columns = computed(() => [
-  ...COLUMNS[props.kind].filter((c) => c.key !== 'costPrice' || showCost.value),
+  ...docFormColumns(props.kind, { cost: showCost.value, transferPrice: props.kind === 'transfer' && canCost.value }),
   { title: '', key: 'action', width: 50, fixed: 'right' }
 ])
 const scrollX = computed(() => columns.value.reduce((sum, c) => sum + c.width, 0))
@@ -268,36 +251,23 @@ const emptyForm = () => ({
   bizDate: today(),
   inTransit: false,
   remark: '',
+  ...transferForm(),
   items: []
-})
-
-const toRow = (item) => ({
-  ...item,
-  key: item.id ? `item-${item.id}` : rowKey(),
-  materialLabel: item.materialCode ? `${item.materialCode} ${item.materialName}` : undefined,
-  locationId: item.locationId || null,
-  toLocationId: item.toLocationId || null,
-  batchNo: item.batchNo || undefined
-})
-
-const pickItem = (i, withCost) => ({
-  materialId: i.materialId,
-  costPrice: withCost && i.costPrice != null && i.costPrice !== '' ? i.costPrice : null,
-  locationId: i.locationId || null,
-  toLocationId: i.toLocationId || null,
-  batchNo: i.batchNo || null,
-  productionDate: i.productionDate || null,
-  expiryDate: i.expiryDate || null,
-  qty: i.qty,
-  serialNos: i.serialNos || null,
-  remark: i.remark || null
 })
 
 const drawer = useFormDrawer({
   emptyForm,
   fetch: async (record) => {
     const doc = await getDoc(props.kind, record.id)
-    return { ...doc, ioCategory: doc.ioCategory || undefined, inTransit: doc.inTransit === true || doc.inTransit === 1, items: doc.items.map(toRow) }
+    const items = doc.items.map(toRow)
+    await loadCurrentCosts(items)
+    return {
+      ...doc,
+      ...(props.kind === 'transfer' ? transferForm(doc) : {}),
+      ioCategory: doc.ioCategory || undefined,
+      inTransit: doc.inTransit === true || doc.inTransit === 1,
+      items
+    }
   },
   create: async (data) => {
     await confirmZeroCost(data)
@@ -313,9 +283,12 @@ const drawer = useFormDrawer({
     warehouseId: f.warehouseId,
     toWarehouseId: f.toWarehouseId,
     bizDate: f.bizDate,
-    ...(props.kind === 'transfer' ? { inTransit: !!f.inTransit } : {}),
+    ...(props.kind === 'transfer' ? { inTransit: !!f.inTransit, ...transferPayload(f) } : {}),
     remark: f.remark,
-    items: f.items.map((i) => pickItem(i, props.kind === 'in' && f.bizType !== StockInType.CONSIGN_IN))
+    items: f.items.map((i) => ({
+      ...pickItem(i, props.kind === 'in' && f.bizType !== StockInType.CONSIGN_IN),
+      ...(props.kind === 'transfer' && differential.value ? { transferPrice: i.transferPrice ?? null } : {})
+    }))
   }),
   onSuccess: () => emit('success')
 })
@@ -333,6 +306,13 @@ function confirmZeroCost(data) {
       onCancel: () => reject({ handled: true })
     })
   )
+}
+
+/** 调拨明细显示当前均价（调出成本价在确认时生成） */
+async function loadCurrentCosts(rows) {
+  if (props.kind !== 'transfer' || !canCost.value || !rows.length) return
+  const m = await unitCosts([...new Set(rows.map((r) => r.materialId))])
+  rows.forEach((r) => (r.currentCost = m[r.materialId] == null ? null : Number(m[r.materialId])))
 }
 
 const totalQty = computed(() => form.value.items.reduce((sum, i) => sum + (Number(i.qty) || 0), 0))
@@ -419,7 +399,9 @@ const serialSource = (row) => ({
 
 // 从库存选择：同一库存位置已在明细中时跳过
 const pickerOpen = ref(false)
+const termsRef = ref()
 function onPick(stocks) {
+  const start = form.value.items.length
   const exists = new Set(form.value.items.map((i) => `${i.locationId || 0}|${i.materialId}|${i.batchNo || ''}`))
   let skipped = 0
   for (const s of stocks) {
@@ -446,6 +428,12 @@ function onPick(stocks) {
     )
   }
   if (skipped) message.info(t('wms.doc.skipped', { n: skipped }))
+  // 新选择的调拨明细：取当前均价，差价调拨按表头的依据 × 系数带出调拨价
+  const added = form.value.items.slice(start)
+  if (props.kind === 'transfer' && added.length) {
+    loadCurrentCosts(added)
+    termsRef.value?.recalc(added)
+  }
 }
 
 defineExpose({ openCreate: drawer.openCreate, openEdit: drawer.openEdit })

@@ -8,6 +8,8 @@ import com.lemon.erp.common.base.BaseEntity;
 import com.lemon.erp.modules.wms.model.DocStatus;
 import com.lemon.erp.modules.wms.model.StockBizType;
 import com.lemon.erp.modules.wms.model.StockDocType;
+import com.lemon.erp.modules.wms.model.TransferFeeSettle;
+import com.lemon.erp.modules.wms.model.TransferPricing;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -78,6 +80,39 @@ public class WmsStockDoc extends BaseEntity {
     /** 往来单位名称快照 */
     private String partnerName;
 
+    /** 调拨价格（仅调拨）：同价调拨或差价调拨的快速计算依据，见 {@link TransferPricing} */
+    private TransferPricing transferPricing;
+
+    /** 调拨价格依据为价格列时的价格列：0 零售价，1-8 批发价1-8 */
+    private Integer priceLevel;
+
+    /** 差价调拨的价格系数（调拨价 = 依据价 × 系数），同价调拨为空 */
+    private BigDecimal priceFactor;
+
+    /** 调出成本金额（调拨确认时按调出成本价生成，红字为负数） */
+    private BigDecimal costAmount;
+
+    /** 调拨金额（调拨价 × 数量合计，确认时生成）：内部结算金额，不影响存货成本 */
+    private BigDecimal transferAmount;
+
+    /** 调拨费用（配送费），0 为没有；本公司承担，计入当期费用 */
+    private BigDecimal fee;
+
+    /** 调拨费用付给承运商的方式：现付 / 月结 */
+    private TransferFeeSettle feeSettle;
+
+    /** 现付调拨费用的付款账户（现金 / 银行末级科目） */
+    private Long feeAccountId;
+
+    /** 调拨费用的承运商（供应商），月结时必填 */
+    private Long feeCarrierId;
+
+    /** 现付调拨费用生成的费用支出单 */
+    private Long feeIoId;
+
+    /** 月结调拨费用生成的承运商应付单 */
+    private Long feeBillId;
+
     /** 审批流程实例（手工单据确认前审批） */
     private String flowInstanceId;
 
@@ -109,6 +144,14 @@ public class WmsStockDoc extends BaseEntity {
 
     @TableField(exist = false)
     private String receiveByName;
+
+    /** 调拨费用的承运商名称（仅详情） */
+    @TableField(exist = false)
+    private String feeCarrierName;
+
+    /** 调拨费用付款账户的名称（仅详情） */
+    @TableField(exist = false)
+    private String feeAccountName;
 
     /** 红字单据冲销的原单号 */
     @TableField(exist = false)

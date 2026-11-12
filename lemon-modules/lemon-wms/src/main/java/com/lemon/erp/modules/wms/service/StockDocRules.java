@@ -183,10 +183,11 @@ public final class StockDocRules {
                         item.getBatchNo(), item.getQty().negate(), serials)
                         .withCost(item.getCostPrice(), item.getBizPrice(), doc.getPartnerId(), doc.getPartnerName()));
                 case TRANSFER -> {
+                    // 调拨按调出成本计价（调出、调入相抵）；业务单价记调拨价，未填的确认后补为成本单价
                     changes.add(StockChange.of(doc.getWarehouseId(), item.getLocationId(), item.getMaterialId(),
-                            item.getBatchNo(), item.getQty().negate(), serials));
+                            item.getBatchNo(), item.getQty().negate(), serials).withCost(null, item.getTransferPrice(), null, null));
                     changes.add(StockChange.of(doc.getToWarehouseId(), item.getToLocationId(), item.getMaterialId(),
-                            item.getBatchNo(), item.getQty(), serials));
+                            item.getBatchNo(), item.getQty(), serials).withCost(null, item.getTransferPrice(), null, null));
                 }
                 default -> throw new IllegalArgumentException("不支持的单据类型：" + kind); // i18n-ignore 内部错误
             }

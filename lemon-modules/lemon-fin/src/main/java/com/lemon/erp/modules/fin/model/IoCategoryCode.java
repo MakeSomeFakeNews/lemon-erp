@@ -7,5 +7,7 @@ public enum IoCategoryCode {
     /** 销售运费：销售出库本公司承担、现付的运费（默认科目销售费用 6601） */
     SALES_FREIGHT,
     /** 代垫运费：销售出库、采购退货替往来单位垫付、现付给承运商的运费（默认科目其他应收款 1221，由往来单位的代垫运费单据冲平） */
-    FREIGHT_ADVANCE
+    FREIGHT_ADVANCE,
+    /** 调拨费用：调拨单的配送费现付给承运商（默认科目销售费用 6601，issue #104） */
+    TRANSFER_FEE
 }

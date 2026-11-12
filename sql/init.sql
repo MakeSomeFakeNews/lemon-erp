@@ -1142,6 +1142,17 @@ CREATE TABLE wms_stock_doc (
     reversed        TINYINT        NOT NULL DEFAULT 0 COMMENT '已被冲销 1是',
     partner_id      BIGINT                  DEFAULT NULL COMMENT '往来单位（业务单据生成时由来源单据传入）',
     partner_name    VARCHAR(128)            DEFAULT NULL COMMENT '往来单位名称快照',
+    transfer_pricing VARCHAR(16)            DEFAULT NULL COMMENT '调拨价格（仅调拨） SAME同价调拨 REF_COST参考成本价 AVG_COST库存均价 MIN_SALE最低售价 PRICE_LEVEL价格列：差价调拨的快速计算依据，调拨价只是内部结算价，不影响存货成本',
+    price_level     TINYINT                 DEFAULT NULL COMMENT '调拨价格依据为价格列时的价格列：0零售价 1-8批发价',
+    price_factor    DECIMAL(10, 4)          DEFAULT NULL COMMENT '差价调拨的价格系数（调拨价 = 依据价 × 系数），同价调拨为空',
+    cost_amount     DECIMAL(18, 2)          DEFAULT NULL COMMENT '调出成本金额（调拨确认时生成，红字为负数）',
+    transfer_amount DECIMAL(18, 2)          DEFAULT NULL COMMENT '调拨金额（调拨价 × 数量合计，确认时生成）',
+    fee             DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '调拨费用（配送费，本公司承担，计入当期费用），0为没有',
+    fee_settle      VARCHAR(16)             DEFAULT NULL COMMENT '调拨费用付给承运商的方式(字典 scm_freight_settle) CASH现付 MONTHLY月结',
+    fee_account_id  BIGINT                  DEFAULT NULL COMMENT '现付调拨费用的付款账户（现金 / 银行末级科目）',
+    fee_carrier_id  BIGINT                  DEFAULT NULL COMMENT '调拨费用的承运商（供应商），月结时必填',
+    fee_io_id       BIGINT                  DEFAULT NULL COMMENT '现付调拨费用生成的费用支出单',
+    fee_bill_id     BIGINT                  DEFAULT NULL COMMENT '月结调拨费用生成的承运商应付单',
     flow_instance_id VARCHAR(64)             DEFAULT NULL COMMENT '审批流程实例（发布了出入库审批流程时，手工单据确认前审批）',
     dept_id         BIGINT                  DEFAULT NULL COMMENT '制单人部门（数据权限）',
     create_by       BIGINT                  DEFAULT NULL COMMENT '制单人',
@@ -1170,6 +1181,8 @@ CREATE TABLE wms_stock_doc_item (
     qty             DECIMAL(18, 4) NOT NULL COMMENT '数量',
     cost_price      DECIMAL(18, 6)          DEFAULT NULL COMMENT '成本单价：其他入库、期初入库填写的入库成本，业务单据传入的成本；为空按当前移动加权平均价',
     biz_price       DECIMAL(18, 6)          DEFAULT NULL COMMENT '业务单价（不含税，本位币），业务单据生成时传入',
+    transfer_price  DECIMAL(18, 6)          DEFAULT NULL COMMENT '调拨价（调入成本价 / 内部结算价，仅调拨）：同价调拨确认时等于调出成本价，差价调拨可填写、不填按调出成本价',
+    transfer_amount DECIMAL(18, 2)          DEFAULT NULL COMMENT '调拨金额 = 数量 × 调拨价（确认时生成）',
     serial_nos      TEXT COMMENT '序列号，逗号分隔',
     remark          VARCHAR(255)            DEFAULT NULL COMMENT '备注',
     create_time     DATETIME                DEFAULT NULL COMMENT '创建时间',
@@ -2968,7 +2981,7 @@ CREATE TABLE fin_io_category (
     id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
     tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
     name        VARCHAR(64)  NOT NULL COMMENT '类别名称',
-    code        VARCHAR(32)           DEFAULT NULL COMMENT '内置类别标识（程序使用，不能删除、不能改方向）：SALES_FREIGHT销售运费 FREIGHT_ADVANCE代垫运费',
+    code        VARCHAR(32)           DEFAULT NULL COMMENT '内置类别标识（程序使用，不能删除、不能改方向）：SALES_FREIGHT销售运费 FREIGHT_ADVANCE代垫运费 TRANSFER_FEE调拨费用',
     direction   VARCHAR(8)   NOT NULL COMMENT '方向(字典 fin_fund_direction) IN收入 OUT支出',
     account_id  BIGINT                DEFAULT NULL COMMENT '凭证科目（末级）：收入记贷方、支出记借方',
     sort        INT          NOT NULL DEFAULT 0 COMMENT '排序',
@@ -7828,12 +7841,14 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 ('scm_freight_settle', '月结', 'MONTHLY', 'blue', 2, 1, NOW(), NOW()),
 ('fin_bill_source', '销售运费', 'SALES_FREIGHT', 'cyan', 16, 1, NOW(), NOW()),
 ('fin_bill_source', '销售退货运费', 'SALES_RETURN_FREIGHT', 'cyan', 17, 1, NOW(), NOW()),
-('fin_bill_source', '采购退货运费', 'PURCHASE_RETURN_FREIGHT', 'cyan', 18, 1, NOW(), NOW());
+('fin_bill_source', '采购退货运费', 'PURCHASE_RETURN_FREIGHT', 'cyan', 18, 1, NOW(), NOW()),
+('fin_bill_source', '调拨费用', 'TRANSFER_FEE', 'cyan', 19, 1, NOW(), NOW());
 INSERT INTO fin_io_category (name, code, direction, account_id, sort, status, remark, create_time, update_time)
 SELECT g.name, g.code, 'OUT', a.id, g.sort, 1, g.remark, NOW(), NOW()
 FROM (
     SELECT '销售运费' AS name, 'SALES_FREIGHT' AS code, '6601' AS acct, 10 AS sort, '销售出库本公司承担、现付的运费' AS remark
     UNION ALL SELECT '代垫运费', 'FREIGHT_ADVANCE', '1221', 11, '销售出库、采购退货替往来单位垫付、现付的运费'
+    UNION ALL SELECT '调拨费用', 'TRANSFER_FEE', '6601', 12, '调拨单的配送费现付给承运商（issue #104）'
 ) g
 LEFT JOIN fin_account a ON a.code = g.acct AND a.tenant_id = 1;
 

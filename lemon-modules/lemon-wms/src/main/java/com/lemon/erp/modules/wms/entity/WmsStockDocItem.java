@@ -41,6 +41,15 @@ public class WmsStockDocItem extends BaseEntity {
     /** 业务单价（来源单据的不含税单价，本位币） */
     private BigDecimal bizPrice;
 
+    /**
+     * 调拨价（调入成本价 / 内部结算价，仅调拨）：同价调拨确认时等于调出成本价；差价调拨可以填写，不填按调出成本价。
+     * 系统的存货成本按物料全公司计算，调拨价不改变存货成本
+     */
+    private BigDecimal transferPrice;
+
+    /** 调拨金额 = 数量 × 调拨价（确认时生成） */
+    private BigDecimal transferAmount;
+
     /** 序列号，逗号分隔 */
     private String serialNos;
 

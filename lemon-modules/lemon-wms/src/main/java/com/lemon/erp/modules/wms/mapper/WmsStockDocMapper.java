@@ -3,9 +3,12 @@ package com.lemon.erp.modules.wms.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.lemon.erp.modules.wms.dto.DocQuery;
+import com.lemon.erp.modules.wms.dto.TransferSummaryRow;
 import com.lemon.erp.modules.wms.entity.WmsStockDoc;
 import com.lemon.erp.modules.wms.model.StockBizType;
 import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
 
 public interface WmsStockDocMapper extends BaseMapper<WmsStockDoc> {
 
@@ -16,4 +19,7 @@ public interface WmsStockDocMapper extends BaseMapper<WmsStockDoc> {
     java.util.List<java.util.Map<String, Object>> selectItemWarehouses(@Param("docIds") java.util.Collection<Long> docIds);
 
     WmsStockDoc selectDetail(@Param("id") Long id);
+
+    /** 调拨汇总：按调出仓库 → 调入仓库汇总已调出的调拨单（含红字） */
+    List<TransferSummaryRow> selectTransferSummary(@Param("q") DocQuery query);
 }

@@ -72,6 +72,7 @@ public class WmsStockDocService {
     private final StockDocValidator validator;
     private final StockDocReverser reverser;
     private final PermissionService permissionService;
+    private final TransferTermsService transferTerms;
 
     public static final String PROCESS_KEY = "wms_stock_doc";
     /** 查看成本金额（均价、库存金额、流水和单据的单价金额） */
@@ -88,6 +89,9 @@ public class WmsStockDocService {
             docs.forEach(d -> headers.put(d.getId(), d.getWarehouseName()));
             Map<Long, List<String>> names = LineWarehouses.names(docMapper.selectItemWarehouses(headers.keySet()), headers);
             docs.forEach(d -> d.setWarehouseNames(names.get(d.getId())));
+            if (!permissionService.hasPerm(COST_PERM)) {
+                docs.forEach(WmsStockDocService::hideTransferAmounts);
+            }
         }
         return PageResult.of(page);
     }
@@ -105,7 +109,10 @@ public class WmsStockDocService {
                     i.setCostPrice(null);
                 }
                 i.setBizPrice(null);
+                i.setTransferPrice(null);
+                i.setTransferAmount(null);
             });
+            hideTransferAmounts(doc);
         }
         doc.setItems(items);
         return doc;
@@ -134,6 +141,10 @@ public class WmsStockDocService {
         boolean manual = !generated(sourceNo, req);
         List<WmsStockDocItem> items = toItems(kind, req, manual);
         validator.validate(kind, req.bizType(), req.warehouseId(), req.toWarehouseId(), items, false);
+        TransferTermsService.Terms terms = kind == TRANSFER ? transferTerms.terms(req) : null;
+        if (terms != null) {
+            transferTerms.applyLinePrices(terms, req, items);
+        }
         LoginUser user = SecurityUtils.getLoginUser();
         WmsStockDoc doc = new WmsStockDoc();
         doc.setDocNo(docNoService.next(kind));
@@ -152,6 +163,10 @@ public class WmsStockDocService {
             doc.setPartnerName(req.partnerName() == null || req.partnerName().length() <= 128 ? req.partnerName() : req.partnerName().substring(0, 128));
         }
         doc.setTotalQty(totalQty(items));
+        doc.setFee(BigDecimal.ZERO);
+        if (terms != null) {
+            TransferTermsService.fill(doc, terms);
+        }
         doc.setStatus(DocStatus.DRAFT);
         doc.setDeptId(user.deptId());
         docMapper.insert(doc);
@@ -168,6 +183,10 @@ public class WmsStockDocService {
         }
         List<WmsStockDocItem> items = toItems(kind, req, draft.getSourceNo() == null);
         validator.validate(kind, req.bizType(), req.warehouseId(), req.toWarehouseId(), items, false);
+        TransferTermsService.Terms terms = kind == TRANSFER ? transferTerms.terms(req) : null;
+        if (terms != null) {
+            transferTerms.applyLinePrices(terms, req, items);
+        }
         docMapper.update(Wrappers.<WmsStockDoc>lambdaUpdate()
                 .set(WmsStockDoc::getBizType, kind == TRANSFER ? null : req.bizType())
                 .set(WmsStockDoc::getIoCategory, validator.ioCategory(kind, req))
@@ -177,6 +196,13 @@ public class WmsStockDocService {
                 .set(WmsStockDoc::getRemark, req.remark())
                 .set(WmsStockDoc::getInTransit, kind == TRANSFER && Boolean.TRUE.equals(req.inTransit()) ? 1 : 0)
                 .set(WmsStockDoc::getTotalQty, totalQty(items))
+                .set(WmsStockDoc::getTransferPricing, terms == null ? null : terms.pricing())
+                .set(WmsStockDoc::getPriceLevel, terms == null ? null : terms.priceLevel())
+                .set(WmsStockDoc::getPriceFactor, terms == null ? null : terms.factor())
+                .set(WmsStockDoc::getFee, terms == null ? BigDecimal.ZERO : terms.fee())
+                .set(WmsStockDoc::getFeeSettle, terms == null ? null : terms.settle())
+                .set(WmsStockDoc::getFeeAccountId, terms == null ? null : terms.accountId())
+                .set(WmsStockDoc::getFeeCarrierId, terms == null ? null : terms.carrierId())
                 .set(WmsStockDoc::getUpdateTime, LocalDateTime.now())
                 .eq(WmsStockDoc::getId, id)
                 .eq(WmsStockDoc::getStatus, DocStatus.DRAFT));
@@ -240,7 +266,7 @@ public class WmsStockDocService {
     }
 
     private void doConfirm(StockBizType kind, WmsStockDoc doc, DocStatus from) {
-        // 调拨不影响存货成本，只受结账限制
+        // 调拨不影响存货成本，只受结账限制（调拨费用计入当期费用，同样受结账限制）
         if (kind == StockBizType.TRANSFER) {
             periodGuard.checkOpen(doc.getBizDate(), kind.getLabelKey());
         } else {
@@ -263,11 +289,29 @@ public class WmsStockDocService {
         List<StockChange> changes = StockDocRules.toChanges(kind, doc, items);
         // 在途调拨：确认时只调出
         stockService.apply(kind, id, doc.getDocNo(), transit ? changes.stream().filter(c -> !c.increase()).toList() : changes);
+        if (kind == TRANSFER) {
+            // 调出成本价、调拨价和金额（在途调拨收货时调入流水的业务单价取这里的调拨价）；调拨费用生成费用支出单 / 承运商应付
+            transferTerms.settle(doc, items);
+            transferTerms.publishFee(doc, null);
+        }
+    }
+
+    /**
+     * 记录调拨费用生成的单据。由财务模块处理 {@link com.lemon.erp.modules.wms.event.TransferFeeEvent} 时调用，与确认 / 冲销同一事务
+     *
+     * @param billId 月结的承运商应付单
+     * @param ioId   现付的费用支出单
+     */
+    public void bindFee(Long docId, Long billId, Long ioId) {
+        docMapper.update(Wrappers.<WmsStockDoc>lambdaUpdate()
+                .set(WmsStockDoc::getFeeBillId, billId)
+                .set(WmsStockDoc::getFeeIoId, ioId)
+                .eq(WmsStockDoc::getId, docId));
     }
 
     /**
      * 在途调拨收货：调入仓库入库，单据变为已完成。调入按调出时的成本计价（调拨不改变均价，在途期间计价数量不变），
-     * 调出、调入流水金额相抵
+     * 调出、调入流水金额相抵；调入流水的业务单价为确认时生成的调拨价。调拨费用已在确认（调出）时生成，收货不再处理
      *
      * @param receiveDate 收货日期，为空取当天；不能早于调拨单的业务日期，所在会计期间须未结账
      */
@@ -364,6 +408,12 @@ public class WmsStockDocService {
     private void saveItems(Long docId, List<WmsStockDocItem> items) {
         items.forEach(i -> i.setDocId(docId));
         itemMapper.insertBatch(items);
+    }
+
+    /** 没有「查看成本金额」权限时不返回调拨单的调出成本金额、调拨金额（同价调拨的调拨金额就是成本） */
+    private static void hideTransferAmounts(WmsStockDoc doc) {
+        doc.setCostAmount(null);
+        doc.setTransferAmount(null);
     }
 
     private static BigDecimal totalQty(List<WmsStockDocItem> items) {

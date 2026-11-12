@@ -50,6 +50,11 @@ public enum AccountRole {
      * 默认销售费用（商品流通企业的进货费用），计入存货成本时不用此科目
      */
     PURCHASE_FREIGHT("fin.label.revenueExpenses", "fin.label.purchaseFreightExpense", "6601"),
+    /**
+     * 调拨费用（调拨单的配送费，月结的承运商应付）：借 该科目 / 贷 应付账款-承运商。默认销售费用（门店配送属于销售环节的运输费）；
+     * 同一公司内部调拨不增加存货价值，不计入存货成本
+     */
+    TRANSFER_FEE("fin.label.revenueExpenses", "fin.label.transferFee", "6601"),
     TRAINING_EXPENSE("fin.label.revenueExpenses", "fin.label.trainingExpenses", "660205"),
     FINANCE_EXPENSE("fin.label.revenueExpenses", "fin.label.financialExpensesFeesDiscountsFxGains", "6603"),
     NON_OPERATING_INCOME("fin.label.revenueExpenses", "fin.label.nonOperatingIncome", "6301"),

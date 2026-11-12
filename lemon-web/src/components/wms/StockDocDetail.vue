@@ -30,9 +30,25 @@
           <a-descriptions-item v-if="kind === 'transfer'" :label="$t('wms.doc.transferMode')">
             {{ inTransit ? $t('wms.doc.inTransitMode') : $t('wms.doc.directTransfer') }}
           </a-descriptions-item>
+          <a-descriptions-item v-if="kind === 'transfer'" :label="$t('wms.transfer.pricing')">{{ pricingText }}</a-descriptions-item>
           <a-descriptions-item :label="$t('wms.common.bizDate')">{{ detail.bizDate }}</a-descriptions-item>
           <a-descriptions-item :label="$t('wms.common.totalQty')">
             <span :class="negativeClass(detail.totalQty)">{{ formatQty(detail.totalQty) }}</span>
+          </a-descriptions-item>
+          <template v-if="kind === 'transfer' && detail.transferAmount != null">
+            <a-descriptions-item :label="$t('wms.transfer.costAmount')">{{ money(detail.costAmount) }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('wms.transfer.transferAmount')">{{ money(detail.transferAmount) }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('wms.transfer.diffAmount')">{{ money(diffAmount) }}</a-descriptions-item>
+          </template>
+          <a-descriptions-item v-if="Number(detail.fee)" :label="$t('wms.transfer.fee')">
+            <span :class="negativeClass(detail.fee)">¥{{ money(detail.fee) }}</span>
+            <DictTag v-if="detail.feeSettle" type="scm_freight_settle" :value="detail.feeSettle" class="fee-tag" />
+            <div class="sub-text">{{ [detail.feeCarrierName, detail.feeAccountName].filter(Boolean).join(' · ') }}</div>
+            <div v-if="detail.feeIoId" class="sub-text">
+              <a v-if="userStore.hasPerm('fin:io:list')" @click="openIo">{{ $t('wms.transfer.ioDoc') }}</a>
+              <span v-else>{{ $t('wms.transfer.ioDoc') }}</span>
+            </div>
+            <div v-else-if="detail.feeBillId" class="sub-text">{{ $t('wms.transfer.carrierBill') }}</div>
           </a-descriptions-item>
           <a-descriptions-item v-if="detail.sourceNo" :label="$t('wms.common.sourceNo')">{{ detail.sourceNo }}</a-descriptions-item>
           <a-descriptions-item v-if="detail.partnerName" :label="$t('wms.flow.partner')">{{ detail.partnerName }}</a-descriptions-item>
@@ -80,6 +96,10 @@
               <span :class="negativeClass(record.qty)">{{ formatQty(record.qty) }}</span> {{ record.unit }}
             </template>
             <template v-else-if="column.key === 'costPrice'">{{ record.costPrice == null ? '-' : price(record.costPrice) }}</template>
+            <template v-else-if="column.key === 'transferPrice'">{{ record.transferPrice == null ? '-' : price(record.transferPrice) }}</template>
+            <template v-else-if="column.key === 'transferAmount'">
+              <span :class="negativeClass(record.transferAmount)">{{ record.transferAmount == null ? '-' : money(record.transferAmount) }}</span>
+            </template>
             <template v-else-if="column.key === 'serialNos'">
               <SerialTags :value="record.serialNos" />
             </template>
@@ -135,9 +155,11 @@ import { materialColumns, printDocs } from '@/utils/print'
 import { printName } from '@/utils/printTemplates'
 import { useDict } from '@/composables/useDict'
 import { findDict } from '@/utils/dict'
-import { price } from '@/utils/number'
+import { money, price } from '@/utils/number'
+import { useRouter } from 'vue-router'
+import { usePriceLevels } from './priceLevels'
 
-import { WmsDocStatus } from '@/constants/enums'
+import { TransferPricing, WmsDocStatus } from '@/constants/enums'
 /**
  * 出入库单详情；草稿可以编辑（触发 edit）、确认（更新库存后触发 changed）
  */
@@ -150,8 +172,10 @@ const emit = defineEmits(['update:open', 'edit', 'changed'])
 const { t } = useI18n()
 
 const userStore = useUserStore()
+const router = useRouter()
+const { levelName } = usePriceLevels()
 const conf = computed(() => DOC_KINDS[props.kind])
-const dict = useDict('wms_in_type', 'wms_out_type', 'wms_in_category', 'wms_out_category')
+const dict = useDict('wms_in_type', 'wms_out_type', 'wms_in_category', 'wms_out_category', 'scm_freight_settle')
 const canEdit = computed(() => userStore.hasPerm(`wms:${props.kind}:edit`))
 const canConfirm = computed(() => userStore.hasPerm(`wms:${props.kind}:confirm`))
 const inTransit = computed(() => detail.value?.inTransit === true || detail.value?.inTransit === 1)
@@ -164,6 +188,17 @@ const showFooter = computed(
 )
 
 const hasCost = computed(() => (detail.value?.items || []).some((i) => i.costPrice != null))
+/** 调拨价：有「查看成本金额」权限时后端才返回 */
+const hasTransferPrice = computed(() => props.kind === 'transfer' && (detail.value?.items || []).some((i) => i.transferPrice != null))
+/** 调拨价格：同价调拨 / 差价调拨（依据 × 系数） */
+const pricingText = computed(() => {
+  const d = detail.value
+  if (!d?.transferPricing || d.transferPricing === TransferPricing.SAME) return t('wms.transfer.pricings.SAME')
+  const basis = d.transferPricing === TransferPricing.PRICE_LEVEL ? levelName(d.priceLevel) : t(`wms.transfer.pricings.${d.transferPricing}`)
+  return t('wms.transfer.differentialText', { basis, factor: Number(d.priceFactor ?? 1) })
+})
+const diffAmount = computed(() => Number(detail.value?.transferAmount || 0) - Number(detail.value?.costAmount || 0))
+const openIo = () => router.push({ path: '/fin/income-expense', query: { id: detail.value.feeIoId } })
 /** 明细带仓库（如销售出库从多个仓库出库）时显示仓库列 */
 const lineWarehouse = computed(() => (detail.value?.items || []).some((i) => i.warehouseId))
 const columns = computed(() =>
@@ -175,7 +210,11 @@ const columns = computed(() =>
     { title: t('wms.common.batch'), key: 'batchNo', width: 180 },
     { title: t('common.field.quantity'), key: 'qty', width: 120, align: 'right' },
     // 成本价：入库填写或业务单据传入的入库成本（有权限时后端才返回）
-    hasCost.value ? { title: t('wms.doc.costPrice'), key: 'costPrice', width: 110, align: 'right' } : null,
+    hasCost.value
+      ? { title: props.kind === 'transfer' ? t('wms.transfer.costPrice') : t('wms.doc.costPrice'), key: 'costPrice', width: 110, align: 'right' }
+      : null,
+    hasTransferPrice.value ? { title: t('wms.transfer.transferPrice'), key: 'transferPrice', width: 110, align: 'right' } : null,
+    hasTransferPrice.value ? { title: t('wms.transfer.transferAmount'), key: 'transferAmount', width: 120, align: 'right' } : null,
     { title: t('wms.common.serialNo'), key: 'serialNos', width: 260 },
     { title: t('common.field.remark'), dataIndex: 'remark', width: 150, ellipsis: true }
   ].filter(Boolean)
@@ -201,7 +240,8 @@ function print() {
       ...(transfer ? [[t('wms.doc.toWarehouse'), d.toWarehouseName]] : []),
       [t('wms.common.bizDate'), d.bizDate],
       [t('wms.common.sourceNo'), d.sourceNo],
-      [t('wms.common.totalQty'), formatQty(d.totalQty)]
+      [t('wms.common.totalQty'), formatQty(d.totalQty)],
+      ...(transfer ? transferPrintFields(d) : [])
     ],
     // 明细列的 id 是打印模板匹配用的原名称
     columns: [
@@ -211,14 +251,37 @@ function print() {
       ...(transfer ? [{ id: '调入库位', title: t('wms.doc.toLocation'), value: (r) => locationText(r.toLocationCode) }] : []), // i18n-ignore
       { id: '批次', title: t('wms.common.batch'), key: 'batchNo' }, // i18n-ignore
       { id: '数量', title: t('common.field.quantity'), key: 'qty', value: (r) => formatQty(r.qty), align: 'right' }, // i18n-ignore
+      ...(transfer ? transferPrintColumns() : []),
       { id: '序列号', title: t('wms.common.serialNo'), key: 'serialNos' } // i18n-ignore
     ],
     rows: d.items,
-    totals: { qty: formatQty(d.totalQty) },
+    totals: { qty: formatQty(d.totalQty), ...(transfer && d.transferAmount != null ? { transferAmount: money(d.transferAmount) } : {}) },
     note: d.remark,
     signs: [[t('wms.doc.prepared'), d.createByName], [t('wms.doc.confirmed'), d.confirmByName], t('wms.doc.handler')]
   }, `${c.label} ${d.docNo}`, `wms.${props.kind}`)
 }
+
+/** 调拨单打印的调拨价格、金额、费用字段（第四项为打印模板的匹配键） */
+function transferPrintFields(d) {
+  const amount = (v) => (v == null ? '' : money(v))
+  return [
+    [t('wms.transfer.pricing'), pricingText.value, false, printName('transferPricing')],
+    [t('wms.transfer.costAmount'), amount(d.costAmount), false, printName('transferCostAmount')],
+    [t('wms.transfer.transferAmount'), amount(d.transferAmount), false, printName('transferAmount')],
+    [t('wms.transfer.diffAmount'), d.transferAmount == null ? '' : money(diffAmount.value), false, printName('transferDiff')],
+    [t('wms.transfer.fee'), Number(d.fee) ? money(d.fee) : '', false, printName('transferFee')],
+    [t('wms.transfer.feeSettle'), findDict(dict.scm_freight_settle, d.feeSettle)?.label ?? '', false, printName('feeSettle')],
+    [t('wms.transfer.feeAccount'), d.feeAccountName, false, printName('feeAccount')],
+    [t('wms.transfer.carrier'), d.feeCarrierName, false, printName('feeCarrier')]
+  ]
+}
+
+/** 调拨单打印的价格列（没有「查看成本金额」权限时为空） */
+const transferPrintColumns = () => [
+  { id: printName('transferCostPrice'), title: t('wms.transfer.costPrice'), value: (r) => (r.costPrice == null ? '' : price(r.costPrice)), align: 'right' },
+  { id: printName('transferPrice'), title: t('wms.transfer.transferPrice'), value: (r) => (r.transferPrice == null ? '' : price(r.transferPrice)), align: 'right' },
+  { id: printName('transferAmount'), title: t('wms.transfer.transferAmount'), key: 'transferAmount', value: (r) => (r.transferAmount == null ? '' : money(r.transferAmount)), align: 'right' }
+]
 const loading = ref(false)
 
 async function load() {
@@ -291,6 +354,9 @@ defineExpose({ reload: load })
 }
 .doc-desc {
   margin-bottom: 16px;
+}
+.fee-tag {
+  margin-left: 6px;
 }
 .sub-text {
   color: var(--app-text-3);

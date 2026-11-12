@@ -35,6 +35,9 @@
         <a-button v-perm="`wms:${kind}:add`" type="primary" @click="form.openCreate()">
           <template #icon><PlusOutlined /></template>{{ $t('wms.doc.createTitle', { kind: conf.label }) }}
         </a-button>
+        <a-button v-if="kind === 'transfer' && canCost" @click="summaryRef.open(query.range)">
+          <template #icon><BarChartOutlined /></template>{{ $t('wms.transfer.summary') }}
+        </a-button>
         <span v-perm="`wms:${kind}:remove`">
           <a-popconfirm
             :title="$t('wms.doc.confirmDeleteDrafts', { n: selectedKeys.length })"
@@ -82,6 +85,19 @@
           <template v-else-if="column.key === 'totalQty'">
             <span :class="negativeClass(record.totalQty)">{{ formatQty(record.totalQty) }}</span>
           </template>
+          <template v-else-if="column.key === 'transferAmount'">
+            <template v-if="record.transferAmount != null">
+              <span :class="negativeClass(record.transferAmount)">{{ money(record.transferAmount) }}</span>
+              <div v-if="Number(record.transferAmount) !== Number(record.costAmount)" class="sub-text">
+                {{ $t('wms.transfer.costN', { amount: money(record.costAmount) }) }}
+              </div>
+            </template>
+            <span v-else>-</span>
+          </template>
+          <template v-else-if="column.key === 'fee'">
+            <span v-if="Number(record.fee)" :class="negativeClass(record.fee)">{{ money(record.fee) }}</span>
+            <span v-else>-</span>
+          </template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="wms_doc_status" :value="record.status" />
           </template>
@@ -106,6 +122,7 @@
     </a-card>
 
     <StockDocForm ref="form" :kind="kind" @success="onSaved" />
+    <TransferSummaryModal v-if="kind === 'transfer'" ref="summaryRef" />
     <StockDocDetail ref="detailRef" v-model:open="detailOpen" :kind="kind" :doc-id="detailId" @edit="onEditFromDetail" @changed="load" />
   </div>
 </template>
@@ -116,6 +133,7 @@ import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
 import {
   ArrowRightOutlined,
+  BarChartOutlined,
   CheckOutlined,
   DeleteOutlined,
   InboxOutlined,
@@ -127,6 +145,7 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import ReceiveConfirm from './ReceiveConfirm.vue'
 import StockDocDetail from './StockDocDetail.vue'
 import StockDocForm from './StockDocForm.vue'
+import TransferSummaryModal from './TransferSummaryModal.vue'
 import WarehouseSelect from './WarehouseSelect.vue'
 import WarehouseNames from './WarehouseNames.vue'
 import { confirmDoc, deleteDoc, pageDoc, receiveTransfer, reverseDoc } from '@/api/wms/doc'
@@ -139,6 +158,9 @@ import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
 import { DOC_KINDS, canReverse, formatQty, negativeClass, warehouseText } from './wms'
 import { useAction } from '@/composables/useAction'
+import { useRouteOpen } from '@/composables/useRouteOpen'
+import { useUserStore } from '@/store/user'
+import { money } from '@/utils/number'
 
 import { WmsDocStatus } from '@/constants/enums'
 /**
@@ -150,6 +172,8 @@ const props = defineProps({
 
 const { t } = useI18n()
 const conf = DOC_KINDS[props.kind]
+const canCost = useUserStore().hasPerm('wms:stock:cost')
+const summaryRef = ref()
 const dict = useDict('wms_doc_status', ...(conf.typeDict ? [conf.typeDict, conf.categoryDict] : []))
 
 // 导出（exportColumns / exportValue）：单号下显示的来源单号、调拨的调出 / 调入仓库拆成单独的列，数量为原始数值，见 useTable
@@ -182,6 +206,20 @@ const columns = [
     : { title: t('wms.common.warehouse'), key: 'warehouse', width: 140, exportValue: warehouseText },
   { title: t('wms.common.bizDate'), dataIndex: 'bizDate', width: 120 },
   { title: t('wms.common.totalQty'), key: 'totalQty', width: 110, align: 'right' },
+  // 调拨：调拨金额（下方为调出成本金额，有「查看成本金额」权限时后端才返回）、调拨费用
+  props.kind === 'transfer' && canCost
+    ? {
+        title: t('wms.transfer.transferAmount'),
+        key: 'transferAmount',
+        width: 130,
+        align: 'right',
+        exportColumns: [
+          { title: t('wms.transfer.costAmount'), dataIndex: 'costAmount' },
+          { title: t('wms.transfer.transferAmount'), dataIndex: 'transferAmount' }
+        ]
+      }
+    : null,
+  props.kind === 'transfer' ? { title: t('wms.transfer.fee'), key: 'fee', width: 100, align: 'right', exportValue: (r) => r.fee } : null,
   { title: t('common.field.status'), key: 'status', width: 100, dict: 'wms_doc_status' },
   { title: t('wms.common.createBy'), dataIndex: 'createByName', width: 110 },
   {
@@ -212,6 +250,8 @@ function resetQuery() {
 }
 
 onMounted(load)
+// 从费用支出单等页面联查：?id=调拨单ID 打开详情
+useRouteOpen({ id: (id) => openDetail({ id }) })
 
 const form = ref()
 

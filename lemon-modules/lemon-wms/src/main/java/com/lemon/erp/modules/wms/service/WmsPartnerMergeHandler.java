@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * 往来单位合并：寄售仓的客户 / 供应商、出入库单和库存流水的往来单位（含名称快照）、来料检验暂存的供应商
+ * 往来单位合并：寄售仓的客户 / 供应商、出入库单和库存流水的往来单位（含名称快照）、来料检验暂存的供应商、调拨费用的承运商
  */
 @Component
 @RequiredArgsConstructor
@@ -31,6 +31,7 @@ public class WmsPartnerMergeHandler implements PartnerMergeHandler {
         mergeMapper.mergeStockDoc(customer, sourceIds, targetId, targetName);
         if (!customer) {
             mergeMapper.mergeStockHold(sourceIds, targetId);
+            mergeMapper.mergeFeeCarrier(sourceIds, targetId);
         }
     }
 }

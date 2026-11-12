@@ -42,7 +42,9 @@ public enum BillSource {
     /** 销售退货运费：客户代垫的退货运费，来源为该退货单（红字应收） */
     SALES_RETURN_FREIGHT,
     /** 采购退货运费：本公司替供应商垫付的退货运费，来源为该退货单（红字应付、月结的承运商应付） */
-    PURCHASE_RETURN_FREIGHT;
+    PURCHASE_RETURN_FREIGHT,
+    /** 调拨费用：调拨单的配送费，来源为该调拨单（月结的承运商应付；现付的费用支出单也以此为来源类型） */
+    TRANSFER_FEE;
 
     /** 供应链出入库生成的单据（与 scm TradeKind 同名） */
     public static final Set<BillSource> TRADE = EnumSet.of(SALES_OUT, SALES_RETURN, PURCHASE_IN, PURCHASE_RETURN);

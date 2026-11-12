@@ -34,6 +34,7 @@
 | `20261111_user_setting.sql` | 界面个性化：用户个人设置（新表 `sys_user_setting`，每个用户每项一行，内容为 JSON 对象，只能本人读写），保存界面设置（主题模式、主题色、布局、多标签页、紧凑模式等），换浏览器 / 设备登录后恢复；只新建一张表，与其他 20261111 脚本没有依赖 |
 | `20261111_wms_material_category.sql` | 物料（商品）多级分类：新表 `wms_material_category`（每个租户一份，物料等仍按分类编码关联），物料表增加分类索引；各租户的业务字典 `wms_material_category` 迁为一级分类（编码 = 原键值、名称 = 原标签，排序、状态、内置标记沿用，已有物料和检验方案、促销、提成规则、凭证科目设置中的分类不变；物料上有、字典中已删除的编码补为一级分类，缺少的内置分类从平台补上），然后删除该业务字典（分类改在「物料管理」左侧的分类树中维护）；按钮「物料分类维护」（`wms:material:category`），包含物料管理的套餐加入，有物料修改权限的角色同时授权。升级后清空「字典数据」缓存（`dict:*`） |
 | `20261111_wms_material_image.sql` | 物料资料（issue #94）：商品图片（新表 `wms_material_image`，排序最小的为主图；物料表增加主图 URL `wms_material.image_url`，已有物料为空）。图片文件存在公开文件目录 `lemon.upload.path/material/`（与头像相同，通过 `/api/files/**` 访问），部署时保证该目录持久化。复制物料、批次管理的启用 / 停用不需要改库。只给物料表加列并新建一张表，与其他 20261111 脚本没有依赖（排在 `20261111_wms_material_category.sql` 之后） |
+| `20261112_transfer_price.sql` | 调拨的同价 / 差价调拨与调拨费用（issue #104）：调拨单表头增加调拨价格（`wms_stock_doc.transfer_pricing` / `price_level` / `price_factor`）、调出成本金额与调拨金额（`cost_amount`、`transfer_amount`）、调拨费用（`fee`、`fee_settle`、`fee_account_id`、`fee_carrier_id`、`fee_io_id`、`fee_bill_id`），明细增加调拨价、调拨金额（`wms_stock_doc_item.transfer_price`、`transfer_amount`）；已有调拨单按同价调拨回填（明细的调出成本价、调拨价 = 调出仓库流水的成本单价，表头金额为明细合计，调拨流水没有业务单价的记为成本单价）；平台和已有租户增加内置收支类别「调拨费用」`TRANSFER_FEE`（科目取凭证科目设置中的调拨费用，没有时按编码 6601；已有同名支出类别时直接标记为内置）；应收应付来源增加「调拨费用」`TRANSFER_FEE`。存货成本不变；与其他脚本没有依赖。升级后清空「字典数据」缓存（`dict:*`） |
 
 之后的变更按 `YYYYMMDD_名称.sql`（变更当天的日期）新增，并在上表中登记。
 

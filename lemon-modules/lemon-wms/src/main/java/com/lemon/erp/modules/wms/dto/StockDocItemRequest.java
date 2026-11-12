@@ -21,6 +21,7 @@ import java.time.LocalDate;
  * @param costPrice      成本单价：其他入库、期初入库填写的入库成本（为空按当前移动加权平均价）；
  *                       业务单据生成时传入（采购入库的不含税单价、销售退货的原出库成本等）。手工出库、调拨忽略
  * @param bizPrice       业务单价（来源单据的不含税单价，本位币），只由业务单据传入；手工单据忽略
+ * @param transferPrice  调拨价（仅差价调拨）：不填按调出成本价；同价调拨忽略
  */
 public record StockDocItemRequest(
         @NotNull(message = "{wms.valid.selectMaterial}") Long materialId,
@@ -37,7 +38,16 @@ public record StockDocItemRequest(
         Long warehouseId,
         @DecimalMin(value = "0", message = "{wms.valid.costPriceCannotNegative}")
         @Digits(integer = 12, fraction = 6, message = "{wms.valid.costPriceAllowsMostDecimalPlaces}") BigDecimal costPrice,
-        BigDecimal bizPrice) {
+        BigDecimal bizPrice,
+        @DecimalMin(value = "0", message = "{wms.valid.transferPriceCannotNegative}")
+        @Digits(integer = 12, fraction = 6, message = "{wms.valid.transferPriceAllowsMostDecimalPlaces}") BigDecimal transferPrice) {
+
+    public StockDocItemRequest(Long materialId, Long locationId, Long toLocationId, String batchNo, LocalDate productionDate,
+                               LocalDate expiryDate, BigDecimal qty, String serialNos, String remark, Long warehouseId,
+                               BigDecimal costPrice, BigDecimal bizPrice) {
+        this(materialId, locationId, toLocationId, batchNo, productionDate, expiryDate, qty, serialNos, remark, warehouseId,
+                costPrice, bizPrice, null);
+    }
 
     public StockDocItemRequest(Long materialId, Long locationId, Long toLocationId, String batchNo, LocalDate productionDate,
                                LocalDate expiryDate, BigDecimal qty, String serialNos, String remark, Long warehouseId) {
@@ -53,6 +63,6 @@ public record StockDocItemRequest(
     /** 带上成本单价、业务单价 */
     public StockDocItemRequest withCost(BigDecimal newCostPrice, BigDecimal newBizPrice) {
         return new StockDocItemRequest(materialId, locationId, toLocationId, batchNo, productionDate, expiryDate, qty, serialNos,
-                remark, warehouseId, newCostPrice, newBizPrice);
+                remark, warehouseId, newCostPrice, newBizPrice, transferPrice);
     }
 }
