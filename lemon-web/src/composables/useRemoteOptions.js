@@ -17,6 +17,8 @@ export function useRemoteOptions(fetch, { pageSize = 20, delay = 300, fetchByIds
   const hasMore = ref(false)
   const keyword = ref('')
   let seq = 0
+  /** 数据来源切换（reset）的次数：切换前发出的按 ID 取名称请求结果作废 */
+  let epoch = 0
   let page = 1
   let loaded = false
   let timer
@@ -73,6 +75,24 @@ export function useRemoteOptions(fetch, { pageSize = 20, delay = 300, fetchByIds
     loading.value = false
   }
 
+  /**
+   * 数据来源变化（如客户 / 供应商切换）：清空已加载的结果和记住的记录，作废进行中的请求，
+   * 下次获得焦点时按新的来源重新取第一页
+   */
+  function reset() {
+    clearTimeout(timer)
+    seq++
+    epoch++
+    list.value = []
+    known.value = new Map()
+    loading.value = false
+    hasMore.value = false
+    keyword.value = ''
+    page = 1
+    loaded = false
+    resolving.clear()
+  }
+
   function find(id) {
     return list.value.find((r) => r.id === id) || known.value.get(id)
   }
@@ -90,17 +110,19 @@ export function useRemoteOptions(fetch, { pageSize = 20, delay = 300, fetchByIds
     if (!fetchByIds) return
     const missing = ids.filter((id) => id != null && !find(id) && !resolving.has(id))
     if (!missing.length) return
+    const current = epoch
     missing.forEach((id) => resolving.add(id))
     try {
-      remember(...((await fetchByIds(missing)) || []))
+      const rows = (await fetchByIds(missing)) || []
+      if (current === epoch) remember(...rows)
     } catch {
       // 回显失败时显示 label 或 ID，不影响选择
     } finally {
-      missing.forEach((id) => resolving.delete(id))
+      if (current === epoch) missing.forEach((id) => resolving.delete(id))
     }
   }
 
   onBeforeUnmount(() => clearTimeout(timer))
 
-  return { list, known, loading, hasMore, keyword, load, search, focus, popupScroll, cancel, find, remember, resolve }
+  return { list, known, loading, hasMore, keyword, load, search, focus, popupScroll, cancel, reset, find, remember, resolve }
 }

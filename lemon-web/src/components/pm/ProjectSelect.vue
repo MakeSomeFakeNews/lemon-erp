@@ -3,6 +3,7 @@
     :value="value"
     :label="label"
     :fetch="({ keyword, current, size }) => projectOptions(mine, keyword, { current, size })"
+    :source-key="mine"
     :fetch-by-ids="projectsByIds"
     :to-label="(p) => `${p.code} ${p.name}`"
     :allow-clear="allowClear"
