@@ -50,6 +50,16 @@ export default [
     links: ['/wms/stock']
   },
   {
+    // 积压分析：截至某日库存超过积压基数（库存上限 / 上月销量 / 近 N 天销量）的商品，与 Web 端进销存报表相同的接口
+    key: 'wms-overstock',
+    group: 'warehouse',
+    title: 'wms.entry.overstock',
+    color: '#d48806',
+    url: '/pkg-wms/overstock/index',
+    perm: 'bi:jxc:overstock',
+    links: ['/scm/jxc-overstock']
+  },
+  {
     key: 'wms-receive',
     group: 'warehouse',
     title: 'wms.entry.receive',

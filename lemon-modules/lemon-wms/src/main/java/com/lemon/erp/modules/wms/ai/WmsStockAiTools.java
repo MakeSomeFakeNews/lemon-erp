@@ -28,6 +28,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import com.lemon.erp.modules.wms.model.StockAlert;
+import com.lemon.erp.modules.wms.model.StockAlertMode;
 import java.util.Map;
 
 import static com.lemon.erp.modules.wms.ai.AiQuerySupport.LIMIT;
@@ -66,11 +68,14 @@ public final class WmsStockAiTools {
 
     // ---------------------------------------------------------------- 库存
 
-    /** 按物料汇总的库存：availableQty = qty - frozenQty */
+    /**
+     * 按物料汇总的库存：availableQty = qty - frozenQty；safetyStock、maxStock 为库存下限、上限，
+     * belowSafety、aboveMax 为是否低于下限 / 高于上限（分仓库预警时按仓库判断，任一仓库低于 / 高于即为是）
+     */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record StockRow(String materialCode, String materialName, String spec, String unit, String category,
                            BigDecimal qty, BigDecimal frozenQty, BigDecimal availableQty, BigDecimal safetyStock,
-                           Boolean belowSafety) {
+                           BigDecimal maxStock, StockAlertMode alertMode, Boolean belowSafety, Boolean aboveMax) {
     }
 
     /** 库存明细（仓库 + 库位 + 批次） */
@@ -108,6 +113,7 @@ public final class WmsStockAiTools {
                     .prop(WAREHOUSE, warehouse(), false)
                     .prop(CATEGORY, category(), false)
                     .prop("lowStockOnly", AiSchema.bool("wms.ai.param.lowStockOnly"), false)
+                    .prop("highStockOnly", AiSchema.bool("wms.ai.param.highStockOnly"), false)
                     .prop("detail", AiSchema.bool("wms.ai.param.stockDetail"), false)
                     .prop(LIMIT, AiQuerySupport.limit(), false)
                     .build();
@@ -116,26 +122,30 @@ public final class WmsStockAiTools {
         public Object execute(AiToolArgs args) {
             Long warehouseId = lookup.warehouseId(args.getString(WAREHOUSE));
             boolean lowStock = Boolean.TRUE.equals(args.getBoolean("lowStockOnly"));
+            boolean highStock = Boolean.TRUE.equals(args.getBoolean("highStockOnly"));
             int limit = limit(args);
-            if (Boolean.TRUE.equals(args.getBoolean("detail")) && !lowStock) {
+            if (Boolean.TRUE.equals(args.getBoolean("detail")) && !lowStock && !highStock) {
                 PageResult<StockView> page = queryService.stockPage(1, limit, new StockQuery(warehouseId, null, null,
-                        args.getString(KEYWORD), null, args.getString(CATEGORY), false, null));
+                        args.getString(KEYWORD), null, args.getString(CATEGORY), false, null, null));
                 return AiToolResult.rows(page.records().stream().map(s -> new StockDetailRow(s.getWarehouseName(),
                         s.getLocationCode(), s.getMaterialCode(), s.getMaterialName(), s.getSpec(), s.getUnit(),
                         s.getBatchNo() == null || s.getBatchNo().isEmpty() ? null : s.getBatchNo(), s.getExpiryDate(),
                         plain(s.getQty()), plain(s.getFrozenQty()))).toList(), page.total());
             }
             PageResult<StockSummaryView> page = queryService.summaryPage(1, limit, new StockQuery(warehouseId, null, null,
-                    args.getString(KEYWORD), null, args.getString(CATEGORY), false, lowStock));
+                    args.getString(KEYWORD), null, args.getString(CATEGORY), false, lowStock, highStock));
             return AiToolResult.rows(page.records().stream().map(WmsStockAiTools::stockRow).toList(), page.total());
         }
     }
 
     static StockRow stockRow(StockSummaryView s) {
         BigDecimal qty = nz(s.getQty());
-        Boolean below = s.getSafetyStock() == null ? null : qty.compareTo(s.getSafetyStock()) < 0;
+        Boolean below = s.getSafetyStock() == null ? null : s.getStockAlert() == StockAlert.LOW;
+        Boolean above = s.getMaxStock() == null ? null : s.getStockAlert() == StockAlert.HIGH
+                || s.getHighWarehouses() != null && s.getHighWarehouses() > 0;
         return new StockRow(s.getMaterialCode(), s.getMaterialName(), s.getSpec(), s.getUnit(), s.getCategory(),
-                plain(qty), plain(nz(s.getFrozenQty())), plain(qty.subtract(nz(s.getFrozenQty()))), plain(s.getSafetyStock()), below);
+                plain(qty), plain(nz(s.getFrozenQty())), plain(qty.subtract(nz(s.getFrozenQty()))), plain(s.getSafetyStock()),
+                plain(s.getMaxStock()), s.getSafetyStock() == null && s.getMaxStock() == null ? null : s.getAlertMode(), below, above);
     }
 
     // ---------------------------------------------------------------- 临期批次

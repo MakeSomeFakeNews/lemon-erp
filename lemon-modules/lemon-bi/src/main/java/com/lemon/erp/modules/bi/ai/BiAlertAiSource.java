@@ -35,6 +35,7 @@ public class BiAlertAiSource implements AiAlertSource {
     private static final Map<BiAlertMetric, List<String>> RELATED = Map.of(
             BiAlertMetric.AR_OVERDUE, List.of("fin.finance", "bi.sales"),
             BiAlertMetric.STOCK_BELOW_SAFETY, List.of("bi.inventory", "bi.purchase", "bi.sales"),
+            BiAlertMetric.STOCK_ABOVE_MAX, List.of("bi.inventory", "bi.purchase", "bi.sales"),
             BiAlertMetric.SLOW_MOVING, List.of("bi.inventory", "bi.sales", "bi.purchase"),
             BiAlertMetric.GROSS_MARGIN, List.of("bi.sales", "bi.purchase"),
             BiAlertMetric.WO_LATE, List.of("mes.production", "mes.quality"),

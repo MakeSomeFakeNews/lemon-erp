@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 库存预警的统一口径（issue #111）。物料的预警方式（wms_material.alert_mode）：
+     TOTAL 按总库存——安全库存（下限）safety_stock、库存上限 max_stock 针对所有仓库的库存合计；
+     WAREHOUSE 分仓库——每个仓库单独设置（wms_material_warehouse_limit），按仓库判断，没有设置的仓库不预警，
+     物料上的 safety_stock、max_stock 为各仓库设置之和（保存时计算）。
+     其他模块引用片段时写完整 refid，并传 property wh -->
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsMaterialWarehouseLimitMapper">
+
+    <!-- 分仓库预警（只含预警方式为分仓库的物料）：每个物料低于下限、高于上限的仓库数，以及范围内各仓库下限、上限之和。
+         property wh：仓库 ID 的参数表达式（如 q.warehouseId，参数为空时为全部仓库），不限仓库时写 null -->
+    <sql id="warehouseAlerts">
+        SELECT x.material_id, SUM(x.min_qty) AS min_qty, SUM(x.max_qty) AS max_qty,
+               SUM(CASE WHEN x.qty &lt; x.min_qty THEN 1 ELSE 0 END) AS low_count,
+               SUM(CASE WHEN x.qty &gt; x.max_qty THEN 1 ELSE 0 END) AS high_count
+        FROM (SELECT wl.material_id, wl.warehouse_id, wl.min_qty, wl.max_qty, COALESCE(SUM(ws.qty), 0) AS qty
+              FROM wms_material_warehouse_limit wl
+              JOIN wms_material wm ON wm.id = wl.material_id
+              LEFT JOIN wms_stock ws ON ws.material_id = wl.material_id AND ws.warehouse_id = wl.warehouse_id
+              WHERE wm.alert_mode = 'WAREHOUSE'
+              <if test="${wh} != null">AND wl.warehouse_id = #{${wh}}</if>
+              GROUP BY wl.material_id, wl.warehouse_id, wl.min_qty, wl.max_qty) x
+        GROUP BY x.material_id
+    </sql>
+
+    <!-- 物料的库存预警（property wh 同上），只含设置了安全库存或库存上限的物料：
+         min_qty、max_qty 为预警用的下限、上限（按总库存取物料上的设置；分仓库取范围内各仓库设置之和）；
+         alert 为 LOW / HIGH（StockAlert），正常为空——按总库存时比较所有仓库的库存合计（选了仓库也按合计，上下限是针对合计设置的），
+         分仓库时任一仓库低于下限为 LOW，否则任一仓库高于上限为 HIGH；low_count、high_count 为分仓库时低于、高于的仓库数。
+         用法：LEFT JOIN (<include .../>) sa ON sa.material_id = m.id -->
+    <sql id="materialAlerts">
+        SELECT am.id AS material_id, am.alert_mode,
+               CASE WHEN am.alert_mode = 'WAREHOUSE' THEN wa.min_qty ELSE am.safety_stock END AS min_qty,
+               CASE WHEN am.alert_mode = 'WAREHOUSE' THEN wa.max_qty ELSE am.max_stock END AS max_qty,
+               CASE WHEN am.alert_mode = 'WAREHOUSE' THEN
+                        CASE WHEN wa.low_count &gt; 0 THEN 'LOW' WHEN wa.high_count &gt; 0 THEN 'HIGH' END
+                    WHEN COALESCE(tq.qty, 0) &lt; am.safety_stock THEN 'LOW'
+                    WHEN COALESCE(tq.qty, 0) &gt; am.max_stock THEN 'HIGH' END AS alert,
+               COALESCE(wa.low_count, 0) AS low_count, COALESCE(wa.high_count, 0) AS high_count
+        FROM wms_material am
+        LEFT JOIN (SELECT material_id, SUM(qty) AS qty FROM wms_stock GROUP BY material_id) tq ON tq.material_id = am.id
+        LEFT JOIN (<include refid="com.lemon.erp.modules.wms.mapper.WmsMaterialWarehouseLimitMapper.warehouseAlerts"/>) wa ON wa.material_id = am.id
+        WHERE am.safety_stock IS NOT NULL OR am.max_stock IS NOT NULL
+    </sql>
+
+    <select id="selectWarehouseAlerts" resultType="com.lemon.erp.modules.wms.dto.WarehouseAlertView">
+        SELECT wl.warehouse_id, w.name AS warehouse_name, COALESCE(SUM(s.qty), 0) AS qty, wl.min_qty, wl.max_qty,
+               CASE WHEN COALESCE(SUM(s.qty), 0) &lt; wl.min_qty THEN 'LOW'
+                    WHEN COALESCE(SUM(s.qty), 0) &gt; wl.max_qty THEN 'HIGH' END AS alert
+        FROM wms_material_warehouse_limit wl
+        JOIN wms_warehouse w ON w.id = wl.warehouse_id
+        LEFT JOIN wms_stock s ON s.material_id = wl.material_id AND s.warehouse_id = wl.warehouse_id
+        WHERE wl.material_id = #{materialId}
+        GROUP BY wl.warehouse_id, w.name, w.sort, wl.min_qty, wl.max_qty
+        ORDER BY w.sort, wl.warehouse_id
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO wms_material_warehouse_limit (material_id, warehouse_id, min_qty, max_qty, create_time, update_time) VALUES
+        <foreach collection="list" item="i" separator=",">
+            (#{i.materialId}, #{i.warehouseId}, #{i.minQty}, #{i.maxQty}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+</mapper>

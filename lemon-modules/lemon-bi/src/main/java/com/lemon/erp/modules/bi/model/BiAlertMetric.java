@@ -7,6 +7,7 @@ public enum BiAlertMetric {
 
     AR_OVERDUE("bi.label.overdueReceivablesAmount", "bi.label.cny"),
     STOCK_BELOW_SAFETY("bi.label.materialsBelowSafetyStock", "bi.label.items"),
+    STOCK_ABOVE_MAX("bi.label.materialsAboveMaxStock", "bi.label.items"),
     SLOW_MOVING("bi.label.slowMovingMaterialsNoOutboundDays", "bi.label.items"),
     GROSS_MARGIN("bi.label.grossMarginMonth", "bi.label.percent"),
     TICKET_OVERDUE("bi.label.overdueUnresolvedServiceTickets", "bi.label.docs"),

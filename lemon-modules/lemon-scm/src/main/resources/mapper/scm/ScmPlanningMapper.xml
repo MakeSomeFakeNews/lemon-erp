@@ -49,6 +49,7 @@
     <select id="selectReorderMaterials" resultType="java.util.Map">
         SELECT m.id AS "materialId", m.code AS "code", m.name AS "name", m.spec AS "spec", m.unit AS "unit",
                m.safety_stock AS "safetyStock", m.reorder_point AS "reorderPoint", m.reorder_qty AS "reorderQty",
+               m.alert_mode AS "alertMode", COALESCE(sa.low_count, 0) AS "lowWarehouses",
                COALESCE((SELECT SUM(s.qty - s.frozen_qty) FROM wms_stock s JOIN wms_warehouse w ON w.id = s.warehouse_id
                          WHERE s.material_id = m.id AND w.type NOT IN ('DEFECT', 'CONSIGN_OUT', 'CONSIGN_IN')), 0) AS "available",
                COALESCE((SELECT SUM(i.qty - i.done_qty + i.replenish_qty) FROM scm_order_item i JOIN scm_order o ON o.id = i.order_id
@@ -58,6 +59,7 @@
                          WHERE i.material_id = m.id AND o.kind = 'SALES' AND o.status IN ('APPROVED', 'PARTIAL')
                            AND i.qty - i.done_qty + i.replenish_qty &gt; 0), 0) AS "soOpen"
         FROM wms_material m
+        LEFT JOIN (<include refid="com.lemon.erp.modules.wms.mapper.WmsMaterialWarehouseLimitMapper.materialAlerts"><property name="wh" value="null"/></include>) sa ON sa.material_id = m.id
         WHERE m.status = 1 AND m.reorder_point IS NOT NULL
           <if test="keyword != null and keyword != ''">
               AND (m.code LIKE CONCAT('%', #{keyword}, '%') OR m.name LIKE CONCAT('%', #{keyword}, '%'))

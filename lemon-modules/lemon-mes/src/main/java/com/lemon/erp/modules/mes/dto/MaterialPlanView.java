@@ -3,6 +3,7 @@ package com.lemon.erp.modules.mes.dto;
 import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.modules.mes.model.SupplyType;
 import com.lemon.erp.modules.mes.entity.MesMaterialSubstitute;
+import com.lemon.erp.modules.wms.model.StockAlertMode;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -22,6 +23,9 @@ public class MaterialPlanView {
     private Integer batchEnabled;
     private Integer serialEnabled;
     private BigDecimal safetyStock;
+    /** 库存上限、库存预警方式（分仓库时安全库存、上限为各仓库之和） */
+    private BigDecimal maxStock;
+    private StockAlertMode alertMode;
     private EnableStatus status;
     private String remark;
 

@@ -148,13 +148,15 @@
         SELECT COUNT(DISTINCT material_id) AS "skus", COALESCE(SUM(qty), 0) AS "qty" FROM wms_stock WHERE qty &gt; 0
     </select>
 
+    <!-- 低于安全库存（库存下限）的物料，口径见 wms 的 WmsMaterialWarehouseLimitMapper.materialAlerts：
+         按总库存比较所有仓库的合计，分仓库时任一仓库低于下限（safety_stock 为各仓库下限之和） -->
     <sql id="lowStockSource">
-        SELECT m.id, m.code, m.name, m.unit, m.safety_stock, COALESCE(SUM(s.qty), 0) AS qty
+        SELECT m.id, m.code, m.name, m.unit, sa.min_qty AS safety_stock, COALESCE(SUM(s.qty), 0) AS qty
         FROM wms_material m
+        JOIN (<include refid="com.lemon.erp.modules.wms.mapper.WmsMaterialWarehouseLimitMapper.materialAlerts"><property name="wh" value="null"/></include>) sa ON sa.material_id = m.id
         LEFT JOIN wms_stock s ON s.material_id = m.id
-        WHERE m.safety_stock &gt; 0 AND m.status = 1
-        GROUP BY m.id, m.code, m.name, m.unit, m.safety_stock
-        HAVING COALESCE(SUM(s.qty), 0) &lt; m.safety_stock
+        WHERE m.status = 1 AND sa.alert = 'LOW' AND sa.min_qty &gt; 0
+        GROUP BY m.id, m.code, m.name, m.unit, sa.min_qty
     </sql>
 
     <select id="lowStock" resultType="com.lemon.erp.modules.bi.dto.BiScreen$LowStock">

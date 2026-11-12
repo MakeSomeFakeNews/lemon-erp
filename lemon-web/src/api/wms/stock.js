@@ -6,6 +6,8 @@ export const pageStock = (params) => request.get('/wms/stock', { params })
 export const pageStockSummary = (params) => request.get('/wms/stock/summary', { params })
 /** 库存查询的合计（全部页）：{ qty, amount }，summary 为 true 时按物料汇总的条件 */
 export const stockTotal = (params) => request.get('/wms/stock/total', { params })
+/** 分仓库预警的明细：[{ warehouseId, warehouseName, qty, minQty, maxQty, alert（LOW / HIGH / null） }] */
+export const warehouseAlerts = (materialId) => request.get('/wms/stock/limits', { params: { materialId } })
 /** 物料的当前均价：{ 物料 ID: 均价 } */
 export const unitCosts = (materialIds) => request.get('/wms/stock/unit-cost', { params: { materialIds: materialIds.join(',') } })
 /** 经营历史：{ materialId, warehouseId?, beginDate?, endDate? } */

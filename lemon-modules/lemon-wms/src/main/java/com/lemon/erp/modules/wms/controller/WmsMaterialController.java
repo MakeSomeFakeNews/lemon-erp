@@ -12,6 +12,7 @@ import com.lemon.erp.framework.excel.ImportResult;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.wms.dto.BarcodeMatch;
+import com.lemon.erp.modules.wms.dto.StockLimitBatchRequest;
 import com.lemon.erp.modules.wms.dto.TrackingRequest;
 import com.lemon.erp.modules.wms.dto.TrackingView;
 import com.lemon.erp.modules.wms.entity.WmsMaterial;
@@ -91,7 +92,7 @@ public class WmsMaterialController {
     @GetMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('wms:material:list')")
     public R<WmsMaterial> get(@PathVariable Long id) {
-        return R.ok(materialService.get(id));
+        return R.ok(materialService.detail(id));
     }
 
     @PostMapping
@@ -102,6 +103,15 @@ public class WmsMaterialController {
                           @RequestParam(required = false) Long copyFrom) {
         materialService.create(material, copyFrom);
         return R.ok(material.getId());
+    }
+
+    /** 批量设置库存上下限（物料列表选中的物料）：按总库存，或某个仓库的上下限（物料改为分仓库预警） */
+    @PutMapping("/stock-limits")
+    @PreAuthorize("@ss.hasPerm('wms:material:edit')")
+    @OperLog(title = "物料管理-批量设置库存上下限", type = OperType.UPDATE) // i18n-ignore
+    /** @return 设置的物料数 */
+    public R<Integer> batchSetLimits(@Valid @RequestBody StockLimitBatchRequest req) {
+        return R.ok(materialService.batchSetLimits(req));
     }
 
     // ---------------------------------------------------------------- 批次 / 序列号管理切换

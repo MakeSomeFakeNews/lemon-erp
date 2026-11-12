@@ -38,6 +38,7 @@ public class WmsWarehouseService {
     private final WmsStockDocMapper docMapper;
     private final WmsCheckMapper checkMapper;
     private final ReferenceGuard referenceGuard;
+    private final WmsStockLimitService limitService;
 
     /** @param keyword 编码或名称，模糊匹配 */
     public PageResult<WmsWarehouse> page(long current, long size, String keyword, EnableStatus status) {
@@ -114,6 +115,7 @@ public class WmsWarehouseService {
             referenceGuard.checkDeletable(RefType.WAREHOUSE, id, Messages.get("wms.text.warehouse", warehouse.getName()));
         }
         locationMapper.delete(Wrappers.<WmsLocation>lambdaQuery().in(WmsLocation::getWarehouseId, ids));
+        limitService.deleteByWarehouses(ids);
         warehouseMapper.deleteByIds(ids);
     }
 

@@ -20,5 +20,11 @@ export const jxcAssets = (params) => request.get('/bi/jxc/assets', { params })
 /** 商品分析：type = top | slow | overstock | shortage | turnover */
 export const jxcGoods = (type, params) => request.get(`/bi/jxc/goods/${type}`, { params })
 
+/**
+ * 积压分析（issue #111）：{ warehouseId, category, brand, keyword, date（截至日期）, base（OverstockBase）, days, current, size }
+ * → { records, total, summary, date, salesBegin, salesEnd, costVisible }；资金占用 amount 需要「查看成本金额」权限
+ */
+export const jxcOverstock = (params) => request.get('/bi/jxc/overstock', { params })
+
 /** 客户 RFM */
 export const jxcRfm = (params) => request.get('/bi/jxc/rfm', { params })

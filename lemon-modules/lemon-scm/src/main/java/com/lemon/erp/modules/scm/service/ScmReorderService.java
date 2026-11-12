@@ -6,6 +6,7 @@ import com.lemon.erp.modules.scm.dto.RequisitionRequest;
 import com.lemon.erp.modules.scm.entity.ScmSupplierPrice;
 import com.lemon.erp.modules.scm.mapper.ScmPlanningMapper;
 import com.lemon.erp.modules.scm.model.AtpProvider;
+import com.lemon.erp.modules.wms.model.StockAlertMode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,7 +19,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 补货建议（再订货点法）：设置了再订货点的物料，预计库存不高于再订货点时建议补货，可一键生成请购单
+ * 补货建议（再订货点法）：设置了再订货点的物料，预计库存不高于再订货点时建议补货，可一键生成请购单。
+ * 按全公司计算：分仓库预警的物料安全库存取各仓库下限之和，并返回低于下限的仓库数（全公司够用时提示在仓库之间调拨）
  */
 @Service
 @RequiredArgsConstructor
@@ -65,7 +67,9 @@ public class ScmReorderService {
                 suggest = suggest.setScale(0, RoundingMode.CEILING);
             }
             return new ReorderSuggestion(id, (String) r.get("code"), (String) r.get("name"), (String) r.get("spec"), (String) r.get("unit"),
-                    supplyTypes.getOrDefault(id, AtpProvider.DEFAULT_SUPPLY_TYPE), r.get("safetyStock") == null ? null : safety, reorderPoint, reorderQty,
+                    supplyTypes.getOrDefault(id, AtpProvider.DEFAULT_SUPPLY_TYPE), r.get("safetyStock") == null ? null : safety,
+                    r.get("alertMode") == null ? StockAlertMode.TOTAL : StockAlertMode.valueOf(r.get("alertMode").toString()),
+                    ((Number) r.get("lowWarehouses")).intValue(), reorderPoint, reorderQty,
                     available, poOpen, soOpen, wo, projected, suggest,
                     price == null ? null : price.getSupplierId(), price == null ? null : price.getSupplierName(),
                     price == null ? null : queryService.effectivePrice(price, suggest));

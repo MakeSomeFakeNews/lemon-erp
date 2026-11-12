@@ -220,6 +220,7 @@ DROP TABLE IF EXISTS wms_attribute_value;
 DROP TABLE IF EXISTS wms_attribute;
 DROP TABLE IF EXISTS wms_material_unit;
 DROP TABLE IF EXISTS wms_material_image;
+DROP TABLE IF EXISTS wms_material_warehouse_limit;
 DROP TABLE IF EXISTS wms_price_level;
 DROP TABLE IF EXISTS wms_material;
 DROP TABLE IF EXISTS wms_material_category;
@@ -835,7 +836,9 @@ CREATE TABLE wms_material (
     batch_enabled  TINYINT       NOT NULL DEFAULT 0 COMMENT '是否启用批次管理 1是 0否',
     serial_enabled TINYINT       NOT NULL DEFAULT 0 COMMENT '是否启用序列号管理 1是 0否',
     iqc_required   TINYINT        NOT NULL DEFAULT 0 COMMENT '来料检验 1是：采购入库后冻结为待检，检验合格后放行',
-    safety_stock   DECIMAL(18, 4)         DEFAULT NULL COMMENT '安全库存，汇总库存低于该值时预警',
+    safety_stock   DECIMAL(18, 4)         DEFAULT NULL COMMENT '安全库存（库存下限）：按总库存预警时所有仓库的合计低于该值时预警；分仓库预警时为各仓库下限之和（保存时计算）',
+    max_stock      DECIMAL(18, 4)         DEFAULT NULL COMMENT '库存上限：按总库存预警时所有仓库的合计高于该值时预警；分仓库预警时为各仓库上限之和（保存时计算）',
+    alert_mode     VARCHAR(16)   NOT NULL DEFAULT 'TOTAL' COMMENT '库存预警方式(字典 wms_stock_alert_mode) TOTAL按总库存 WAREHOUSE分仓库（wms_material_warehouse_limit）',
     reorder_point  DECIMAL(18, 4)         DEFAULT NULL COMMENT '再订货点：预计库存（可用 + 在途 + 在制 − 待发 − 待领）不高于此值时建议补货，为空不参与',
     reorder_qty    DECIMAL(18, 4)         DEFAULT NULL COMMENT '再订货量（经济批量），补货建议不少于此数量',
     default_warehouse_id BIGINT       DEFAULT NULL COMMENT '默认仓库：录入出入库单、订单时默认带出',
@@ -951,6 +954,20 @@ CREATE TABLE wms_material_unit (
     UNIQUE KEY uk_material_unit (material_id, unit, tenant_id),
     KEY idx_material_unit_barcode (barcode)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '物料辅助计量单位：库存、成本都按基本单位，单据可按辅助单位录入后换算';
+
+CREATE TABLE wms_material_warehouse_limit (
+    id           BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id    BIGINT         NOT NULL DEFAULT 1 COMMENT '租户ID',
+    material_id  BIGINT         NOT NULL COMMENT '物料',
+    warehouse_id BIGINT         NOT NULL COMMENT '仓库',
+    min_qty      DECIMAL(18, 4)          DEFAULT NULL COMMENT '库存下限（安全库存）：该仓库库存低于时预警，为空不检查',
+    max_qty      DECIMAL(18, 4)          DEFAULT NULL COMMENT '库存上限：该仓库库存高于时预警，为空不检查',
+    create_time  DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time  DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_material_warehouse_limit (material_id, warehouse_id, tenant_id),
+    KEY idx_material_limit_warehouse (warehouse_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '物料分仓库的库存上下限（物料的库存预警方式为分仓库时使用，没有设置的仓库不预警）';
 
 CREATE TABLE wms_material_image (
     id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -7554,14 +7571,16 @@ INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, s
 (372, 966, '经营状况', 'C', 'jxc-business', 'jxc/business/index', 'bi:jxc:business', 'LineChartOutlined', 3, 1, 1, NOW(), NOW()),
 (373, 966, '资产状况', 'C', 'jxc-assets', 'jxc/assets/index', 'bi:jxc:asset', 'AccountBookOutlined', 4, 1, 1, NOW(), NOW()),
 (374, 966, '商品分析', 'C', 'jxc-goods', 'jxc/goods/index', 'bi:jxc:goods', 'AppstoreOutlined', 5, 1, 1, NOW(), NOW()),
-(375, 966, '客户分析', 'C', 'jxc-rfm', 'jxc/rfm/index', 'bi:jxc:rfm', 'TeamOutlined', 6, 1, 1, NOW(), NOW());
--- 普通用户（除资产状况）、总经理、会计全部；采购员进货报表和商品分析；销售员销售报表和客户分析；仓库管理员商品分析；出纳资产状况（连同分组和供应链模块）
+(375, 966, '客户分析', 'C', 'jxc-rfm', 'jxc/rfm/index', 'bi:jxc:rfm', 'TeamOutlined', 6, 1, 1, NOW(), NOW()),
+(376, 966, '积压分析', 'C', 'jxc-overstock', 'jxc/overstock/index', 'bi:jxc:overstock', 'HourglassOutlined', 7, 1, 1, NOW(), NOW());
+-- 普通用户（除资产状况）、总经理、会计全部；采购员进货报表、商品分析和积压分析；销售员销售报表和客户分析；仓库管理员商品分析和积压分析；出纳资产状况（连同分组和供应链模块）
 INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT g.role_id, g.menu_id FROM (
     SELECT 2 AS role_id, 370 AS menu_id UNION ALL SELECT 2, 371 UNION ALL SELECT 2, 372 UNION ALL SELECT 2, 374 UNION ALL SELECT 2, 375
     UNION ALL SELECT 3, 370 UNION ALL SELECT 3, 371 UNION ALL SELECT 3, 372 UNION ALL SELECT 3, 373 UNION ALL SELECT 3, 374 UNION ALL SELECT 3, 375
     UNION ALL SELECT 9, 370 UNION ALL SELECT 9, 371 UNION ALL SELECT 9, 372 UNION ALL SELECT 9, 373 UNION ALL SELECT 9, 374 UNION ALL SELECT 9, 375
     UNION ALL SELECT 4, 371 UNION ALL SELECT 4, 374 UNION ALL SELECT 5, 370 UNION ALL SELECT 5, 375 UNION ALL SELECT 6, 374 UNION ALL SELECT 10, 373
+    UNION ALL SELECT 2, 376 UNION ALL SELECT 3, 376 UNION ALL SELECT 9, 376 UNION ALL SELECT 4, 376 UNION ALL SELECT 6, 376
     UNION ALL SELECT r.id, 966 FROM sys_role r WHERE r.id IN (2, 3, 4, 5, 6, 9, 10)
     UNION ALL SELECT r.id, 5 FROM sys_role r WHERE r.id IN (2, 3, 4, 5, 6, 9, 10)
 ) g
@@ -7925,3 +7944,11 @@ WHERE EXISTS (SELECT 1 FROM sys_role r WHERE r.id = g.role_id)
   AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = g.role_id AND x.menu_id = g.menu_id);
 INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, builtin, create_time, update_time) VALUES
 ('fin_voucher_source', '应收应付对冲', 'NETTING', 'volcano', 23, 1, 1, NOW(), NOW());
+
+-- 库存上下限与积压分析（issue #111）：物料的库存预警方式（按总库存 / 分仓库，分仓库的上下限见 wms_material_warehouse_limit），
+-- 积压分析报表（进销存报表下，菜单 376，见上方进销存报表的菜单与授权）
+INSERT INTO sys_dict_type (id, name, type, kind, status, remark, create_time, update_time) VALUES
+(209, '库存预警方式', 'wms_stock_alert_mode', 'SYSTEM', 1, '物料的库存上下限针对所有仓库的合计（按总库存），还是每个仓库单独设置（分仓库）', NOW(), NOW());
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, builtin, create_time, update_time) VALUES
+('wms_stock_alert_mode', '按总库存', 'TOTAL', 'blue', 1, 1, 1, NOW(), NOW()),
+('wms_stock_alert_mode', '分仓库', 'WAREHOUSE', 'purple', 2, 1, 1, NOW(), NOW());

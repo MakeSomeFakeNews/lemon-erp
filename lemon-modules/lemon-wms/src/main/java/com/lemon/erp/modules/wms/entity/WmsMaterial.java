@@ -12,10 +12,14 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import com.lemon.erp.modules.wms.model.CostMethod;
+import com.lemon.erp.modules.wms.model.StockAlertMode;
+import com.baomidou.mybatisplus.annotation.TableField;
+import jakarta.validation.Valid;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -57,9 +61,27 @@ public class WmsMaterial extends BaseEntity implements Searchable {
     /** 是否来料检验：采购入库后冻结为待检，来料检验合格后才能出库 */
     private Integer iqcRequired;
 
-    /** 安全库存，汇总库存低于该值时预警 */
+    /**
+     * 安全库存（库存下限）：按总库存预警时所有仓库的合计低于该值时预警；
+     * 分仓库预警时为各仓库下限之和（保存时计算，供补货建议、MRP 使用）
+     */
     @DecimalMin(value = "0", message = "{wms.valid.safetyStockCannotLess}")
     private BigDecimal safetyStock;
+
+    /** 库存上限：按总库存预警时所有仓库的合计高于该值时预警；分仓库预警时为各仓库上限之和（保存时计算） */
+    @DecimalMin(value = "0", message = "{wms.valid.maxStockCannotLess}")
+    private BigDecimal maxStock;
+
+    /** 库存预警方式，默认按总库存 */
+    private StockAlertMode alertMode;
+
+    /**
+     * 分仓库的上下限（预警方式为分仓库时）：查看物料详情时返回；新增、修改时传入则整体替换，
+     * 修改时不传（null）保留原设置
+     */
+    @Valid
+    @TableField(exist = false)
+    private List<WmsMaterialWarehouseLimit> warehouseLimits;
 
     /** 再订货点：预计库存不高于此值时建议补货，为空不参与补货建议 */
     @DecimalMin(value = "0", message = "{wms.valid.reorderPointCannotLess}")

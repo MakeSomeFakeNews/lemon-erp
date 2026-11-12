@@ -31,9 +31,11 @@ import { useUserStore } from '@/store/user'
 import StockHistory from '@/components/wms/StockHistory.vue'
 
 /**
- * 库存分布：各仓库、库位、批次（有效期、冻结）的数量。用法：ref.open(row)
- * 有库存查询权限时可联查经营历史（进销存，与库存查询、物料资料中的「经营历史」相同，与小程序一致）
+ * 库存分布：各仓库、库位、批次（有效期、冻结）的数量。用法：ref.open(row)（row 含 materialId、code、name、unit）
+ * 有库存查询权限时可联查经营历史（进销存，与库存查询、物料资料中的「经营历史」相同，与小程序一致）。
+ * loader 为取数函数（物料 ID → 库存明细列表），默认商品速查的接口；积压分析等其他页面传入库存查询的接口
  */
+const props = defineProps({ loader: { type: Function, default: quickLookupStock } })
 const { t } = useI18n()
 const canHistory = useUserStore().hasPerm('wms:stock:list')
 const historyRef = ref()
@@ -58,7 +60,7 @@ async function open(m) {
   visible.value = true
   loading.value = true
   try {
-    rows.value = (await quickLookupStock(m.materialId)) || []
+    rows.value = (await props.loader(m.materialId)) || []
   } finally {
     loading.value = false
   }

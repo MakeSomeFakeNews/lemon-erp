@@ -25,6 +25,11 @@ export const materialUnits = (id) => request.get(`/wms/material/${id}/units`)
 export const saveMaterialUnits = (id, data) => request.put(`/wms/material/${id}/units`, data)
 /** 扫码：按物料或辅助单位条码查找，{ material, unit, ratio }，找不到返回 null */
 export const materialByBarcode = (code) => request.get('/wms/material/barcode', { params: { code } })
+/**
+ * 批量设置库存预警（issue #111）：{ materialIds, alertMode（TOTAL 按总库存 / WAREHOUSE 分仓库）, warehouseId（分仓库时）, minQty, maxQty } → 设置的物料数。
+ * 按总库存清除分仓库的设置；分仓库只改所选仓库（上下限都为空时删除该仓库的设置），物料改为分仓库预警
+ */
+export const batchSetStockLimits = (data) => request.put('/wms/material/stock-limits', data)
 
 /** 规格属性：[{ id, name, sort, status, values: [{ id, value, code }] }] */
 export const attributes = () => request.get('/wms/attribute')

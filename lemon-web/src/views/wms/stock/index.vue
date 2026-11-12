@@ -36,6 +36,9 @@
         <a-checkbox v-if="mode === 'summary'" v-model:checked="query.lowStock" class="toolbar-check" @change="search">
           {{ $t('wms.stock.lowOnly') }}
         </a-checkbox>
+        <a-checkbox v-if="mode === 'summary'" v-model:checked="query.highStock" class="toolbar-check" @change="search">
+          {{ $t('wms.stockLimit.highOnly') }}
+        </a-checkbox>
         <a-checkbox v-model:checked="query.showZero" class="toolbar-check" @change="search">{{ $t('wms.stock.showZero') }}</a-checkbox>
         <span v-if="total" class="toolbar-total">
           {{ $t('wms.stock.totalQty', { n: formatQty(total.qty) }) }}
@@ -72,7 +75,12 @@
           <template v-else-if="column.key === 'category'">
             <DictTag type="wms_material_category" :value="record.category" />
           </template>
-          <template v-else-if="column.key === 'safetyStock'">{{ formatQty(record.safetyStock) }}</template>
+          <template v-else-if="column.key === 'safetyStock' || column.key === 'maxStock'">
+            <a-tooltip v-if="record[column.key] != null && record.alertMode === StockAlertMode.WAREHOUSE && !query.warehouseId" :title="$t('wms.stockLimit.sumOfWarehouses')">
+              <span class="dotted">{{ formatQty(record[column.key]) }}</span>
+            </a-tooltip>
+            <span v-else>{{ record[column.key] == null ? '-' : formatQty(record[column.key]) }}</span>
+          </template>
           <template v-else-if="column.key === 'frozenQty'">
             <a-tooltip v-if="Number(record.frozenQty)" :title="$t('wms.stock.frozenTip')">
               <span class="frozen">{{ formatQty(record.frozenQty) }}</span>
@@ -80,8 +88,8 @@
             <span v-else class="sub-text">-</span>
           </template>
           <template v-else-if="column.key === 'qty'">
-            <span :class="{ low: isLow(record) }">{{ formatQty(record.qty) }}</span>
-            <a-tag v-if="isLow(record)" color="red" :bordered="false" class="low-tag">{{ $t('wms.stock.low') }}</a-tag>
+            <span :class="{ low: isLow(record), high: isHigh(record) }">{{ formatQty(record.qty) }}</span>
+            <StockAlertTag v-if="mode === 'summary'" :record="record" />
           </template>
           <template v-else-if="column.key === 'unitCost'">{{ record.unitCost == null ? '-' : price(record.unitCost) }}</template>
           <template v-else-if="column.key === 'amount'">{{ record.amount == null ? '-' : money(record.amount) }}</template>
@@ -122,6 +130,8 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import LocationSelect from '@/components/wms/LocationSelect.vue'
 import StockHistory from '@/components/wms/StockHistory.vue'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
+import StockAlertTag from './StockAlertTag.vue'
+import { StockAlert, StockAlertMode } from '@/constants/enums'
 import { availableSerials, pageStock, pageStockSummary, stockTotal } from '@/api/wms/stock'
 import { expiryStatus, formatQty, locationText } from '@/components/wms/wms'
 import { useColumns } from '@/composables/useColumns'
@@ -166,8 +176,9 @@ const SUMMARY_COLUMNS = [
   { title: t('wms.inout.spec'), dataIndex: 'spec', width: 160, ellipsis: true },
   { title: t('wms.inout.category'), key: 'category', width: 160, dict: 'wms_material_category' },
   { title: t('common.field.unit'), dataIndex: 'unit', width: 70 },
-  { title: t('wms.stock.safetyStock'), key: 'safetyStock', width: 120, align: 'right' },
-  { title: t('wms.stock.qty'), key: 'qty', width: 200, align: 'right' },
+  { title: t('wms.stock.safetyStock'), key: 'safetyStock', width: 110, align: 'right' },
+  { title: t('wms.stockLimit.maxStock'), key: 'maxStock', width: 110, align: 'right' },
+  { title: t('wms.stock.qty'), key: 'qty', width: 260, align: 'right' },
   { title: t('wms.stock.frozen'), key: 'frozenQty', width: 100, align: 'right' },
   ...COST_COLUMNS,
   actionCol()
@@ -194,24 +205,25 @@ const emptyQuery = () => ({
   locationId: undefined,
   batchNo: undefined,
   showZero: false,
-  lowStock: false
+  lowStock: false,
+  highStock: false
 })
 const query = reactive(emptyQuery())
 const { list, loading, size, pagination, load, search, onTableChange, exportAll } = useTable(
   (params) => (mode.value === 'detail' ? pageStock(params) : pageStockSummary(params)),
   query,
   {
-    params: ({ locationId, batchNo, lowStock, ...rest }) =>
-      mode.value === 'detail' ? { ...rest, locationId, batchNo } : { ...rest, lowStock }
+    params: ({ locationId, batchNo, lowStock, highStock, ...rest }) =>
+      mode.value === 'detail' ? { ...rest, locationId, batchNo } : { ...rest, lowStock, highStock }
   }
 )
 
 // 合计（全部页）：列表刷新后按相同条件查询
 const total = ref(null)
 watch(list, async () => {
-  const { locationId, batchNo, lowStock, ...rest } = query
+  const { locationId, batchNo, lowStock, highStock, ...rest } = query
   const summary = mode.value !== 'detail'
-  total.value = await stockTotal(summary ? { ...rest, lowStock, summary } : { ...rest, locationId, batchNo })
+  total.value = await stockTotal(summary ? { ...rest, lowStock, highStock, summary } : { ...rest, locationId, batchNo })
 })
 
 function resetQuery() {
@@ -237,15 +249,18 @@ function showHistory(record) {
 }
 
 onMounted(() => {
-  // 首页待办「库存低于安全库存」链接带 lowStock=1：按物料汇总并只看低于安全库存的
-  if (route.query.lowStock === '1') {
+  // 首页待办「库存低于安全库存」「库存高于库存上限」链接带 lowStock=1 / highStock=1：按物料汇总并只看对应的物料
+  if (route.query.lowStock === '1' || route.query.highStock === '1') {
     mode.value = 'summary'
-    query.lowStock = true
+    query.lowStock = route.query.lowStock === '1'
+    query.highStock = route.query.highStock === '1'
   }
   load()
 })
 
-const isLow = (r) => mode.value === 'summary' && r.safetyStock != null && Number(r.qty) < Number(r.safetyStock)
+// 预警（issue #111）：按物料的预警方式由后端判断，按总库存比较所有仓库的合计，分仓库按仓库判断
+const isLow = (r) => mode.value === 'summary' && r.stockAlert === StockAlert.LOW
+const isHigh = (r) => mode.value === 'summary' && r.stockAlert === StockAlert.HIGH
 
 // 在库序列号
 const serialOpen = ref(false)
@@ -288,9 +303,12 @@ async function showSerials(record) {
   color: #ff4d4f;
   font-weight: 500;
 }
-.low-tag {
-  margin-left: 6px;
-  margin-right: 0;
+.high {
+  color: #fa8c16;
+  font-weight: 500;
+}
+.dotted {
+  border-bottom: 1px dashed var(--app-text-3);
 }
 .serial-list {
   display: flex;

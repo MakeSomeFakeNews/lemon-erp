@@ -7,6 +7,8 @@ import com.lemon.erp.modules.bi.dto.JxcViews;
 import com.lemon.erp.modules.bi.model.JxcDimension;
 import com.lemon.erp.modules.bi.service.BiJxcAnalysisService;
 import com.lemon.erp.modules.bi.service.BiJxcService;
+import com.lemon.erp.modules.bi.service.BiOverstockService;
+import com.lemon.erp.modules.bi.dto.OverstockQuery;
 import com.lemon.erp.modules.scm.dto.RfmSettings;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -19,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 
 /**
- * 进销存报表 /bi/jxc：销售报表、进货报表（汇总 → 商品明细 / 单据列表 → 单据明细）、经营状况、资产状况、商品分析、客户 RFM。
+ * 进销存报表 /bi/jxc：销售报表、进货报表（汇总 → 商品明细 / 单据列表 → 单据明细）、经营状况、资产状况、商品分析、积压分析、客户 RFM。
  * 查询条件见 {@link JxcQuery}，日期范围必填；明细的 dim + key 为穿透的汇总维度和取值
  */
 @RestController
@@ -29,6 +31,7 @@ public class BiJxcController {
 
     private final BiJxcService jxcService;
     private final BiJxcAnalysisService analysisService;
+    private final BiOverstockService overstockService;
 
     // ---------------------------------------------------------------- 销售报表
 
@@ -150,6 +153,19 @@ public class BiJxcController {
     public R<PageResult<JxcViews.GoodsRow>> turnover(JxcQuery q, @RequestParam(defaultValue = "1") long current,
                                                      @RequestParam(defaultValue = "20") long size) {
         return R.ok(analysisService.turnover(q, current, size));
+    }
+
+    // ---------------------------------------------------------------- 积压分析
+
+    /**
+     * 积压分析（issue #111）：截至日库存数量超过积压基数（库存上限 / 上个月销量 / 最近 N 天销量）的商品，
+     * 条件见 {@link OverstockQuery}；资金占用需要「查看成本金额」权限
+     */
+    @GetMapping("/overstock")
+    @PreAuthorize("@ss.hasPerm('bi:jxc:overstock')")
+    public R<JxcViews.OverstockPage> overstockAnalysis(OverstockQuery q, @RequestParam(defaultValue = "1") long current,
+                                                       @RequestParam(defaultValue = "20") long size) {
+        return R.ok(overstockService.page(q, current, size));
     }
 
     // ---------------------------------------------------------------- 客户 RFM
