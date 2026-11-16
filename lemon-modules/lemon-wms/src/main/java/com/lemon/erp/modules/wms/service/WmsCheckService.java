@@ -16,6 +16,9 @@ import com.lemon.erp.framework.workflow.ApprovalFlow;
 import com.lemon.erp.framework.workflow.ApprovalSupport;
 import com.lemon.erp.framework.workflow.FlowFinishedEvent;
 import com.lemon.erp.modules.wms.dto.CheckItemRequest;
+import com.lemon.erp.modules.wms.dto.CheckMaterialItemsRequest;
+import com.lemon.erp.modules.wms.dto.CheckMaterialQuery;
+import com.lemon.erp.modules.wms.dto.CheckMaterialView;
 import com.lemon.erp.modules.wms.dto.CheckRequest;
 import com.lemon.erp.modules.wms.dto.DocQuery;
 import com.lemon.erp.modules.wms.dto.StockQuery;
@@ -29,6 +32,7 @@ import com.lemon.erp.modules.wms.entity.WmsStock;
 import com.lemon.erp.modules.wms.entity.WmsWarehouse;
 import com.lemon.erp.modules.wms.mapper.WmsCheckItemMapper;
 import com.lemon.erp.modules.wms.mapper.WmsCheckMapper;
+import com.lemon.erp.modules.wms.mapper.WmsLocationMapper;
 import com.lemon.erp.modules.wms.mapper.WmsSerialMapper;
 import com.lemon.erp.modules.wms.mapper.WmsStockFlowMapper;
 import com.lemon.erp.modules.wms.mapper.WmsStockMapper;
@@ -45,23 +49,28 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.lemon.erp.modules.wms.model.WmsConstants.CHECK_RULE;
 import static com.lemon.erp.modules.wms.model.WmsConstants.NO_BATCH;
+import static com.lemon.erp.modules.wms.model.WmsConstants.NO_LOCATION;
 import static com.lemon.erp.modules.wms.model.WmsConstants.batchOrNone;
 import static com.lemon.erp.modules.wms.model.WmsConstants.joinSerials;
 import static com.lemon.erp.modules.wms.model.WmsConstants.locationOrNone;
 import static com.lemon.erp.modules.wms.model.WmsConstants.splitSerials;
 
 /**
- * 盘点单：按仓库当前库存生成明细，录入实盘数量后确认，库存调整为实盘数量。
+ * 盘点单：按仓库当前库存生成明细，或从物料资料中选择（可只选一段时间内有过库存变动的物料，即动态盘点），
+ * 录入实盘数量后确认，库存调整为实盘数量。
  * <ul>
  *   <li>账面数量以确认时的库存为准（草稿中显示的是最近一次保存时的库存），确认后库存 = 实盘数量</li>
  *   <li>序列号物料按实盘序列号盘点：生成明细时带出在库序列号，确认时多出的序列号盘盈入库、缺少的盘亏出库</li>
@@ -84,6 +93,7 @@ public class WmsCheckService {
     private final PermissionService permissionService;
     private final StockCostService costService;
     private final WmsStockFlowMapper flowMapper;
+    private final WmsLocationMapper locationMapper;
 
     public static final String PROCESS_KEY = "wms_check";
     private static final ApprovalFlow FLOW = new ApprovalFlow(PROCESS_KEY, "wms_check:");
@@ -145,15 +155,105 @@ public class WmsCheckService {
             item.setUnit(s.getUnit());
             item.setBatchEnabled(s.getBatchEnabled());
             item.setSerialEnabled(s.getSerialEnabled());
-            item.setLocationId(s.getLocationId());
-            item.setLocationCode(s.getLocationCode());
-            item.setBatchNo(s.getBatchNo());
-            item.setBookQty(s.getQty());
-            Set<String> slotSerials = serials.get(slotKey(s.getLocationId(), s.getMaterialId(), s.getBatchNo()));
-            item.setSerialNos(slotSerials == null ? null : joinSerials(List.copyOf(slotSerials)));
+            fillSlot(item, s, serials);
             return item;
         }).toList();
-        if (permissionService.hasPerm(WmsStockDocService.COST_PERM)) {
+        return withAvgCost(items);
+    }
+
+    /**
+     * 选择盘点的物料（动态盘点）：数据来源是物料资料，可只列出一段时间内在盘点仓库有过库存变动的物料，
+     * 每行带出盘点仓库的当前库存（没有库存为 0）、最近变动时间和最新进货 / 销售日期
+     */
+    public PageResult<CheckMaterialView> pageMaterials(long current, long size, CheckMaterialQuery query) {
+        Page<CheckMaterialView> page = Page.of(current, size);
+        checkMapper.selectMaterialPage(page, query);
+        List<CheckMaterialView> rows = page.getRecords();
+        if (!rows.isEmpty()) {
+            Map<Long, CheckMaterialView> stats = checkMapper.selectMaterialStats(query.warehouseId(),
+                            rows.stream().map(CheckMaterialView::getId).toList())
+                    .stream().collect(Collectors.toMap(CheckMaterialView::getId, Function.identity()));
+            rows.forEach(r -> {
+                CheckMaterialView s = stats.get(r.getId());
+                r.setQty(s == null || s.getQty() == null ? BigDecimal.ZERO : s.getQty());
+                if (s != null) {
+                    r.setLastChangeTime(s.getLastChangeTime());
+                    r.setLastPurchaseDate(s.getLastPurchaseDate());
+                    r.setLastSalesDate(s.getLastSalesDate());
+                }
+            });
+        }
+        return PageResult.of(page);
+    }
+
+    /**
+     * 把选择的物料转为盘点明细（不保存）：有库存的按库存位置各一行（带出账面数量、在库序列号），
+     * 盘点仓库没有库存的一行（账面 0，库位取物料在该仓库的默认库位），用于盘点账面为 0 而实物还有的情况
+     */
+    public List<WmsCheckItem> materialItems(CheckMaterialItemsRequest req) {
+        WmsWarehouse warehouse = refs.warehouse(req.warehouseId(), "wms.label.countWarehouse");
+        Map<Long, WmsMaterial> materials = refs.materials(req.materialIds(), false);
+        Map<Long, List<StockView>> slots = checkMapper.selectMaterialSlots(warehouse.getId(), materials.keySet()).stream()
+                .collect(Collectors.groupingBy(StockView::getMaterialId));
+        Set<Long> serialMaterialIds = materials.values().stream()
+                .filter(m -> m.isSerialManaged() && slots.containsKey(m.getId())).map(WmsMaterial::getId).collect(Collectors.toSet());
+        Map<String, Set<String>> serials = inStockSerials(warehouse.getId(), serialMaterialIds);
+        // 没有库存的物料：默认库位在盘点仓库时带出
+        List<Long> defaultLocationIds = materials.values().stream()
+                .filter(m -> !slots.containsKey(m.getId()) && m.getDefaultLocationId() != null)
+                .map(WmsMaterial::getDefaultLocationId).distinct().toList();
+        Map<Long, WmsLocation> defaultLocations = defaultLocationIds.isEmpty() ? Map.of()
+                : locationMapper.selectByIds(defaultLocationIds).stream().collect(Collectors.toMap(WmsLocation::getId, Function.identity()));
+        List<WmsCheckItem> items = new ArrayList<>();
+        materials.values().stream().filter(m -> !m.isTemplateMaterial())
+                .sorted(Comparator.comparing(WmsMaterial::getCode))
+                .forEach(m -> {
+                    List<StockView> materialSlots = slots.get(m.getId());
+                    if (materialSlots != null) {
+                        materialSlots.forEach(s -> {
+                            WmsCheckItem item = itemOf(m);
+                            fillSlot(item, s, serials);
+                            items.add(item);
+                        });
+                        return;
+                    }
+                    WmsCheckItem item = itemOf(m);
+                    WmsLocation location = m.getDefaultLocationId() == null ? null : defaultLocations.get(m.getDefaultLocationId());
+                    boolean inWarehouse = location != null && Objects.equals(location.getWarehouseId(), warehouse.getId());
+                    item.setLocationId(inWarehouse ? location.getId() : NO_LOCATION);
+                    item.setLocationCode(inWarehouse ? location.getCode() : null);
+                    item.setBatchNo(NO_BATCH);
+                    item.setBookQty(BigDecimal.ZERO);
+                    items.add(item);
+                });
+        return withAvgCost(items);
+    }
+
+    private static WmsCheckItem itemOf(WmsMaterial m) {
+        WmsCheckItem item = new WmsCheckItem();
+        item.setMaterialId(m.getId());
+        item.setMaterialCode(m.getCode());
+        item.setMaterialName(m.getName());
+        item.setSpec(m.getSpec());
+        item.setUnit(m.getUnit());
+        item.setBatchEnabled(m.getBatchEnabled());
+        item.setSerialEnabled(m.getSerialEnabled());
+        return item;
+    }
+
+    /** 库存位置、账面数量和在库序列号 */
+    private static void fillSlot(WmsCheckItem item, StockView s, Map<String, Set<String>> serials) {
+        item.setLocationId(s.getLocationId());
+        item.setLocationCode(s.getLocationCode());
+        item.setBatchNo(s.getBatchNo());
+        item.setBookQty(s.getQty());
+        Set<String> slotSerials = serials.get(slotKey(s.getLocationId(), s.getMaterialId(), s.getBatchNo()));
+        item.setSerialNos(slotSerials == null ? null : joinSerials(List.copyOf(slotSerials)));
+    }
+
+    /** 当前均价只给有「查看成本金额」权限的人 */
+    private List<WmsCheckItem> withAvgCost(List<WmsCheckItem> items) {
+        if (!items.isEmpty() && permissionService.hasPerm(WmsStockDocService.COST_PERM)) {
             fillAvgCost(items);
         }
         return items;
