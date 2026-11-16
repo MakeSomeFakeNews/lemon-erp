@@ -1,10 +1,16 @@
 package com.lemon.erp.modules.bi.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.lemon.erp.modules.bi.model.SalesRateBase;
+import com.lemon.erp.modules.bi.model.SalesRateMode;
+import com.lemon.erp.modules.bi.model.StockAlertTab;
+import com.lemon.erp.modules.bi.model.TurnoverBasis;
 import com.lemon.erp.modules.fin.dto.AdjustRow;
 import com.lemon.erp.modules.scm.dto.RfmSettings;
 import com.lemon.erp.modules.scm.model.RfmSegment;
 import com.lemon.erp.modules.scm.model.TradeKind;
+import com.lemon.erp.modules.wms.model.StockAlert;
+import com.lemon.erp.modules.wms.model.StockAlertMode;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -371,6 +377,151 @@ public final class JxcViews {
      */
     public record OverstockPage(List<OverstockRow> records, long total, OverstockRow summary, LocalDate date,
                                 LocalDate salesBegin, LocalDate salesEnd, boolean costVisible) {
+    }
+
+    // ---------------------------------------------------------------- 库存分析（issue #116）
+
+    /**
+     * 周转分析的一行。出库 = 销售出库 − 销售退货（口径同销售报表，按所选仓库）；期初库存为开始日期之前、期末库存为截至结束日期的库存
+     * （当前库存 − 业务日期在其后的流水，不含供应商寄售仓）；金额 = 数量 × 所选维度的单价（价格为空时金额为空）。
+     * 合计行另有 materialCount
+     */
+    @Data
+    public static class TurnoverRow {
+        private Long materialId;
+        private String code;
+        private String name;
+        private String spec;
+        private String unit;
+        private String category;
+        private String brand;
+        private BigDecimal outQty;
+        private BigDecimal outAmount;
+        private BigDecimal openQty;
+        private BigDecimal openAmount;
+        private BigDecimal closeQty;
+        private BigDecimal closeAmount;
+        /** 计算金额用的单价（只用于计算，不返回） */
+        @JsonIgnore
+        private BigDecimal price;
+        /** 周转天数 = 期间天数 × (期初 + 期末) ÷ 2 ÷ 本期出库，出库不大于 0 时为空 */
+        private BigDecimal turnoverDays;
+        /** 周转率（%）= 本期出库 ÷ ((期初 + 期末) ÷ 2) × 100，平均库存不大于 0 时为空 */
+        private BigDecimal turnoverRate;
+        private Long materialCount;
+    }
+
+    /**
+     * @param days          期间天数
+     * @param amountVisible 是否返回金额列（按数量时需要「查看成本金额」，金额按库存均价）
+     */
+    public record TurnoverPage(List<TurnoverRow> records, long total, TurnoverRow summary, long days,
+                               TurnoverBasis basis, boolean amountVisible) {
+    }
+
+    /**
+     * 滞销 / 畅销分析的一行：销售比例（%）= 期间净销量 ÷ 销售基数 × 100。合计行的销售比例按合计计算
+     */
+    @Data
+    public static class SalesRateRow {
+        private Long materialId;
+        private String code;
+        private String name;
+        private String spec;
+        private String unit;
+        private String category;
+        private String brand;
+        /** 净销量（销售出库 − 销售退货） */
+        private BigDecimal salesQty;
+        /** 本期进货量（采购入库 − 采购退货） */
+        private BigDecimal purchaseQty;
+        /** 期初库存（开始日期之前） */
+        private BigDecimal openQty;
+        private BigDecimal baseQty;
+        private BigDecimal ratio;
+        private Long materialCount;
+    }
+
+    /** @param ratio 实际使用的销售比例阈值（%） */
+    public record SalesRatePage(List<SalesRateRow> records, long total, SalesRateRow summary,
+                                SalesRateMode mode,
+                                SalesRateBase base, BigDecimal ratio) {
+    }
+
+    /**
+     * 库存预警的一行。「仓库」标签页每个仓库 + 商品一行；「高于上限」「低于下限」每个预警单元一行：
+     * 分仓库预警的商品每个设置了上下限的仓库一行，按总库存预警的商品一行（仓库为空，库存为所有仓库的合计）。
+     * 库存为截至日的库存；金额按库存均价（实时移动加权平均）计算，不含供应商寄售仓的货物
+     */
+    @Data
+    public static class StockAlertRow {
+        private Long warehouseId;
+        private String warehouseName;
+        private Long materialId;
+        private String code;
+        private String name;
+        private String spec;
+        private String unit;
+        private String category;
+        private String brand;
+        /** 库存预警方式（TOTAL / WAREHOUSE） */
+        private StockAlertMode alertMode;
+        /** 登记日期（物料资料的创建日期） */
+        private LocalDate createDate;
+        /** 仓库的排序（只用于排序） */
+        @JsonIgnore
+        private Integer warehouseSort;
+        /** 截至日之前该仓库最近一次采购入库、销售出库的日期 */
+        private LocalDate lastInDate;
+        private LocalDate lastSaleDate;
+        /** 月销量：截至日往前一个月的净销量 */
+        private BigDecimal monthQty;
+        /** 订单数量：未出库的销售订单 + 没有引用订单的销售出库草稿（当前，不随截至日期变化） */
+        private BigDecimal orderQty;
+        private BigDecimal stockQty;
+        /** 本公司存货的数量（不含供应商寄售仓，只用于计算金额） */
+        @JsonIgnore
+        private BigDecimal ownQty;
+        /** 库存金额、库存均价需要「查看成本金额」 */
+        private BigDecimal stockAmount;
+        private BigDecimal unitCost;
+        /** 参考进价（物料的参考成本价），需要采购查看权限 */
+        private BigDecimal refCost;
+        /** 零售价、批发价（含税），需要售价查看权限，停用的价格列不返回 */
+        private BigDecimal retailPrice;
+        private BigDecimal wholesalePrice1;
+        private BigDecimal wholesalePrice2;
+        private BigDecimal wholesalePrice3;
+        private BigDecimal wholesalePrice4;
+        private BigDecimal wholesalePrice5;
+        private BigDecimal wholesalePrice6;
+        private BigDecimal wholesalePrice7;
+        private BigDecimal wholesalePrice8;
+        /** 库存下限、上限：分仓库预警取该仓库的设置，按总库存取物料上的设置 */
+        private BigDecimal minQty;
+        private BigDecimal maxQty;
+        /** 预警状态（仓库标签页）：分仓库按该仓库判断，按总库存按所有仓库的合计判断 */
+        private StockAlert alert;
+        /** 默认货位：物料资料的默认库位（只在默认仓库的行显示） */
+        private String locationCode;
+        /** 高于上限：积压基数 = 上限，积压数量 = 库存 − 上限；低于下限：补货基数 = 下限，补货数量 = 下限 − 库存 */
+        private BigDecimal baseQty;
+        private BigDecimal gapQty;
+        /** 积压 / 补货系数 = 积压 / 补货数量 ÷ 基数，基数不大于 0 时为空 */
+        private BigDecimal ratio;
+        /** 资金占用 / 补货资金 = 库存均价 × 积压 / 补货数量，需要「查看成本金额」 */
+        private BigDecimal gapAmount;
+        private Long materialCount;
+    }
+
+    /**
+     * @param monthBegin      月销量的开始日期（到截至日）
+     * @param purchaseVisible 是否返回参考进价
+     * @param salesVisible    是否返回零售价、批发价
+     */
+    public record StockAlertPage(List<StockAlertRow> records, long total, StockAlertRow summary,
+                                 StockAlertTab tab, LocalDate date, LocalDate monthBegin,
+                                 boolean costVisible, boolean purchaseVisible, boolean salesVisible) {
     }
 
     // ---------------------------------------------------------------- RFM

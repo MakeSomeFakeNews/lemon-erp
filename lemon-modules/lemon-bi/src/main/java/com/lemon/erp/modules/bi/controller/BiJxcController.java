@@ -8,7 +8,9 @@ import com.lemon.erp.modules.bi.model.JxcDimension;
 import com.lemon.erp.modules.bi.service.BiJxcAnalysisService;
 import com.lemon.erp.modules.bi.service.BiJxcService;
 import com.lemon.erp.modules.bi.service.BiOverstockService;
+import com.lemon.erp.modules.bi.service.BiStockAnalysisService;
 import com.lemon.erp.modules.bi.dto.OverstockQuery;
+import com.lemon.erp.modules.bi.dto.StockAnalysisQuery;
 import com.lemon.erp.modules.scm.dto.RfmSettings;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -21,7 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 
 /**
- * 进销存报表 /bi/jxc：销售报表、进货报表（汇总 → 商品明细 / 单据列表 → 单据明细）、经营状况、资产状况、商品分析、积压分析、客户 RFM。
+ * 进销存报表 /bi/jxc：销售报表、进货报表（汇总 → 商品明细 / 单据列表 → 单据明细）、经营状况、资产状况、商品分析、积压分析、
+ * 库存分析（周转、滞销 / 畅销、库存预警）、客户 RFM。
  * 查询条件见 {@link JxcQuery}，日期范围必填；明细的 dim + key 为穿透的汇总维度和取值
  */
 @RestController
@@ -32,6 +35,7 @@ public class BiJxcController {
     private final BiJxcService jxcService;
     private final BiJxcAnalysisService analysisService;
     private final BiOverstockService overstockService;
+    private final BiStockAnalysisService stockAnalysisService;
 
     // ---------------------------------------------------------------- 销售报表
 
@@ -166,6 +170,32 @@ public class BiJxcController {
     public R<JxcViews.OverstockPage> overstockAnalysis(OverstockQuery q, @RequestParam(defaultValue = "1") long current,
                                                        @RequestParam(defaultValue = "20") long size) {
         return R.ok(overstockService.page(q, current, size));
+    }
+
+    // ---------------------------------------------------------------- 库存分析（issue #116）
+
+    /** 周转分析：日期范围必填，计算维度为成本价时需要「查看成本金额」，零售价 / 批发价需要售价查看权限 */
+    @GetMapping("/turnover")
+    @PreAuthorize("@ss.hasPerm('bi:jxc:turnover')")
+    public R<JxcViews.TurnoverPage> turnover(StockAnalysisQuery q, @RequestParam(defaultValue = "1") long current,
+                                             @RequestParam(defaultValue = "20") long size) {
+        return R.ok(stockAnalysisService.turnover(q, current, size));
+    }
+
+    /** 滞销 / 畅销分析（mode = SLOW / HOT） */
+    @GetMapping("/sales-rate")
+    @PreAuthorize("@ss.hasPerm('bi:jxc:salesRate')")
+    public R<JxcViews.SalesRatePage> salesRate(StockAnalysisQuery q, @RequestParam(defaultValue = "1") long current,
+                                               @RequestParam(defaultValue = "20") long size) {
+        return R.ok(stockAnalysisService.salesRate(q, current, size));
+    }
+
+    /** 库存预警（tab = WAREHOUSE / HIGH / LOW），截至日期不传为今天 */
+    @GetMapping("/stock-alert")
+    @PreAuthorize("@ss.hasPerm('bi:jxc:stockAlert')")
+    public R<JxcViews.StockAlertPage> stockAlert(StockAnalysisQuery q, @RequestParam(defaultValue = "1") long current,
+                                                 @RequestParam(defaultValue = "20") long size) {
+        return R.ok(stockAnalysisService.stockAlert(q, current, size));
     }
 
     // ---------------------------------------------------------------- 客户 RFM

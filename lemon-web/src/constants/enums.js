@@ -1524,6 +1524,18 @@ export const SalesContractStatus = Object.freeze({
   TERMINATED: 'TERMINATED', // 已终止
 })
 
+/** com.lemon.erp.modules.bi.model.SalesRateBase */
+export const SalesRateBase = Object.freeze({
+  PURCHASE: 'PURCHASE', // 本期进货量
+  OPENING_PURCHASE: 'OPENING_PURCHASE', // 期初库存 + 本期进货量
+})
+
+/** com.lemon.erp.modules.bi.model.SalesRateMode */
+export const SalesRateMode = Object.freeze({
+  SLOW: 'SLOW', // 滞销
+  HOT: 'HOT', // 畅销
+})
+
 /** com.lemon.erp.modules.mes.model.SamplingMode（字典 qms_sampling_mode） */
 export const SamplingMode = Object.freeze({
   FULL: 'FULL', // 全检
@@ -1615,10 +1627,24 @@ export const StockAlert = Object.freeze({
   HIGH: 'HIGH', // 高于库存上限
 })
 
+/** com.lemon.erp.modules.bi.model.StockAlertFilter */
+export const StockAlertFilter = Object.freeze({
+  LOW: 'LOW', // 低于库存下限
+  HIGH: 'HIGH', // 高于库存上限
+  ANY: 'ANY', // 低于下限或高于上限
+})
+
 /** com.lemon.erp.modules.wms.model.StockAlertMode（字典 wms_stock_alert_mode） */
 export const StockAlertMode = Object.freeze({
   TOTAL: 'TOTAL', // 按总库存
   WAREHOUSE: 'WAREHOUSE', // 分仓库
+})
+
+/** com.lemon.erp.modules.bi.model.StockAlertTab */
+export const StockAlertTab = Object.freeze({
+  WAREHOUSE: 'WAREHOUSE', // 仓库
+  HIGH: 'HIGH', // 高于上限
+  LOW: 'LOW', // 低于下限
 })
 
 /** com.lemon.erp.modules.wms.model.StockBizType（字典 wms_biz_type） */
@@ -1656,6 +1682,14 @@ export const StockOutType = Object.freeze({
   CONSIGN: 'CONSIGN', // 寄售消耗
   CONSUME: 'CONSUME', // 部门领用
   ASSEMBLY: 'ASSEMBLY', // 组装拆卸
+})
+
+/** com.lemon.erp.modules.bi.model.StockQtyFilter */
+export const StockQtyFilter = Object.freeze({
+  POSITIVE: 'POSITIVE', // 库存 &gt
+  ZERO: 'ZERO', // 库存 = 0
+  NEGATIVE: 'NEGATIVE', // 库存 &lt
+  NONZERO: 'NONZERO', // 库存 ≠ 0
 })
 
 /** com.lemon.erp.modules.mes.model.StopReason（字典 mes_stop_reason） */
@@ -1777,6 +1811,20 @@ export const TransferPricing = Object.freeze({
   AVG_COST: 'AVG_COST', // 库存均价
   MIN_SALE: 'MIN_SALE', // 最低售价
   PRICE_LEVEL: 'PRICE_LEVEL', // 价格列
+})
+
+/** com.lemon.erp.modules.bi.model.TurnoverBasis */
+export const TurnoverBasis = Object.freeze({
+  QTY: 'QTY', // 销售数量
+  COST: 'COST', // 成本价
+  RETAIL: 'RETAIL', // 零售价
+  WHOLESALE: 'WHOLESALE', // 批发价
+})
+
+/** com.lemon.erp.modules.bi.model.TurnoverOutFilter */
+export const TurnoverOutFilter = Object.freeze({
+  HAS_OUT: 'HAS_OUT', // 不显示本期出库为 0 的商品
+  NO_OUT: 'NO_OUT', // 只显示本期出库为 0 的商品
 })
 
 /** com.lemon.erp.modules.fin.model.VoucherSource（字典 fin_voucher_source） */

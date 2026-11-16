@@ -219,6 +219,9 @@ export default {
   374: 'Product Analysis', // 商品分析
   375: 'Customer Analysis', // 客户分析
   376: 'Overstock Analysis', // 积压分析
+  385: 'Turnover Analysis', // 周转分析
+  386: 'Slow / Fast Movers', // 滞销畅销
+  387: 'Stock Alerts', // 库存预警
   970: 'Production Statistics', // 生产统计
   410: 'Piecework by Operator', // 人员计件统计
   411: 'Operation Output', // 工序产量统计
