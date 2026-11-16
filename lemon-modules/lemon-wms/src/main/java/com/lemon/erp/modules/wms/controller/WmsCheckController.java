@@ -4,6 +4,9 @@ import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
+import com.lemon.erp.modules.wms.dto.CheckMaterialItemsRequest;
+import com.lemon.erp.modules.wms.dto.CheckMaterialQuery;
+import com.lemon.erp.modules.wms.dto.CheckMaterialView;
 import com.lemon.erp.modules.wms.dto.CheckRequest;
 import com.lemon.erp.modules.wms.dto.DocQuery;
 import com.lemon.erp.modules.wms.entity.WmsCheck;
@@ -47,6 +50,22 @@ public class WmsCheckController {
                                           @RequestParam(required = false) String keyword,
                                           @RequestParam(required = false) String category) {
         return R.ok(checkService.snapshot(warehouseId, locationId, keyword, category));
+    }
+
+    /** 选择盘点的物料：物料资料，可只看一段时间内有过库存变动的（动态盘点） */
+    @GetMapping("/materials")
+    @PreAuthorize("@ss.hasAnyPerm('wms:check:add', 'wms:check:edit')")
+    public R<PageResult<CheckMaterialView>> materials(@RequestParam(defaultValue = "1") long current,
+                                                      @RequestParam(defaultValue = "10") long size,
+                                                      CheckMaterialQuery query) {
+        return R.ok(checkService.pageMaterials(current, size, query));
+    }
+
+    /** 把选择的物料转为盘点明细（不保存），带出账面数量 */
+    @PostMapping("/materials/items")
+    @PreAuthorize("@ss.hasAnyPerm('wms:check:add', 'wms:check:edit')")
+    public R<List<WmsCheckItem>> materialItems(@Valid @RequestBody CheckMaterialItemsRequest req) {
+        return R.ok(checkService.materialItems(req));
     }
 
     @GetMapping("/{id}")

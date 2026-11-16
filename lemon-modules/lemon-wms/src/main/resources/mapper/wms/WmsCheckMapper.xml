@@ -37,4 +37,99 @@
         WHERE c.id = #{id}
     </select>
 
+    <!-- 最新进货 / 销售：已完成的采购入库、销售出库（不含红字）按物料取最大业务日期 -->
+    <sql id="tradeDocs">
+        FROM wms_stock_doc_item i
+        JOIN wms_stock_doc d ON d.id = i.doc_id
+        WHERE d.status = 'DONE' AND d.red_of IS NULL
+    </sql>
+
+    <!--
+        选择盘点的物料：数据来源是物料资料（不是库存），多规格款式本身没有库存，不列出。
+        变动：盘点仓库（为空时任意仓库）在日期范围内有库存流水（按发生时间，不含盘点本身的盘盈盘亏），
+        走 idx_flow_material_wh（material_id, warehouse_id, create_time, biz_type）
+    -->
+    <select id="selectMaterialPage" resultType="com.lemon.erp.modules.wms.dto.CheckMaterialView">
+        <bind name="kw" value="q.trimmedKeyword()"/>
+        <bind name="norm" value="q.searchNorm()"/>
+        <bind name="changeFrom" value="q.changeFrom()"/>
+        <bind name="changeTo" value="q.changeTo()"/>
+        SELECT m.id, m.code, m.name, m.spec, m.unit, m.category, m.brand, m.batch_enabled, m.serial_enabled, m.status
+        FROM wms_material m
+        WHERE m.is_template = 0
+        <if test="kw != ''">
+            AND (m.code LIKE CONCAT('%', #{kw}, '%') OR m.name LIKE CONCAT('%', #{kw}, '%')
+                 OR m.spec LIKE CONCAT('%', #{kw}, '%') OR m.barcode LIKE CONCAT('%', #{kw}, '%')
+                 <if test="norm != ''">OR m.search_key LIKE CONCAT('%', #{norm}, '%')</if>)
+        </if>
+        <if test="q.category != null and q.category != ''">AND m.category IN (<include refid="com.lemon.erp.modules.wms.mapper.WmsMaterialCategoryMapper.subtreeCodes"><property name="code" value="q.category"/></include>)</if>
+        <if test="q.brand != null and q.brand != ''">AND m.brand = #{q.brand}</if>
+        <if test="q.status != null">AND m.status = #{q.status}</if>
+        <if test="q.locationId != null">
+            AND (m.default_location_id = #{q.locationId}
+                 OR EXISTS (SELECT 1 FROM wms_stock s WHERE s.material_id = m.id AND s.location_id = #{q.locationId} AND s.qty &gt; 0))
+        </if>
+        <if test="q.inStockOnly()">
+            AND EXISTS (SELECT 1 FROM wms_stock s WHERE s.material_id = m.id AND s.qty &gt; 0
+                        <if test="q.warehouseId != null">AND s.warehouse_id = #{q.warehouseId}</if>)
+        </if>
+        <if test="q.changedOnly()">
+            AND EXISTS (SELECT 1 FROM wms_stock_flow f WHERE f.material_id = m.id
+                        <if test="q.warehouseId != null">AND f.warehouse_id = #{q.warehouseId}</if>
+                        <if test="changeFrom != null">AND f.create_time &gt;= #{changeFrom}</if>
+                        <if test="changeTo != null">AND f.create_time &lt; #{changeTo}</if>
+                        AND f.biz_type &lt;&gt; 'CHECK')
+        </if>
+        <if test="q.purchaseFilter()">
+            AND m.id IN (SELECT i.material_id <include refid="tradeDocs"/> AND d.kind = 'IN' AND d.biz_type = 'PURCHASE'
+                         GROUP BY i.material_id
+                         <trim prefix="HAVING" prefixOverrides="AND">
+                             <if test="q.purchaseBegin != null">AND MAX(d.biz_date) &gt;= #{q.purchaseBegin}</if>
+                             <if test="q.purchaseEnd != null">AND MAX(d.biz_date) &lt;= #{q.purchaseEnd}</if>
+                         </trim>)
+        </if>
+        <if test="q.salesFilter()">
+            AND m.id IN (SELECT i.material_id <include refid="tradeDocs"/> AND d.kind = 'OUT' AND d.biz_type = 'SALES'
+                         GROUP BY i.material_id
+                         <trim prefix="HAVING" prefixOverrides="AND">
+                             <if test="q.salesBegin != null">AND MAX(d.biz_date) &gt;= #{q.salesBegin}</if>
+                             <if test="q.salesEnd != null">AND MAX(d.biz_date) &lt;= #{q.salesEnd}</if>
+                         </trim>)
+        </if>
+        ORDER BY m.code
+    </select>
+
+    <!-- 本页物料的当前库存、最近变动（不含盘点）、最新进货 / 销售日期 -->
+    <select id="selectMaterialStats" resultType="com.lemon.erp.modules.wms.dto.CheckMaterialView">
+        SELECT m.id, COALESCE(st.qty, 0) AS qty, fl.last_change_time, td.last_purchase_date, td.last_sales_date
+        FROM wms_material m
+        LEFT JOIN (SELECT s.material_id, SUM(s.qty) AS qty FROM wms_stock s
+                   WHERE s.material_id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+                   <if test="warehouseId != null">AND s.warehouse_id = #{warehouseId}</if>
+                   GROUP BY s.material_id) st ON st.material_id = m.id
+        LEFT JOIN (SELECT f.material_id, MAX(f.create_time) AS last_change_time FROM wms_stock_flow f
+                   WHERE f.material_id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+                   <if test="warehouseId != null">AND f.warehouse_id = #{warehouseId}</if>
+                   AND f.biz_type &lt;&gt; 'CHECK'
+                   GROUP BY f.material_id) fl ON fl.material_id = m.id
+        LEFT JOIN (SELECT i.material_id,
+                          MAX(CASE WHEN d.kind = 'IN' THEN d.biz_date END) AS last_purchase_date,
+                          MAX(CASE WHEN d.kind = 'OUT' THEN d.biz_date END) AS last_sales_date
+                   <include refid="tradeDocs"/>
+                   AND i.material_id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+                   AND ((d.kind = 'IN' AND d.biz_type = 'PURCHASE') OR (d.kind = 'OUT' AND d.biz_type = 'SALES'))
+                   GROUP BY i.material_id) td ON td.material_id = m.id
+        WHERE m.id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <!-- 这些物料在盘点仓库的库存位置（数量不为 0） -->
+    <select id="selectMaterialSlots" resultType="com.lemon.erp.modules.wms.dto.StockView">
+        SELECT s.location_id, l.code AS location_code, s.material_id, s.batch_no, s.qty
+        FROM wms_stock s
+        LEFT JOIN wms_location l ON l.id = s.location_id
+        WHERE s.warehouse_id = #{warehouseId} AND s.qty &lt;&gt; 0
+          AND s.material_id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY l.code, s.batch_no
+    </select>
+
 </mapper>

@@ -1101,6 +1101,8 @@ CREATE TABLE wms_stock_flow (
     PRIMARY KEY (id),
     -- 批次追踪、物料台账
     KEY idx_flow_material (material_id, batch_no),
+    -- 动态盘点：物料在仓库某段时间内是否有过变动、最近变动时间（盘点单选择商品）
+    KEY idx_flow_material_wh (material_id, warehouse_id, create_time, biz_type),
     KEY idx_flow_doc (biz_type, doc_id),
     KEY idx_flow_time (create_time)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '库存流水';
