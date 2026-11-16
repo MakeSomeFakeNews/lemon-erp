@@ -26,5 +26,18 @@ export const jxcGoods = (type, params) => request.get(`/bi/jxc/goods/${type}`, {
  */
 export const jxcOverstock = (params) => request.get('/bi/jxc/overstock', { params })
 
+/**
+ * 库存分析（issue #116）。商品条件 { warehouseId, category, brand, keyword }，分页 { current, size }，返回 { records, total, summary, ... }
+ * 周转分析：{ begin, end, basis（TurnoverBasis）, priceLevel, excludeIdle, outFilter（TurnoverOutFilter） } → 另有 days、basis、amountVisible
+ */
+export const jxcTurnover = (params) => request.get('/bi/jxc/turnover', { params })
+/** 滞销 / 畅销分析：{ begin, end, mode（SalesRateMode）, base（SalesRateBase）, ratio（%） } → 另有实际使用的 mode、base、ratio */
+export const jxcSalesRate = (params) => request.get('/bi/jxc/sales-rate', { params })
+/**
+ * 库存预警：{ date（截至日期）, tab（StockAlertTab）, stockFilter（StockQtyFilter）, alertFilter（StockAlertFilter） }
+ * → 另有 date、monthBegin、costVisible、purchaseVisible、salesVisible（没有权限的金额、价格不返回）
+ */
+export const jxcStockAlert = (params) => request.get('/bi/jxc/stock-alert', { params })
+
 /** 客户 RFM */
 export const jxcRfm = (params) => request.get('/bi/jxc/rfm', { params })

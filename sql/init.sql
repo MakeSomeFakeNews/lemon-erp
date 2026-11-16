@@ -7574,8 +7574,12 @@ INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, s
 (373, 966, '资产状况', 'C', 'jxc-assets', 'jxc/assets/index', 'bi:jxc:asset', 'AccountBookOutlined', 4, 1, 1, NOW(), NOW()),
 (374, 966, '商品分析', 'C', 'jxc-goods', 'jxc/goods/index', 'bi:jxc:goods', 'AppstoreOutlined', 5, 1, 1, NOW(), NOW()),
 (375, 966, '客户分析', 'C', 'jxc-rfm', 'jxc/rfm/index', 'bi:jxc:rfm', 'TeamOutlined', 6, 1, 1, NOW(), NOW()),
-(376, 966, '积压分析', 'C', 'jxc-overstock', 'jxc/overstock/index', 'bi:jxc:overstock', 'HourglassOutlined', 7, 1, 1, NOW(), NOW());
--- 普通用户（除资产状况）、总经理、会计全部；采购员进货报表、商品分析和积压分析；销售员销售报表和客户分析；仓库管理员商品分析和积压分析；出纳资产状况（连同分组和供应链模块）
+(376, 966, '积压分析', 'C', 'jxc-overstock', 'jxc/overstock/index', 'bi:jxc:overstock', 'HourglassOutlined', 7, 1, 1, NOW(), NOW()),
+(385, 966, '周转分析', 'C', 'jxc-turnover', 'jxc/turnover/index', 'bi:jxc:turnover', 'SyncOutlined', 8, 1, 1, NOW(), NOW()),
+(386, 966, '滞销畅销', 'C', 'jxc-sales-rate', 'jxc/salesRate/index', 'bi:jxc:salesRate', 'FireOutlined', 9, 1, 1, NOW(), NOW()),
+(387, 966, '库存预警', 'C', 'jxc-stock-alert', 'jxc/stockAlert/index', 'bi:jxc:stockAlert', 'AlertOutlined', 10, 1, 1, NOW(), NOW());
+-- 普通用户（除资产状况）、总经理、会计全部；采购员进货报表、商品分析和库存分析（积压、周转、滞销畅销、库存预警）；销售员销售报表和客户分析；
+-- 仓库管理员商品分析和库存分析；出纳资产状况（连同分组和供应链模块）
 INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT g.role_id, g.menu_id FROM (
     SELECT 2 AS role_id, 370 AS menu_id UNION ALL SELECT 2, 371 UNION ALL SELECT 2, 372 UNION ALL SELECT 2, 374 UNION ALL SELECT 2, 375
@@ -7583,6 +7587,7 @@ SELECT g.role_id, g.menu_id FROM (
     UNION ALL SELECT 9, 370 UNION ALL SELECT 9, 371 UNION ALL SELECT 9, 372 UNION ALL SELECT 9, 373 UNION ALL SELECT 9, 374 UNION ALL SELECT 9, 375
     UNION ALL SELECT 4, 371 UNION ALL SELECT 4, 374 UNION ALL SELECT 5, 370 UNION ALL SELECT 5, 375 UNION ALL SELECT 6, 374 UNION ALL SELECT 10, 373
     UNION ALL SELECT 2, 376 UNION ALL SELECT 3, 376 UNION ALL SELECT 9, 376 UNION ALL SELECT 4, 376 UNION ALL SELECT 6, 376
+    UNION ALL SELECT r.id, m.id FROM sys_role r JOIN sys_menu m ON m.id IN (385, 386, 387) WHERE r.id IN (2, 3, 4, 6, 9)
     UNION ALL SELECT r.id, 966 FROM sys_role r WHERE r.id IN (2, 3, 4, 5, 6, 9, 10)
     UNION ALL SELECT r.id, 5 FROM sys_role r WHERE r.id IN (2, 3, 4, 5, 6, 9, 10)
 ) g

@@ -358,15 +358,22 @@ public class BiJxcService {
     }
 
     static void checkRange(JxcQuery q, int maxDays) {
-        if (q.getBegin() == null || q.getEnd() == null) {
+        checkRange(q.getBegin(), q.getEnd(), maxDays);
+    }
+
+    /** 校验日期范围（必填、结束不早于开始、不超过 maxDays 天），返回期间天数 */
+    static long checkRange(LocalDate begin, LocalDate end, int maxDays) {
+        if (begin == null || end == null) {
             throw new BizException("bi.error.jxcDateRangeRequired");
         }
-        if (q.getEnd().isBefore(q.getBegin())) {
+        if (end.isBefore(begin)) {
             throw new BizException("bi.error.jxcEndBeforeBegin");
         }
-        if (ChronoUnit.DAYS.between(q.getBegin(), q.getEnd()) + 1 > maxDays) {
+        long days = ChronoUnit.DAYS.between(begin, end) + 1;
+        if (days > maxDays) {
             throw new BizException("bi.error.jxcDateRangeTooLong", String.valueOf(maxDays));
         }
+        return days;
     }
 
     /** 穿透到某天 / 某月：与原日期范围取交集（没有交集时结果为空） */

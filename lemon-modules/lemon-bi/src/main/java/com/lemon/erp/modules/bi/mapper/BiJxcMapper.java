@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.modules.bi.dto.JxcQuery;
 import com.lemon.erp.modules.bi.dto.JxcViews;
 import com.lemon.erp.modules.bi.dto.OverstockQuery;
+import com.lemon.erp.modules.bi.dto.StockAnalysisQuery;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -69,4 +70,20 @@ public interface BiJxcMapper {
 
     /** 积压分析的合计（全部积压物料） */
     JxcViews.OverstockRow selectOverstockTotal(@Param("q") OverstockQuery q);
+
+    /** 周转分析（issue #116）：周转最慢的在前 */
+    Page<JxcViews.TurnoverRow> selectTurnover(Page<JxcViews.TurnoverRow> page, @Param("q") StockAnalysisQuery q);
+
+    /** 周转分析的合计（数量、金额，金额只含有价格的商品） */
+    JxcViews.TurnoverRow selectTurnoverTotal(@Param("q") StockAnalysisQuery q);
+
+    /** 滞销 / 畅销分析（issue #116）：销售比例不高于 / 不低于阈值的商品 */
+    Page<JxcViews.SalesRateRow> selectSalesRate(Page<JxcViews.SalesRateRow> page, @Param("q") StockAnalysisQuery q);
+
+    JxcViews.SalesRateRow selectSalesRateTotal(@Param("q") StockAnalysisQuery q);
+
+    /** 库存预警（issue #116）：按标签页（仓库 / 高于上限 / 低于下限） */
+    Page<JxcViews.StockAlertRow> selectStockAlert(Page<JxcViews.StockAlertRow> page, @Param("q") StockAnalysisQuery q);
+
+    JxcViews.StockAlertRow selectStockAlertTotal(@Param("q") StockAnalysisQuery q);
 }

@@ -2,11 +2,7 @@
   <div class="table-page">
     <a-card :bordered="false" class="page-card">
       <div class="filters">
-        <WarehouseSelect v-model:value="query.warehouseId" :placeholder="$t('jxc.common.allWarehouses')" class="filter-s" />
-        <MaterialCategorySelect v-model="query.category" :placeholder="$t('jxc.common.allCategories')" class="filter-s" />
-        <a-select v-model:value="query.brand" :options="toOptions(dict.wms_material_brand)" allow-clear show-search option-filter-prop="label"
-          :placeholder="$t('jxc.common.allBrands')" class="filter-s" />
-        <a-input v-model:value="query.keyword" allow-clear :placeholder="$t('jxc.overstock.keyword')" class="filter" @press-enter="search" />
+        <StockGoodsFilters :query="query" @search="search" />
         <span class="inline">
           <a-tooltip :title="$t('jxc.overstock.dateTip')">{{ $t('jxc.overstock.date') }}</a-tooltip>
           <a-date-picker v-model:value="query.date" value-format="YYYY-MM-DD" :allow-clear="false" :disabled-date="(d) => d.isAfter(dayjs(), 'day')" class="date" />
@@ -85,18 +81,16 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import dayjs from 'dayjs'
 import { ClusterOutlined, DownloadOutlined, QuestionCircleOutlined } from '@ant-design/icons-vue'
-import MaterialCategorySelect from '@/components/wms/MaterialCategorySelect.vue'
-import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import StockHistory from '@/components/wms/StockHistory.vue'
 import StockDistributionModal from '@/components/wms/StockDistributionModal.vue'
 import TableActions from '@/components/common/TableActions.vue'
+import StockGoodsFilters from '@/components/bi/jxc/StockGoodsFilters.vue'
 import { actionColumn } from '@/components/common/tableActions'
 import { jxcOverstock } from '@/api/bi/jxc'
 import { pageStock } from '@/api/wms/stock'
 import { dictLabel } from '@/components/bi/jxc/jxc'
 import { useDict } from '@/composables/useDict'
 import { useUserStore } from '@/store/user'
-import { toOptions } from '@/utils/dict'
 import { money, qty } from '@/utils/number'
 import { writeExcel } from '@/utils/excel'
 import { OverstockBase } from '@/constants/enums'
@@ -245,12 +239,6 @@ onMounted(load)
   align-items: center;
   gap: 8px 12px;
 }
-.filter {
-  width: 220px;
-}
-.filter-s {
-  width: 150px;
-}
 .inline {
   display: inline-flex;
   align-items: center;
@@ -285,10 +273,6 @@ onMounted(load)
   font-size: 12px;
 }
 @media (max-width: 768px) {
-  .filter,
-  .filter-s {
-    width: 100%;
-  }
   .head {
     flex-wrap: wrap;
   }
