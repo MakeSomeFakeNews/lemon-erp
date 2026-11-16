@@ -5,6 +5,9 @@
 .vscode
 **/build
 **/out
+# 源码中名为 out 的目录不是产物（如前端出库单页面 views/wms/out），不能排除
+!lemon-web/src/**/out
+!**/src/main/**/out
 **/*.iml
 lemon-web/node_modules
 lemon-web/dist
