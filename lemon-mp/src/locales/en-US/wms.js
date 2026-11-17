@@ -241,12 +241,16 @@ export default {
     done: 'Picking done'
   },
   check: {
-    tip: 'Generate a stock count (draft) on a computer, then scan here to enter counted quantities',
+    tip: 'Select a draft stock count, then scan or search materials to enter counted quantities; materials not in the lines are added automatically (with book quantity if in stock). You can also select a warehouse to start a new count; it is created when saved',
     noChecks: 'No stock counts pending',
     counted: 'Counted {n} / {total}',
     onlyCurrent: 'This location only',
     book: 'Book {n}',
     gain: 'Gain',
+    newLine: 'Added',
+    newCheck: 'New Count',
+    searchAdd: 'No barcode? Search material',
+    inputActual: '{name}: enter the counted quantity',
     actual: 'Counted',
     actualScan: 'Counted {n}, scan serials:',
     diff: 'Diff lines',

@@ -34,6 +34,9 @@ export const confirmDoc = (kind, id) => post(`/wms/${kind}/${id}/confirm`)
 export const pageCheck = (params) => get('/wms/check', params)
 export const getCheck = (id) => get(`/wms/check/${id}`)
 export const updateCheck = (id, data) => put(`/wms/check/${id}`, data)
+export const addCheck = (data) => post('/wms/check', data)
+/** 物料转为盘点明细（带出盘点仓库的库存位置和账面数量）：{ warehouseId, materialIds } */
+export const checkMaterialItems = (data) => post('/wms/check/materials/items', data)
 
 /** 采购订单（扫码收货） */
 export const pagePurchaseOrder = (params) => get('/scm/purchase/order', params)

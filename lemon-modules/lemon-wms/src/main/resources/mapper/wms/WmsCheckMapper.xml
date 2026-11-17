@@ -54,7 +54,9 @@
         <bind name="norm" value="q.searchNorm()"/>
         <bind name="changeFrom" value="q.changeFrom()"/>
         <bind name="changeTo" value="q.changeTo()"/>
-        SELECT m.id, m.code, m.name, m.spec, m.unit, m.category, m.brand, m.batch_enabled, m.serial_enabled, m.status
+        <bind name="sign" value="q.stockSign()"/>
+        SELECT m.id, m.code, m.name, m.spec, m.unit, m.barcode, m.category, m.brand, m.batch_enabled, m.serial_enabled, m.status,
+               m.default_location_id
         FROM wms_material m
         WHERE m.is_template = 0
         <if test="kw != ''">
@@ -69,9 +71,21 @@
             AND (m.default_location_id = #{q.locationId}
                  OR EXISTS (SELECT 1 FROM wms_stock s WHERE s.material_id = m.id AND s.location_id = #{q.locationId} AND s.qty &gt; 0))
         </if>
-        <if test="q.inStockOnly()">
-            AND EXISTS (SELECT 1 FROM wms_stock s WHERE s.material_id = m.id AND s.qty &gt; 0
-                        <if test="q.warehouseId != null">AND s.warehouse_id = #{q.warehouseId}</if>)
+        <!-- 盘点仓库的货品：有库存记录（含已出完的）、有过库存流水，或默认库位在该仓库 -->
+        <if test="q.warehouseGoodsOnly()">
+            AND (EXISTS (SELECT 1 FROM wms_stock s WHERE s.material_id = m.id AND s.warehouse_id = #{q.warehouseId})
+                 OR EXISTS (SELECT 1 FROM wms_stock_flow f WHERE f.material_id = m.id AND f.warehouse_id = #{q.warehouseId})
+                 OR EXISTS (SELECT 1 FROM wms_location dl WHERE dl.id = m.default_location_id AND dl.warehouse_id = #{q.warehouseId}))
+        </if>
+        <!-- 库存条件：按盘点仓库的合计，与列表中显示的当前库存一致；没有库存记录的为 0 -->
+        <if test="sign != null">
+            AND COALESCE((SELECT SUM(s.qty) FROM wms_stock s WHERE s.material_id = m.id
+                          <if test="q.warehouseId != null">AND s.warehouse_id = #{q.warehouseId}</if>), 0)
+            <choose>
+                <when test="sign.name() == 'POSITIVE'">&gt; 0</when>
+                <when test="sign.name() == 'NEGATIVE'">&lt; 0</when>
+                <otherwise>= 0</otherwise>
+            </choose>
         </if>
         <if test="q.changedOnly()">
             AND EXISTS (SELECT 1 FROM wms_stock_flow f WHERE f.material_id = m.id

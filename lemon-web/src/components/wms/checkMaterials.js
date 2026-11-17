@@ -10,7 +10,7 @@ export const MAX_CHECK_LINES = 2000
 const fmt = (d) => d.format('YYYY-MM-DD')
 const monday = (d) => d.subtract((d.day() + 6) % 7, 'day')
 
-/** 动态盘点的变动日期快捷选项：今天（日终盘点）、昨天（次日早上盘点）、本周、本月 */
+/** 动态盘点的变动日期快捷选项（选择商品的日期框）：今天（日终盘点）、昨天（次日早上盘点）、本周、本月 */
 export function changeRanges() {
   const now = dayjs()
   const yesterday = now.subtract(1, 'day')

@@ -1692,6 +1692,13 @@ export const StockQtyFilter = Object.freeze({
   NONZERO: 'NONZERO', // 库存 ≠ 0
 })
 
+/** com.lemon.erp.modules.wms.model.StockSign */
+export const StockSign = Object.freeze({
+  POSITIVE: 'POSITIVE', // 库存 &gt
+  ZERO: 'ZERO', // 库存 = 0
+  NEGATIVE: 'NEGATIVE', // 库存 &lt
+})
+
 /** com.lemon.erp.modules.mes.model.StopReason（字典 mes_stop_reason） */
 export const StopReason = Object.freeze({
   BREAKDOWN: 'BREAKDOWN',

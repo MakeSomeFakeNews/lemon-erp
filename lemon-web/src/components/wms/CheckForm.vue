@@ -36,24 +36,11 @@
           {{ $t('wms.checkDoc.itemsTitle', { n: form.items.length, counted: stats.counted, diff: stats.diff }) }}
         </span>
         <a-space wrap>
-          <LocationSelect v-model:value="gen.locationId" :warehouse-id="form.warehouseId" :placeholder="$t('wms.checkDoc.allLocations')" class="gen-input" />
-          <a-input v-model:value="gen.keyword" :placeholder="$t('wms.common.materialKeyword')" allow-clear class="gen-input" />
-          <a-button type="primary" ghost :loading="generating" :disabled="!form.warehouseId" @click="generate">
-            <template #icon><ThunderboltOutlined /></template>{{ $t('wms.checkDoc.generate') }}
-          </a-button>
-          <a-dropdown :disabled="!form.warehouseId || generating">
-            <a-button type="primary" ghost :loading="generating" :disabled="!form.warehouseId" :title="$t('wms.checkDoc.generateChangedTip')">
-              {{ $t('wms.checkDoc.generateChanged') }}<DownOutlined />
+          <a-tooltip :title="$t('wms.checkDoc.pickMaterialsTip')">
+            <a-button type="primary" ghost :loading="adding" :disabled="!form.warehouseId" @click="pickerOpen = true">
+              <template #icon><SearchOutlined /></template>{{ $t('wms.checkDoc.pickMaterials') }}
             </a-button>
-            <template #overlay>
-              <a-menu @click="({ key }) => generateChanged(key)">
-                <a-menu-item v-for="r in changeRanges()" :key="r.key">{{ $t('wms.checkDoc.changedOption', { label: r.label, begin: r.range[0], end: r.range[1] }) }}</a-menu-item>
-              </a-menu>
-            </template>
-          </a-dropdown>
-          <a-button :disabled="!form.warehouseId" @click="pickerOpen = true">
-            <template #icon><SearchOutlined /></template>{{ $t('wms.checkDoc.pickMaterials') }}
-          </a-button>
+          </a-tooltip>
           <a-button :disabled="!form.warehouseId" @click="addRow">
             <template #icon><PlusOutlined /></template>{{ $t('wms.doc.addMaterial') }}
           </a-button>
@@ -146,10 +133,10 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
-import { DownOutlined, PlusOutlined, SearchOutlined, ThunderboltOutlined } from '@ant-design/icons-vue'
+import { PlusOutlined, SearchOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import LineItemsTable from '@/components/common/LineItemsTable.vue'
 import CheckMaterialPicker from './CheckMaterialPicker.vue'
@@ -158,17 +145,18 @@ import MaterialSelect from './MaterialSelect.vue'
 import QtyDiff from './QtyDiff.vue'
 import SerialInput from './SerialInput.vue'
 import WarehouseSelect from './WarehouseSelect.vue'
-import { addCheck, checkSnapshot, getCheck, updateCheck } from '@/api/wms/check'
+import { addCheck, getCheck, updateCheck } from '@/api/wms/check'
 import { unitCosts } from '@/api/wms/stock'
 import { useUserStore } from '@/store/user'
 import { price } from '@/utils/number'
 import { useFormDrawer } from '@/composables/useFormDrawer'
 import { lineKey, useLineItems } from '@/composables/useLineItems'
 import { formatQty, locationText, splitSerials, today } from './wms'
-import { changeRanges, fetchAllMaterialIds, materialItems, MAX_CHECK_LINES } from './checkMaterials'
+import { materialItems, MAX_CHECK_LINES } from './checkMaterials'
 
 /**
- * 新增 / 编辑盘点单（草稿）：按库存生成明细后录入实盘数量；盘盈的物料可手工添加。
+ * 新增 / 编辑盘点单（草稿）：「选择商品」按条件（仓库范围、变动日期即动态盘点、分类、货位等）勾选本次盘点的物料，
+ * 或「添加物料」逐个添加，录入实盘数量。不再一次按整仓库存或全部变动商品生成明细（issue #123）：一次盘点一部分，大盘点拆成多张盘点单
  * 通过 ref 调用 openCreate() / openEdit(record)
  */
 const emit = defineEmits(['success'])
@@ -250,30 +238,15 @@ const slotKey = (i) => `${i.locationId || 0}|${i.materialId}|${i.batchNo || ''}`
 function onWarehouseChange(id) {
   if (id === form.value.warehouseId) return
   form.value.warehouseId = id
-  gen.locationId = undefined
   if (form.value.items.length) {
     form.value.items = []
     message.info(t('wms.checkDoc.warehouseChanged'))
   }
 }
 
-// 按库存生成：已在明细中的库存位置保留已录入的数据
-const gen = reactive({ locationId: undefined, keyword: undefined })
-const generating = ref(false)
-async function generate() {
-  generating.value = true
-  try {
-    const rows = await checkSnapshot({ warehouseId: form.value.warehouseId, locationId: gen.locationId, keyword: gen.keyword })
-    const exists = new Set(form.value.items.map(slotKey))
-    const added = rows.filter((r) => !exists.has(slotKey(r))).map(toRow)
-    form.value.items.push(...added)
-    message.success(added.length ? t('wms.checkDoc.added', { n: added.length }) : t('wms.checkDoc.nothingNew'))
-  } finally {
-    generating.value = false
-  }
-}
+const adding = ref(false)
 
-// 选择商品 / 按变动商品生成：有库存的按库存位置各一行；盘点仓库没有库存的一行账面 0（可改库位、批次），已在明细中的不重复添加
+// 选择商品：有库存的按库存位置各一行；盘点仓库没有库存的一行账面 0（可改库位、批次），已在明细中的不重复添加
 const pickerOpen = ref(false)
 const existingMaterialIds = computed(() => [...new Set(form.value.items.map((i) => i.materialId).filter(Boolean))])
 
@@ -281,7 +254,7 @@ async function addMaterials(ids) {
   if (!ids.length) return
   // 已在明细中的物料也要请求：可能有明细中还没有的库存位置
   const materials = new Set(existingMaterialIds.value)
-  generating.value = true
+  adding.value = true
   try {
     const rows = await materialItems(form.value.warehouseId, ids)
     const slots = new Set(form.value.items.map(slotKey))
@@ -296,31 +269,8 @@ async function addMaterials(ids) {
     message.success(added.length ? t('wms.checkDoc.added', { n: added.length }) : t('wms.checkDoc.nothingNewPicked'))
     if (form.value.items.length > MAX_CHECK_LINES) message.warning(t('wms.checkDoc.tooManyLines', { max: MAX_CHECK_LINES }))
   } finally {
-    generating.value = false
+    adding.value = false
   }
-}
-
-/** 按变动商品生成：盘点仓库在该日期范围内有过库存变动（不含盘点）的全部物料 */
-async function generateChanged(key) {
-  const range = changeRanges().find((r) => r.key === key)?.range
-  if (!range) return
-  generating.value = true
-  let ids
-  try {
-    const res = await fetchAllMaterialIds({ warehouseId: form.value.warehouseId, changed: true, changeBegin: range[0], changeEnd: range[1] })
-    if (res.total > MAX_CHECK_LINES) {
-      message.warning(t('wms.checkPicker.tooMany', { n: res.total, max: MAX_CHECK_LINES }))
-      return
-    }
-    ids = res.ids
-  } finally {
-    generating.value = false
-  }
-  if (!ids.length) {
-    message.info(t('wms.checkDoc.noChanged'))
-    return
-  }
-  await addMaterials(ids)
 }
 
 const addRow = () => lines.addRow({}, { first: true })
@@ -385,9 +335,6 @@ defineExpose({ openCreate: drawer.openCreate, openEdit: drawer.openEdit })
 }
 .section-title {
   font-weight: 500;
-}
-.gen-input {
-  width: 160px;
 }
 .items-table :deep(.ant-table-cell) {
   vertical-align: top;

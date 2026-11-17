@@ -1,89 +1,81 @@
 <template>
-  <a-modal :open="open" :title="$t('wms.checkPicker.title')" width="min(1180px, 100vw)" destroy-on-close @cancel="close">
-    <a-form :model="query" layout="vertical" class="picker-form">
-      <a-row :gutter="12">
-        <a-col :xs="24" :md="12" :lg="8">
-          <a-form-item>
-            <template #label>
-              <a-checkbox v-model:checked="query.changed">{{ $t('wms.checkPicker.changed') }}</a-checkbox>
-            </template>
-            <a-range-picker
-              v-model:value="query.changeRange"
-              value-format="YYYY-MM-DD"
-              :presets="presets"
-              :disabled="!query.changed"
-              :placeholder="[$t('wms.checkPicker.anyDate'), $t('wms.checkPicker.anyDate')]"
-              :allow-empty="[true, true]"
-              class="full"
-            />
-          </a-form-item>
-        </a-col>
-        <a-col :xs="24" :md="12" :lg="8">
-          <a-form-item :label="$t('wms.checkPicker.keyword')">
-            <a-input v-model:value="query.keyword" :placeholder="$t('wms.checkPicker.keywordPh')" allow-clear @press-enter="search" />
-          </a-form-item>
-        </a-col>
-        <a-col :xs="12" :lg="4">
-          <a-form-item :label="$t('wms.inout.category')">
-            <MaterialCategorySelect v-model="query.category" :placeholder="$t('common.placeholder.all')" />
-          </a-form-item>
-        </a-col>
-        <a-col :xs="12" :lg="4">
-          <a-form-item :label="$t('pricing.goods.brand')">
-            <a-select v-model:value="query.brand" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.wms_material_brand)" />
-          </a-form-item>
-        </a-col>
-        <a-col :xs="12" :lg="4">
-          <a-form-item :label="$t('wms.checkPicker.location')">
-            <LocationSelect v-model:value="query.locationId" :warehouse-id="warehouseId" :placeholder="$t('common.placeholder.all')" />
-          </a-form-item>
-        </a-col>
-        <a-col :xs="24" :md="12" :lg="5">
-          <a-form-item :label="$t('wms.checkPicker.lastPurchase')">
-            <a-range-picker v-model:value="query.purchaseRange" value-format="YYYY-MM-DD" :allow-empty="[true, true]" class="full" />
-          </a-form-item>
-        </a-col>
-        <a-col :xs="24" :md="12" :lg="5">
-          <a-form-item :label="$t('wms.checkPicker.lastSales')">
-            <a-range-picker v-model:value="query.salesRange" value-format="YYYY-MM-DD" :allow-empty="[true, true]" class="full" />
-          </a-form-item>
-        </a-col>
-        <a-col :xs="12" :lg="3">
-          <a-form-item :label="$t('common.field.status')">
-            <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.sys_common_status, true)" />
-          </a-form-item>
-        </a-col>
-        <a-col :xs="12" :lg="7">
-          <a-form-item label=" ">
-            <a-space wrap>
-              <a-checkbox v-model:checked="query.inStock">{{ $t('wms.checkPicker.inStock') }}</a-checkbox>
-              <a-button type="primary" @click="search">{{ $t('common.action.query') }}</a-button>
-              <a-button @click="reset">{{ $t('common.action.reset') }}</a-button>
-            </a-space>
-          </a-form-item>
-        </a-col>
-      </a-row>
-    </a-form>
+  <a-modal
+    :open="open"
+    :title="$t('wms.checkPicker.title')"
+    width="min(1280px, calc(100vw - 32px))"
+    :style="{ top: '24px' }"
+    destroy-on-close
+    @cancel="close"
+  >
+    <SearchForm :model="query" class="picker-search" @search="search" @reset="reset">
+      <a-form-item :label="$t('wms.checkPicker.scope')">
+        <a-radio-group v-model:value="query.warehouseGoods" button-style="solid" @change="search">
+          <a-radio-button :value="true">
+            <a-tooltip :title="$t('wms.checkPicker.scopeWarehouseTip')">{{ $t('wms.checkPicker.scopeWarehouse') }}</a-tooltip>
+          </a-radio-button>
+          <a-radio-button :value="false">{{ $t('wms.checkPicker.scopeAll') }}</a-radio-button>
+        </a-radio-group>
+      </a-form-item>
+      <a-form-item :label="$t('wms.checkPicker.keyword')">
+        <a-input v-model:value="query.keyword" :placeholder="$t('wms.checkPicker.keywordPh')" allow-clear />
+      </a-form-item>
+      <a-form-item data-wide>
+        <template #label>
+          <a-tooltip :title="$t('wms.checkPicker.changedTip')">
+            <a-checkbox v-model:checked="query.changed">{{ $t('wms.checkPicker.changed') }}</a-checkbox>
+          </a-tooltip>
+        </template>
+        <a-range-picker
+          v-model:value="query.changeRange"
+          value-format="YYYY-MM-DD"
+          :presets="presets"
+          :disabled="!query.changed"
+          :placeholder="[$t('wms.checkPicker.anyDate'), $t('wms.checkPicker.anyDate')]"
+          :allow-empty="[true, true]"
+          class="full"
+        />
+      </a-form-item>
+      <a-form-item :label="$t('wms.inout.category')">
+        <MaterialCategorySelect v-model="query.category" :placeholder="$t('common.placeholder.all')" />
+      </a-form-item>
+      <a-form-item :label="$t('pricing.goods.brand')">
+        <a-select v-model:value="query.brand" :placeholder="$t('common.placeholder.all')" allow-clear show-search option-filter-prop="label" :options="toOptions(dict.wms_material_brand)" />
+      </a-form-item>
+      <a-form-item :label="$t('wms.checkPicker.location')">
+        <LocationSelect v-model:value="query.locationId" :warehouse-id="warehouseId" :placeholder="$t('common.placeholder.all')" />
+      </a-form-item>
+      <a-form-item :label="$t('wms.checkPicker.stock')">
+        <a-select v-model:value="query.stock" :options="stockOptions" />
+      </a-form-item>
+      <a-form-item :label="$t('common.field.status')">
+        <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.sys_common_status, true)" />
+      </a-form-item>
+      <a-form-item :label="$t('wms.checkPicker.lastPurchase')" data-wide>
+        <a-range-picker v-model:value="query.purchaseRange" value-format="YYYY-MM-DD" :allow-empty="[true, true]" class="full" />
+      </a-form-item>
+      <a-form-item :label="$t('wms.checkPicker.lastSales')" data-wide>
+        <a-range-picker v-model:value="query.salesRange" value-format="YYYY-MM-DD" :allow-empty="[true, true]" class="full" />
+      </a-form-item>
+    </SearchForm>
 
     <a-table
       row-key="id"
       size="small"
+      class="picker-table"
       :columns="columns"
       :data-source="list"
       :loading="loading"
       :pagination="pagination"
       :row-selection="rowSelection"
-      :scroll="{ x: 1080, y: 360 }"
+      :custom-row="customRow"
+      :scroll="{ x: 1420, y: 'max(240px, calc(100vh - 470px))' }"
       @change="onTableChange"
     >
       <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'material'">
-          <div>
-            {{ record.code }} {{ record.name }}
-            <a-tag v-if="record.status === STATUS_DISABLED" :bordered="false">{{ $t('common.status.disabled') }}</a-tag>
-            <a-tag v-if="existing.has(record.id)" color="blue" :bordered="false">{{ $t('wms.checkPicker.inItems') }}</a-tag>
-          </div>
-          <div class="sub-text">{{ record.spec }}</div>
+        <template v-if="column.key === 'name'">
+          <span>{{ record.name }}</span>
+          <a-tag v-if="existing.has(record.id)" color="blue" :bordered="false" class="name-tag">{{ $t('wms.checkPicker.inItems') }}</a-tag>
+          <a-tag v-if="record.status === STATUS_DISABLED" :bordered="false" class="name-tag">{{ $t('common.status.disabled') }}</a-tag>
         </template>
         <template v-else-if="column.key === 'category'">
           <DictTag type="wms_material_category" :value="record.category" />
@@ -92,23 +84,31 @@
           <DictTag type="wms_material_brand" :value="record.brand" />
         </template>
         <template v-else-if="column.key === 'qty'">
-          <span :class="{ 'sub-text': !Number(record.qty) }">{{ formatQty(record.qty) }} {{ record.unit }}</span>
+          <span :class="Number(record.qty) < 0 ? 'qty-negative' : Number(record.qty) ? '' : 'sub-text'">{{ formatQty(record.qty) }}</span>
         </template>
-        <template v-else-if="column.key === 'lastChangeTime'">{{ record.lastChangeTime || '-' }}</template>
-        <template v-else-if="column.key === 'lastPurchaseDate'">{{ record.lastPurchaseDate || '-' }}</template>
-        <template v-else-if="column.key === 'lastSalesDate'">{{ record.lastSalesDate || '-' }}</template>
+        <template v-else-if="['spec', 'barcode', 'locations', 'lastChangeTime', 'lastPurchaseDate', 'lastSalesDate'].includes(column.key)">
+          {{ record[column.key] || '-' }}
+        </template>
       </template>
     </a-table>
 
     <template #footer>
       <div class="picker-footer">
-        <span class="picker-tip">{{ $t('common.table.selected', { n: selected.size }) }}</span>
+        <span class="picker-tip">
+          {{ $t('wms.checkPicker.selectedN', { n: selected.size }) }}
+          <a v-if="selected.size" class="clear-link" @click="selected = new Map()">{{ $t('common.action.clear') }}</a>
+        </span>
         <a-button @click="close">{{ $t('common.action.cancel') }}</a-button>
-        <a-button :disabled="!pagination.total" :loading="addingAll" @click="addAll">
-          {{ $t('wms.checkPicker.addAll', { n: pagination.total }) }}
+        <a-tooltip :title="$t('wms.checkPicker.addAllTip', { max: MAX_CHECK_LINES })">
+          <a-button :disabled="!pagination.total" :loading="addingAll" @click="addAll">
+            {{ $t('wms.checkPicker.addAll', { n: pagination.total }) }}
+          </a-button>
+        </a-tooltip>
+        <a-button :disabled="!selected.size" @click="submit([...selected.keys()], true)">
+          {{ $t('wms.checkPicker.addContinue') }}
         </a-button>
         <a-button type="primary" :disabled="!selected.size" @click="submit([...selected.keys()])">
-          {{ $t('wms.checkPicker.addSelected', { n: selected.size }) }}
+          {{ $t('common.action.confirm') }}
         </a-button>
       </div>
     </template>
@@ -119,11 +119,13 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import DictTag from '@/components/DictTag.vue'
+import SearchForm from '@/components/SearchForm.vue'
 import LocationSelect from './LocationSelect.vue'
 import MaterialCategorySelect from './MaterialCategorySelect.vue'
 import { pageCheckMaterials } from '@/api/wms/check'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
+import { StockSign } from '@/constants/enums'
 import { STATUS_DISABLED } from '@/utils/constants'
 import { t } from '@/locales'
 import { toOptions } from '@/utils/dict'
@@ -131,9 +133,11 @@ import { changePresets, changeRanges, fetchAllMaterialIds, MAX_CHECK_LINES } fro
 import { formatQty } from './wms'
 
 /**
- * 盘点单「选择商品」：数据来源是物料资料（不是库存），显示盘点仓库的当前库存（为 0 也列出）；
- * 勾选「变动日期」时只列出该日期范围内在盘点仓库有过库存变动（出入库、调拨、组装拆卸等，不含盘点）的物料，即动态盘点。
- * 可跨页勾选，或添加全部符合条件的物料；确认后发出 pick(物料 ID 列表)
+ * 盘点单「选择商品」（issue #115、#123）：顶部查询条件、下面物料列表，勾选后「确定」加入盘点明细。
+ * 数据来源是物料资料（不是库存），显示盘点仓库的当前库存（为 0 也列出）。按仓库、按变动商品都只是查询条件：
+ * - 仓库范围「本仓库货品」：在盘点仓库有库存记录（含已出完的）、有过出入库，或默认库位在该仓库的物料；「全部物料」不限
+ * - 「变动日期」：只列出该日期范围内在盘点仓库有过库存变动（出入库、调拨、组装拆卸等，不含盘点）的物料，即动态盘点
+ * 可跨页勾选、点击行勾选，或添加全部符合条件的；「加入并继续」不关闭窗口。发出 pick(物料 ID 列表)
  */
 const props = defineProps({
   open: Boolean,
@@ -147,33 +151,46 @@ const dict = useDict('sys_common_status', 'wms_material_brand')
 const presets = changePresets()
 const existing = computed(() => new Set(props.existingIds))
 
+const stockOptions = [
+  { value: '', label: t('wms.checkPicker.stockAll') },
+  { value: StockSign.POSITIVE, label: t('wms.checkPicker.stockPositive') },
+  { value: StockSign.ZERO, label: t('wms.checkPicker.stockZero') },
+  { value: StockSign.NEGATIVE, label: t('wms.checkPicker.stockNegative') }
+]
+
 const columns = [
-  { title: t('wms.common.material'), key: 'material', width: 280, fixed: 'left' },
-  { title: t('wms.inout.category'), key: 'category', width: 130 },
+  { title: t('wms.checkPicker.code'), dataIndex: 'code', key: 'code', width: 130, fixed: 'left', ellipsis: true },
+  { title: t('wms.checkPicker.name'), key: 'name', width: 220, ellipsis: true },
+  { title: t('wms.checkPicker.spec'), key: 'spec', width: 160, ellipsis: true },
+  { title: t('wms.checkPicker.unit'), dataIndex: 'unit', key: 'unit', width: 60 },
+  { title: t('wms.inout.category'), key: 'category', width: 110 },
   { title: t('pricing.goods.brand'), key: 'brand', width: 100 },
-  { title: t('wms.checkPicker.qty'), key: 'qty', width: 120, align: 'right' },
-  { title: t('wms.checkPicker.lastChange'), key: 'lastChangeTime', width: 160 },
-  { title: t('wms.checkPicker.lastPurchase'), key: 'lastPurchaseDate', width: 110 },
-  { title: t('wms.checkPicker.lastSales'), key: 'lastSalesDate', width: 110 }
+  { title: t('wms.checkPicker.location'), key: 'locations', width: 120, ellipsis: true },
+  { title: t('wms.checkPicker.qty'), key: 'qty', width: 100, align: 'right' },
+  { title: t('wms.checkPicker.lastChange'), key: 'lastChangeTime', width: 150 },
+  { title: t('wms.checkPicker.lastPurchase'), key: 'lastPurchaseDate', width: 100 },
+  { title: t('wms.checkPicker.lastSales'), key: 'lastSalesDate', width: 100 },
+  { title: t('wms.checkPicker.barcode'), key: 'barcode', width: 130, ellipsis: true }
 ]
 
 const emptyQuery = () => ({
+  warehouseGoods: true,
+  keyword: undefined,
   changed: false,
   changeRange: changeRanges()[0].range,
-  keyword: undefined,
   category: undefined,
   brand: undefined,
   locationId: undefined,
-  purchaseRange: undefined,
-  salesRange: undefined,
+  stock: '',
   status: undefined,
-  inStock: false
+  purchaseRange: undefined,
+  salesRange: undefined
 })
 const query = reactive(emptyQuery())
 
 /** 查询参数：日期范围拆分为起止，未勾选「变动日期」时不按变动筛选 */
 function toParams(q) {
-  const { changeRange, purchaseRange, salesRange, changed, inStock, ...rest } = q
+  const { changeRange, purchaseRange, salesRange, changed, stock, ...rest } = q
   return {
     ...rest,
     warehouseId: props.warehouseId,
@@ -184,16 +201,19 @@ function toParams(q) {
     purchaseEnd: purchaseRange?.[1] || undefined,
     salesBegin: salesRange?.[0] || undefined,
     salesEnd: salesRange?.[1] || undefined,
-    inStock: inStock || undefined
+    stock: stock || undefined
   }
 }
 
 const { list, loading, pagination, search, onTableChange } = useTable(pageCheckMaterials, query, { params: toParams })
+pagination.pageSize = 20
+pagination.pageSizeOptions = ['20', '50', '100', '200']
 
 // 跨页保留勾选
 const selected = ref(new Map())
 const rowSelection = computed(() => ({
   selectedRowKeys: [...selected.value.keys()],
+  preserveSelectedRowKeys: true,
   onSelect: (record, checked) => toggle([record], checked),
   onSelectAll: (checked, _rows, changed) => toggle(changed, checked)
 }))
@@ -202,6 +222,14 @@ function toggle(rows, checked) {
   rows.forEach((r) => (checked ? map.set(r.id, r) : map.delete(r.id)))
   selected.value = map
 }
+/** 点击行勾选 / 取消 */
+const customRow = (record) => ({
+  class: 'picker-row',
+  onClick: (e) => {
+    if (e.target.closest?.('.ant-checkbox-wrapper, .ant-table-selection-column')) return
+    toggle([record], !selected.value.has(record.id))
+  }
+})
 
 function reset() {
   Object.assign(query, emptyQuery())
@@ -232,9 +260,11 @@ async function addAll() {
   }
 }
 
-function submit(ids) {
+/** keepOpen：加入明细后不关闭窗口，清空勾选继续选择 */
+function submit(ids, keepOpen = false) {
   emit('pick', ids)
-  close()
+  if (keepOpen) selected.value = new Map()
+  else close()
 }
 
 function close() {
@@ -246,8 +276,14 @@ function close() {
 .full {
   width: 100%;
 }
-.picker-form :deep(.ant-form-item) {
-  margin-bottom: 8px;
+.picker-search {
+  margin-bottom: 12px;
+}
+.picker-table :deep(.picker-row) {
+  cursor: pointer;
+}
+.name-tag {
+  margin-left: 6px;
 }
 .picker-footer {
   display: flex;
@@ -259,6 +295,12 @@ function close() {
 .picker-tip {
   margin-right: auto;
   color: var(--app-text-2);
+}
+.clear-link {
+  margin-left: 8px;
+}
+.qty-negative {
+  color: #ff4d4f;
 }
 .sub-text {
   color: var(--app-text-3);

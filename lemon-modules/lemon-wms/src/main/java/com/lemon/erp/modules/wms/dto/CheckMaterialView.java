@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.wms.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.lemon.erp.common.enums.EnableStatus;
 import lombok.Data;
 
@@ -18,11 +19,16 @@ public class CheckMaterialView {
     private String name;
     private String spec;
     private String unit;
+    private String barcode;
     private String category;
     private String brand;
     private Integer batchEnabled;
     private Integer serialEnabled;
     private EnableStatus status;
+    @JsonIgnore
+    private Long defaultLocationId;
+    /** 货位：盘点仓库中有库存的库位（编码，逗号分隔）；没有库存时为物料在该仓库的默认库位 */
+    private String locations;
     /** 盘点仓库的当前库存（未选仓库时为全部仓库合计），没有库存为 0 */
     private BigDecimal qty;
     /** 盘点仓库最近一次库存变动（不含盘点）的时间 */

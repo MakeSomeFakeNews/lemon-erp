@@ -69,8 +69,8 @@ import static com.lemon.erp.modules.wms.model.WmsConstants.locationOrNone;
 import static com.lemon.erp.modules.wms.model.WmsConstants.splitSerials;
 
 /**
- * 盘点单：按仓库当前库存生成明细，或从物料资料中选择（可只选一段时间内有过库存变动的物料，即动态盘点），
- * 录入实盘数量后确认，库存调整为实盘数量。
+ * 盘点单：从物料资料中按条件选择要盘点的物料（盘点仓库的货品、库存条件、一段时间内有过库存变动即动态盘点等），
+ * 每次盘点一部分，录入实盘数量后确认，库存调整为实盘数量。
  * <ul>
  *   <li>账面数量以确认时的库存为准（草稿中显示的是最近一次保存时的库存），确认后库存 = 实盘数量</li>
  *   <li>序列号物料按实盘序列号盘点：生成明细时带出在库序列号，确认时多出的序列号盘盈入库、缺少的盘亏出库</li>
@@ -134,7 +134,8 @@ public class WmsCheckService {
     }
 
     /**
-     * 按当前库存生成盘点明细（不保存），序列号物料带出在库序列号
+     * 按当前库存生成盘点明细（不保存），序列号物料带出在库序列号。
+     * 电脑端盘点单已不再一次生成整仓明细（issue #123），改为在「选择商品」中按条件勾选；保留供接口调用
      *
      * @param locationId 只盘点该库位，可为空
      * @param keyword    物料编码或名称，可为空
@@ -182,8 +183,29 @@ public class WmsCheckService {
                     r.setLastSalesDate(s.getLastSalesDate());
                 }
             });
+            if (query.warehouseId() != null) {
+                fillLocations(query.warehouseId(), rows);
+            }
         }
         return PageResult.of(page);
+    }
+
+    /** 本页物料的货位：盘点仓库中有库存的库位，没有库存的取物料在该仓库的默认库位 */
+    private void fillLocations(Long warehouseId, List<CheckMaterialView> rows) {
+        Map<Long, Set<String>> stockLocations = new HashMap<>();
+        checkMapper.selectMaterialSlots(warehouseId, rows.stream().map(CheckMaterialView::getId).toList()).stream()
+                .filter(s -> s.getLocationCode() != null)
+                .forEach(s -> stockLocations.computeIfAbsent(s.getMaterialId(), k -> new LinkedHashSet<>()).add(s.getLocationCode()));
+        List<Long> defaultIds = rows.stream().filter(r -> !stockLocations.containsKey(r.getId()) && r.getDefaultLocationId() != null)
+                .map(CheckMaterialView::getDefaultLocationId).distinct().toList();
+        Map<Long, String> defaults = defaultIds.isEmpty() ? Map.of() : locationMapper.selectByIds(defaultIds).stream()
+                .filter(l -> Objects.equals(l.getWarehouseId(), warehouseId))
+                .collect(Collectors.toMap(WmsLocation::getId, WmsLocation::getCode));
+        rows.forEach(r -> {
+            Set<String> codes = stockLocations.get(r.getId());
+            r.setLocations(codes != null ? String.join(", ", codes)
+                    : r.getDefaultLocationId() == null ? null : defaults.get(r.getDefaultLocationId()));
+        });
     }
 
     /**
