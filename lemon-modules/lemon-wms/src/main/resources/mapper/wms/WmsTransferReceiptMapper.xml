@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsTransferReceiptMapper">
+
+    <select id="selectByDocId" resultType="com.lemon.erp.modules.wms.entity.WmsTransferReceipt">
+        SELECT r.id, r.receipt_no, r.doc_id, r.biz_date, r.total_qty, r.diff_qty, r.logistics_no, r.plate_no, r.remark,
+               r.create_by, u.nickname AS create_by_name, r.create_time, r.update_time
+        FROM wms_transfer_receipt r
+        LEFT JOIN sys_user u ON u.id = r.create_by
+        WHERE r.doc_id = #{docId}
+        ORDER BY r.id
+    </select>
+
+</mapper>

@@ -1805,6 +1805,15 @@ export const TrainingStatus = Object.freeze({
   CANCELED: 'CANCELED', // 已取消
 })
 
+/** com.lemon.erp.modules.wms.model.TransferDiffType（字典 wms_transfer_diff_type） */
+export const TransferDiffType = Object.freeze({
+  SHORT: 'SHORT', // 少到
+  DAMAGED: 'DAMAGED', // 破损
+  WRONG: 'WRONG', // 错发
+  OVER: 'OVER', // 多发
+  LOST: 'LOST', // 在途丢失
+})
+
 /** com.lemon.erp.modules.wms.model.TransferFeeSettle（字典 scm_freight_settle） */
 export const TransferFeeSettle = Object.freeze({
   CASH: 'CASH', // 现付
@@ -1818,6 +1827,19 @@ export const TransferPricing = Object.freeze({
   AVG_COST: 'AVG_COST', // 库存均价
   MIN_SALE: 'MIN_SALE', // 最低售价
   PRICE_LEVEL: 'PRICE_LEVEL', // 价格列
+})
+
+/** com.lemon.erp.modules.wms.model.TransferResolution（字典 wms_transfer_resolution） */
+export const TransferResolution = Object.freeze({
+  RETURN: 'RETURN', // 退回调出仓
+  LOSS: 'LOSS', // 确认损耗
+  ACCEPT: 'ACCEPT', // 让步接收
+})
+
+/** com.lemon.erp.modules.wms.model.TransitState */
+export const TransitState = Object.freeze({
+  PENDING: 'PENDING', // 未完结的在途调拨
+  OVERDUE: 'OVERDUE', // 超过预计到达日期仍未完结
 })
 
 /** com.lemon.erp.modules.bi.model.TurnoverBasis */
@@ -1890,6 +1912,8 @@ export const WaveStatus = Object.freeze({
 export const WmsDocStatus = Object.freeze({
   DRAFT: 'DRAFT',
   TRANSIT: 'TRANSIT', // 在途
+  PARTIAL: 'PARTIAL', // 部分到货
+  EXCEPTION: 'EXCEPTION', // 验收异常
   APPROVING: 'APPROVING', // 审批中
   DONE: 'DONE',
 })

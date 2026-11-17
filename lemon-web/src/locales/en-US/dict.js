@@ -151,6 +151,8 @@ export default {
     'DONE': 'Completed', // 已完成
     'TRANSIT': 'In Transit', // 在途
     'APPROVING': 'In Approval', // 审批中
+    'PARTIAL': 'Partially Received', // 部分到货
+    'EXCEPTION': 'Receipt Exception', // 验收异常
   },
   // 库存业务类型
   wms_biz_type: {
@@ -328,6 +330,8 @@ export default {
     'AUDITED': 'Approved', // 已审核
     'POSTED': 'Posted', // 已记账
     'APPROVING': 'In Approval', // 审批中
+    'PARTIAL': 'Partially Received', // 部分到货
+    'EXCEPTION': 'Receipt Exception', // 验收异常
   },
   // 凭证来源
   fin_voucher_source: {
@@ -539,6 +543,8 @@ export default {
     'CONFIRMED': 'Confirmed', // 已确认
     'PAID': 'Paid', // 已发放
     'APPROVING': 'In Approval', // 审批中
+    'PARTIAL': 'Partially Received', // 部分到货
+    'EXCEPTION': 'Receipt Exception', // 验收异常
   },
   // 考核状态
   hr_perf_status: {
@@ -797,6 +803,20 @@ export default {
   wms_stock_alert_mode: {
     'TOTAL': 'By Total Stock', // 按总库存
     'WAREHOUSE': 'Per Warehouse', // 分仓库
+  },
+  // 调拨差异类型
+  wms_transfer_diff_type: {
+    'SHORT': 'Short', // 少到
+    'DAMAGED': 'Damaged', // 破损
+    'WRONG': 'Wrong Item', // 错发
+    'OVER': 'Over', // 多发
+    'LOST': 'Lost in Transit', // 在途丢失
+  },
+  // 调拨差异处理
+  wms_transfer_resolution: {
+    'RETURN': 'Returned to Source', // 退回调出仓
+    'LOSS': 'Written Off', // 确认损耗
+    'ACCEPT': 'Accepted', // 让步接收
   },
   // 仓库类型
   wms_warehouse_type: {

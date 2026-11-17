@@ -57,6 +57,7 @@ public class StockDocReverser {
         }
         List<WmsStockDocItem> items = itemMapper.selectList(Wrappers.<WmsStockDocItem>lambdaQuery()
                 .eq(WmsStockDocItem::getDocId, id).orderByAsc(WmsStockDocItem::getId));
+        StockDocRules.checkTransitReversible(doc, items);
         LoginUser user = SecurityUtils.getLoginUser();
         WmsStockDoc red = new WmsStockDoc();
         red.setDocNo(docNoService.next(kind));

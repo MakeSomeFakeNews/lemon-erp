@@ -69,6 +69,16 @@ export default [
     links: ['/m/receive', '/scm/purchase-in']
   },
   {
+    // 调拨验收：在途调拨的调入仓库扫码分批验收（首页待办「在途调拨待验收」也转到这里）
+    key: 'wms-transfer-receive',
+    group: 'warehouse',
+    title: 'wms.entry.transferReceive',
+    color: '#13c2c2',
+    url: '/pkg-wms/transfer/index',
+    perm: 'wms:transfer:receive',
+    links: ['/wms/transfer']
+  },
+  {
     key: 'wms-putaway',
     group: 'warehouse',
     title: 'wms.entry.putaway',

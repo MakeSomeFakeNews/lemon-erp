@@ -91,13 +91,13 @@
         HAVING SUM(f.amount) &gt; 0
     </select>
 
-    <!-- 物料的最近出库（不含调拨）、最早入库业务日期：出入库单、调拨单取业务日期（在途调拨的调入取收货日期），盘点取盘点日期 -->
+    <!-- 物料的最近出库（不含调拨）、最早入库业务日期：出入库单、调拨单取业务日期（在途调拨的验收取验收日期 wms_stock_flow.biz_date），盘点取盘点日期 -->
     <sql id="flowDates">
         SELECT f.material_id,
                MAX(CASE WHEN f.qty &lt; 0 AND f.biz_type &lt;&gt; 'TRANSFER'
                         THEN COALESCE(d.biz_date, c.biz_date) END) AS last_out,
                MIN(CASE WHEN f.qty &gt; 0
-                        THEN COALESCE(CASE WHEN f.biz_type = 'TRANSFER' THEN d.receive_date END, d.biz_date, c.biz_date) END) AS first_in
+                        THEN COALESCE(f.biz_date, d.biz_date, c.biz_date) END) AS first_in
         FROM wms_stock_flow f
         LEFT JOIN wms_stock_doc d ON f.biz_type IN ('IN', 'OUT', 'TRANSFER') AND d.id = f.doc_id
         LEFT JOIN wms_check c ON f.biz_type = 'CHECK' AND c.id = f.doc_id

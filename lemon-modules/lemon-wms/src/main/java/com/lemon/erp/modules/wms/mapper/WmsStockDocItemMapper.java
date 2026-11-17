@@ -16,4 +16,8 @@ public interface WmsStockDocItemMapper extends BaseMapper<WmsStockDocItem> {
 
     /** 更新单据某物料各行的成本单价（委外件收货追加子件成本后） */
     void updateCostPrice(@Param("docId") Long docId, @Param("materialId") Long materialId, @Param("costPrice") BigDecimal costPrice);
+
+    /** 在途调拨明细的进度累加（可为负数）：已验收、差异待处理、退回、损耗 */
+    void addTransitQty(@Param("id") Long id, @Param("received") BigDecimal received, @Param("diff") BigDecimal diff,
+                       @Param("returned") BigDecimal returned, @Param("lost") BigDecimal lost);
 }

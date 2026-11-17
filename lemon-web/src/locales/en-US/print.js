@@ -179,7 +179,16 @@ export default {
     otherDeduction: 'Other Deductions',
     netPay: 'Net Pay',
     deliveryNote: 'Delivery Note',
-    total: 'Total'
+    total: 'Total',
+    transferReceipt: 'Transfer Receipt',
+    transferDocNo: 'Transfer No.',
+    receiveDate: 'Receipt Date',
+    logisticsNo: 'Tracking No.',
+    plateNo: 'Plate No.',
+    receivedQty: 'Received Qty',
+    diffQty: 'Difference Qty',
+    receiver: 'Received By',
+    deliverer: 'Delivered By'
   },
   paper: {
     size: '{name} ({size})',

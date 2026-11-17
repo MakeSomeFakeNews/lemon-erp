@@ -206,6 +206,9 @@ DROP TABLE IF EXISTS wms_check_item;
 DROP TABLE IF EXISTS wms_check;
 DROP TABLE IF EXISTS wms_assembly_item;
 DROP TABLE IF EXISTS wms_assembly;
+DROP TABLE IF EXISTS wms_transfer_diff;
+DROP TABLE IF EXISTS wms_transfer_receipt_item;
+DROP TABLE IF EXISTS wms_transfer_receipt;
 DROP TABLE IF EXISTS wms_stock_doc_item;
 DROP TABLE IF EXISTS wms_stock_doc;
 DROP TABLE IF EXISTS wms_serial_log;
@@ -1096,6 +1099,7 @@ CREATE TABLE wms_stock_flow (
     partner_id   BIGINT                  DEFAULT NULL COMMENT '往来单位（供应商 / 客户）',
     partner_name VARCHAR(128)            DEFAULT NULL COMMENT '往来单位名称快照',
     cost_estimated TINYINT               NOT NULL DEFAULT 0 COMMENT '1 升级前的历史流水：成本按当时的成本核算单价 / 参考成本价回填，是近似值',
+    biz_date     DATE                    DEFAULT NULL COMMENT '业务日期：在途调拨的验收入库、退回、让步接收按操作日期，为空取单据的业务日期',
     create_by    BIGINT                  DEFAULT NULL COMMENT '操作人',
     create_time  DATETIME                DEFAULT NULL COMMENT '发生时间',
     PRIMARY KEY (id),
@@ -1149,14 +1153,16 @@ CREATE TABLE wms_stock_doc (
     warehouse_id    BIGINT         NOT NULL COMMENT '仓库；调拨为调出仓库',
     to_warehouse_id BIGINT                  DEFAULT NULL COMMENT '调入仓库，仅调拨',
     biz_date        DATE           NOT NULL COMMENT '业务日期',
-    status          VARCHAR(16)    NOT NULL COMMENT '状态(字典 wms_doc_status) DRAFT草稿 APPROVING审批中 TRANSIT在途（在途调拨已调出未调入） DONE已完成',
+    status          VARCHAR(16)    NOT NULL COMMENT '状态(字典 wms_doc_status) DRAFT草稿 APPROVING审批中 TRANSIT在途（在途调拨已调出、未验收） PARTIAL部分到货 EXCEPTION验收异常（有待处理的差异） DONE已完成',
     total_qty       DECIMAL(18, 4) NOT NULL DEFAULT 0 COMMENT '合计数量',
     remark          VARCHAR(255)            DEFAULT NULL COMMENT '备注',
     source_no       VARCHAR(32)             DEFAULT NULL COMMENT '来源单号：由采购入库、销售出库、工单领料等业务单据自动生成时填写',
-    in_transit      TINYINT        NOT NULL DEFAULT 0 COMMENT '在途调拨 1是：确认时只调出，调入仓库收货后才入库',
-    receive_by      BIGINT                  DEFAULT NULL COMMENT '调入收货人',
-    receive_date    DATE                    DEFAULT NULL COMMENT '调入收货日期：在途调拨收货的业务日期，调入流水按此日期统计',
-    receive_time    DATETIME                DEFAULT NULL COMMENT '调入收货时间',
+    in_transit      TINYINT        NOT NULL DEFAULT 0 COMMENT '在途调拨 1是：确认时只调出，调入仓库分批验收入库（wms_transfer_receipt）',
+    expected_date   DATE                    DEFAULT NULL COMMENT '预计到达日期（在途调拨，可不填），超过仍未完结时提醒',
+    origin_id       BIGINT                  DEFAULT NULL COMMENT '原调拨单：补发、多发补调的调拨单关联在途调拨原单',
+    receive_by      BIGINT                  DEFAULT NULL COMMENT '最近一次验收人（在途调拨）',
+    receive_date    DATE                    DEFAULT NULL COMMENT '最近一次验收日期（在途调拨）；流水的业务日期见 wms_stock_flow.biz_date',
+    receive_time    DATETIME                DEFAULT NULL COMMENT '最近一次验收时间',
     red_of          BIGINT                  DEFAULT NULL COMMENT '红字冲销单：被冲销的原单据',
     reversed        TINYINT        NOT NULL DEFAULT 0 COMMENT '已被冲销 1是',
     partner_id      BIGINT                  DEFAULT NULL COMMENT '往来单位（业务单据生成时由来源单据传入）',
@@ -1183,7 +1189,8 @@ CREATE TABLE wms_stock_doc (
     UNIQUE KEY uk_stock_doc_no (doc_no, tenant_id),
     -- 各单据列表：按种类查询，按 id 倒序
     KEY idx_stock_doc_kind (kind, id),
-    KEY idx_stock_doc_dept (dept_id)
+    KEY idx_stock_doc_dept (dept_id),
+    KEY idx_stock_doc_origin (origin_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '出入库单（入库、出库、调拨）';
 
 CREATE TABLE wms_stock_doc_item (
@@ -1203,6 +1210,10 @@ CREATE TABLE wms_stock_doc_item (
     transfer_price  DECIMAL(18, 6)          DEFAULT NULL COMMENT '调拨价（调入成本价 / 内部结算价，仅调拨）：同价调拨确认时等于调出成本价，差价调拨可填写、不填按调出成本价',
     transfer_amount DECIMAL(18, 2)          DEFAULT NULL COMMENT '调拨金额 = 数量 × 调拨价（确认时生成）',
     serial_nos      TEXT COMMENT '序列号，逗号分隔',
+    received_qty    DECIMAL(18, 4) NOT NULL DEFAULT 0 COMMENT '在途调拨：已验收入库数量（含让步接收）',
+    diff_qty        DECIMAL(18, 4) NOT NULL DEFAULT 0 COMMENT '在途调拨：登记了差异、待处理的数量（不含多发）',
+    returned_qty    DECIMAL(18, 4) NOT NULL DEFAULT 0 COMMENT '在途调拨：退回调出仓库的数量',
+    lost_qty        DECIMAL(18, 4) NOT NULL DEFAULT 0 COMMENT '在途调拨：确认损耗的数量（生成报废出库单）。未到 = 数量 - 已验收 - 差异待处理 - 退回 - 损耗',
     remark          VARCHAR(255)            DEFAULT NULL COMMENT '备注',
     create_time     DATETIME                DEFAULT NULL COMMENT '创建时间',
     update_time     DATETIME                DEFAULT NULL COMMENT '更新时间',
@@ -1211,6 +1222,65 @@ CREATE TABLE wms_stock_doc_item (
     -- 删除物料前检查是否被单据引用
     KEY idx_stock_doc_item_material (material_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '出入库单明细';
+
+CREATE TABLE wms_transfer_receipt (
+    id           BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id    BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    receipt_no   VARCHAR(32)    NOT NULL COMMENT '验收单号',
+    doc_id       BIGINT         NOT NULL COMMENT '在途调拨单',
+    biz_date     DATE           NOT NULL COMMENT '验收日期（调入流水的业务日期）',
+    total_qty    DECIMAL(18, 4) NOT NULL DEFAULT 0 COMMENT '验收入库数量合计',
+    diff_qty     DECIMAL(18, 4) NOT NULL DEFAULT 0 COMMENT '登记差异的数量合计（含多发）',
+    logistics_no VARCHAR(64)             DEFAULT NULL COMMENT '物流单号',
+    plate_no     VARCHAR(32)             DEFAULT NULL COMMENT '车牌号',
+    remark       VARCHAR(255)            DEFAULT NULL COMMENT '备注',
+    create_by    BIGINT                  DEFAULT NULL COMMENT '验收人',
+    create_time  DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time  DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_transfer_receipt_no (receipt_no, tenant_id),
+    KEY idx_transfer_receipt_doc (doc_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '调拨验收单：在途调拨的调入仓库分批验收，每次一张';
+
+CREATE TABLE wms_transfer_receipt_item (
+    id          BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id   BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    receipt_id  BIGINT         NOT NULL COMMENT '验收单',
+    doc_id      BIGINT         NOT NULL COMMENT '在途调拨单',
+    item_id     BIGINT         NOT NULL COMMENT '调拨单明细',
+    material_id BIGINT         NOT NULL COMMENT '物料',
+    qty         DECIMAL(18, 4) NOT NULL COMMENT '验收入库数量',
+    serial_nos  TEXT COMMENT '验收入库的序列号，逗号分隔',
+    create_time DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_transfer_receipt_item (receipt_id),
+    KEY idx_transfer_receipt_item_doc (doc_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '调拨验收单明细';
+
+CREATE TABLE wms_transfer_diff (
+    id             BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id      BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    doc_id         BIGINT         NOT NULL COMMENT '在途调拨单',
+    item_id        BIGINT         NOT NULL COMMENT '调拨单明细',
+    receipt_id     BIGINT                  DEFAULT NULL COMMENT '登记差异的验收单，处理未到量时为空',
+    material_id    BIGINT         NOT NULL COMMENT '物料',
+    diff_type      VARCHAR(16)    NOT NULL COMMENT '差异类型(字典 wms_transfer_diff_type) SHORT少到 DAMAGED破损 WRONG错发 OVER多发 LOST在途丢失',
+    qty            DECIMAL(18, 4) NOT NULL COMMENT '差异数量',
+    serial_nos     TEXT COMMENT '差异的序列号，逗号分隔',
+    remark         VARCHAR(255)            DEFAULT NULL COMMENT '差异说明',
+    resolution     VARCHAR(16)             DEFAULT NULL COMMENT '处理方式(字典 wms_transfer_resolution) RETURN退回调出仓 LOSS确认损耗 ACCEPT让步接收，为空表示待处理',
+    resolve_date   DATE                    DEFAULT NULL COMMENT '处理日期（退回、让步接收的流水业务日期，损耗的报废出库单业务日期）',
+    resolve_by     BIGINT                  DEFAULT NULL COMMENT '处理人',
+    resolve_time   DATETIME                DEFAULT NULL COMMENT '处理时间',
+    resolve_remark VARCHAR(255)            DEFAULT NULL COMMENT '处理说明',
+    ref_doc_id     BIGINT                  DEFAULT NULL COMMENT '处理生成的单据：确认损耗的报废出库单、多发让步接收的调拨单草稿',
+    create_by      BIGINT                  DEFAULT NULL COMMENT '登记人',
+    create_time    DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time    DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_transfer_diff_doc (doc_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '在途调拨的差异：验收时登记，处理（退回 / 损耗 / 让步接收）后关闭；部分处理时拆分为已处理、待处理两条';
 
 CREATE TABLE wms_assembly (
     id              BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -6573,7 +6643,7 @@ INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, s
 (1304, 130, '入库冲销', 'F', NULL, NULL, 'wms:in:reverse', NULL, 5, 1, 1, NOW(), NOW()),
 (1314, 131, '出库冲销', 'F', NULL, NULL, 'wms:out:reverse', NULL, 5, 1, 1, NOW(), NOW()),
 (1324, 132, '调拨冲销', 'F', NULL, NULL, 'wms:transfer:reverse', NULL, 5, 1, 1, NOW(), NOW()),
-(1325, 132, '调拨收货', 'F', NULL, NULL, 'wms:transfer:receive', NULL, 6, 1, 1, NOW(), NOW());
+(1325, 132, '调拨验收入库', 'F', NULL, NULL, 'wms:transfer:receive', NULL, 6, 1, 1, NOW(), NOW());
 
 INSERT INTO sys_dict_type (id, name, type, status, remark, create_time, update_time) VALUES
 (108, '仓库类型', 'wms_warehouse_type', 1, '不良品仓的库存不计入 MRP、齐套、可承诺量', NOW(), NOW());
@@ -6585,6 +6655,8 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 ('wms_warehouse_type', '不良品仓', 'DEFECT', 'red', 4, 1, NOW(), NOW()),
 ('wms_doc_status', '在途', 'TRANSIT', 'blue', 3, 1, NOW(), NOW()),
 ('wms_doc_status', '审批中', 'APPROVING', 'processing', 4, 1, NOW(), NOW()),
+('wms_doc_status', '部分到货', 'PARTIAL', 'cyan', 5, 1, NOW(), NOW()),
+('wms_doc_status', '验收异常', 'EXCEPTION', 'red', 6, 1, NOW(), NOW()),
 ('wms_out_type', '报废出库', 'SCRAP', 'red', 8, 1, NOW(), NOW());
 
 INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
@@ -7959,3 +8031,23 @@ INSERT INTO sys_dict_type (id, name, type, kind, status, remark, create_time, up
 INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, builtin, create_time, update_time) VALUES
 ('wms_stock_alert_mode', '按总库存', 'TOTAL', 'blue', 1, 1, 1, NOW(), NOW()),
 ('wms_stock_alert_mode', '分仓库', 'WAREHOUSE', 'purple', 2, 1, 1, NOW(), NOW());
+
+-- 在途调拨的分批验收与差异处理（issue #124）：调拨验收单、差异见建表语句；按钮「调拨差异处理」（退回调出仓、确认损耗、让步接收、
+-- 处理未到量），有「调拨验收入库」权限的角色（仓库管理员）同时授权；验收单号规则 DR；差异类型、处理方式为系统字典
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(1326, 132, '调拨差异处理', 'F', NULL, NULL, 'wms:transfer:resolve', NULL, 7, 1, 1, NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT DISTINCT rm.role_id, 1326 FROM sys_role_menu rm
+WHERE rm.menu_id = 1325 AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = rm.role_id AND x.menu_id = 1326);
+INSERT INTO sys_dict_type (id, name, type, kind, status, remark, create_time, update_time) VALUES
+(210, '调拨差异类型', 'wms_transfer_diff_type', 'SYSTEM', 1, '在途调拨验收时登记的差异：少到、破损、错发、多发，处理未到量时为在途丢失', NOW(), NOW()),
+(211, '调拨差异处理', 'wms_transfer_resolution', 'SYSTEM', 1, '在途调拨差异的处理方式：退回调出仓、确认损耗（报废出库）、让步接收（入调入仓）', NOW(), NOW());
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, builtin, create_time, update_time) VALUES
+('wms_transfer_diff_type', '少到', 'SHORT', 'orange', 1, 1, 1, NOW(), NOW()),
+('wms_transfer_diff_type', '破损', 'DAMAGED', 'red', 2, 1, 1, NOW(), NOW()),
+('wms_transfer_diff_type', '错发', 'WRONG', 'volcano', 3, 1, 1, NOW(), NOW()),
+('wms_transfer_diff_type', '多发', 'OVER', 'blue', 4, 1, 1, NOW(), NOW()),
+('wms_transfer_diff_type', '在途丢失', 'LOST', 'magenta', 5, 1, 1, NOW(), NOW()),
+('wms_transfer_resolution', '退回调出仓', 'RETURN', 'blue', 1, 1, 1, NOW(), NOW()),
+('wms_transfer_resolution', '确认损耗', 'LOSS', 'red', 2, 1, 1, NOW(), NOW()),
+('wms_transfer_resolution', '让步接收', 'ACCEPT', 'green', 3, 1, 1, NOW(), NOW());

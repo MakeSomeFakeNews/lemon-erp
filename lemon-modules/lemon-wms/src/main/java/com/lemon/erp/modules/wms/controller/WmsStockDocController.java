@@ -6,7 +6,6 @@ import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.wms.dto.DocQuery;
 import com.lemon.erp.modules.wms.dto.StockDocRequest;
-import com.lemon.erp.modules.wms.dto.TransferReceiveRequest;
 import com.lemon.erp.modules.wms.entity.WmsStockDoc;
 import com.lemon.erp.modules.wms.model.StockBizType;
 import com.lemon.erp.modules.wms.service.WmsStockDocService;
@@ -27,7 +26,7 @@ import java.util.List;
 
 /**
  * 入库单 /wms/in、出库单 /wms/out、调拨单 /wms/transfer：三种单据结构相同，共用一套接口，
- * 权限标识按路径区分，如 wms:in:list、wms:out:confirm
+ * 权限标识按路径区分，如 wms:in:list、wms:out:confirm。在途调拨的验收、差异处理见 {@link WmsTransferController}
  */
 @RestController
 @RequestMapping("/wms/{kind:in|out|transfer}")
@@ -80,16 +79,6 @@ public class WmsStockDocController {
     @OperLog(title = "出入库单-冲销", type = OperType.INSERT) // i18n-ignore
     public R<Long> reverse(@PathVariable String kind, @PathVariable Long id) {
         return R.ok(docService.reverse(StockBizType.ofDocPath(kind), id));
-    }
-
-    /** 在途调拨收货 */
-    @PostMapping("/{id}/receive")
-    @PreAuthorize("@ss.hasPerm('wms:transfer:receive') and #kind == 'transfer'")
-    @OperLog(title = "调拨单-收货", type = OperType.UPDATE) // i18n-ignore
-    public R<Void> receive(@PathVariable String kind, @PathVariable Long id,
-                           @RequestBody(required = false) TransferReceiveRequest req) {
-        docService.receive(id, req == null ? null : req.receiveDate());
-        return R.ok();
     }
 
     @DeleteMapping("/{ids}")

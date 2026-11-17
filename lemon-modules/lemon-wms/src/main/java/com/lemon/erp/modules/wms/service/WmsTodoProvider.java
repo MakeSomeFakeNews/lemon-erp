@@ -24,7 +24,11 @@ public class WmsTodoProvider implements TodoProvider {
             new Def("aboveMax", "wms:stock:list", "wms.text.todoAboveMax", "/wms/stock?highStock=1", "info"),
             new Def("batchExpiring", "wms:trace:list", "wms.text.todoBatchExpiring", "/wms/trace", "warning"),
             new Def("holdPending", "mes:qc:add", "wms.text.todoHoldPending", "/qms/inspection", "info"),
-            new Def("holdRejected", "wms:hold:list", "wms.text.todoHoldRejected", "/wms/hold", "danger")
+            new Def("holdRejected", "wms:hold:list", "wms.text.todoHoldRejected", "/wms/hold", "danger"),
+            // 在途调拨：待验收（在途、部分到货）、超过预计到达日期仍未完结、有待处理的差异
+            new Def("transferToReceive", "wms:transfer:receive", "wms.text.todoTransferToReceive", "/wms/transfer?transitState=PENDING", "info"),
+            new Def("transferOverdue", "wms:transfer:list", "wms.text.todoTransferOverdue", "/wms/transfer?transitState=OVERDUE", "warning"),
+            new Def("transferDiff", "wms:transfer:resolve", "wms.text.todoTransferDiff", "/wms/transfer?status=EXCEPTION", "danger")
     );
 
     private final WmsTodoMapper todoMapper;

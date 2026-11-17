@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -79,6 +80,16 @@ public class StockService {
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void apply(StockBizType bizType, Long docId, String docNo, List<StockChange> changes) {
+        apply(bizType, docId, docNo, changes, null);
+    }
+
+    /**
+     * 执行库存变动
+     *
+     * @param bizDate 流水的业务日期，为空取单据的业务日期（在途调拨的验收、退回、让步接收按操作日期）
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void apply(StockBizType bizType, Long docId, String docNo, List<StockChange> changes, LocalDate bizDate) {
         List<StockChange> sorted = changes.stream().filter(c -> c.qty().signum() != 0).sorted(APPLY_ORDER).toList();
         if (sorted.isEmpty()) {
             return;
@@ -115,7 +126,7 @@ public class StockService {
             }
             flows.add(new StockFlow(bizType, docId, docNo, change.warehouseId(), change.locationId(), change.materialId(),
                     change.batchNo(), change.qty(), change.bizPrice(), price.unitCost(), price.amount(),
-                    change.partnerId(), change.partnerName(), userId, now));
+                    change.partnerId(), change.partnerName(), userId, now, bizDate));
         }
         if (bizType != StockBizType.CHECK) {
             // 盘亏是实物事实，不受预留限制；其余扣减不能占用已预留的库存

@@ -30,6 +30,8 @@ import java.util.List;
  * @param feeSettle       调拨费用付给承运商的方式：现付（默认，需付款账户）/ 月结（需承运商）
  * @param feeAccountId    现付的付款账户
  * @param feeCarrierId    承运商（供应商），月结必填，现付可选
+ * @param expectedDate    预计到达日期（仅在途调拨，可不填），超过仍未完结时提醒
+ * @param originId        原调拨单（仅调拨）：补发、多发补调时关联在途调拨原单
  */
 public record StockDocRequest(
         String bizType,
@@ -50,12 +52,14 @@ public record StockDocRequest(
         @Digits(integer = 14, fraction = 2, message = "{wms.valid.transferFeeAllowsMostDecimalPlaces}") BigDecimal fee,
         TransferFeeSettle feeSettle,
         Long feeAccountId,
-        Long feeCarrierId) {
+        Long feeCarrierId,
+        LocalDate expectedDate,
+        Long originId) {
 
     public StockDocRequest(String bizType, Long warehouseId, Long toWarehouseId, LocalDate bizDate, String remark,
                            List<StockDocItemRequest> items, Boolean inTransit, String ioCategory, Long partnerId, String partnerName) {
         this(bizType, warehouseId, toWarehouseId, bizDate, remark, items, inTransit, ioCategory, partnerId, partnerName,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null);
     }
 
     public StockDocRequest(String bizType, Long warehouseId, Long toWarehouseId, LocalDate bizDate, String remark,
@@ -78,12 +82,12 @@ public record StockDocRequest(
     /** 带上往来单位（记录在单据和库存流水上） */
     public StockDocRequest withPartner(Long partnerId, String partnerName) {
         return new StockDocRequest(bizType, warehouseId, toWarehouseId, bizDate, remark, items, inTransit, ioCategory, partnerId, partnerName,
-                transferPricing, priceLevel, priceFactor, fee, feeSettle, feeAccountId, feeCarrierId);
+                transferPricing, priceLevel, priceFactor, fee, feeSettle, feeAccountId, feeCarrierId, expectedDate, originId);
     }
 
     /** 替换明细（如带上成本单价） */
     public StockDocRequest withItems(List<StockDocItemRequest> newItems) {
         return new StockDocRequest(bizType, warehouseId, toWarehouseId, bizDate, remark, newItems, inTransit, ioCategory, partnerId, partnerName,
-                transferPricing, priceLevel, priceFactor, fee, feeSettle, feeAccountId, feeCarrierId);
+                transferPricing, priceLevel, priceFactor, fee, feeSettle, feeAccountId, feeCarrierId, expectedDate, originId);
     }
 }

@@ -3,6 +3,7 @@ package com.lemon.erp.modules.wms.dto;
 import com.lemon.erp.modules.wms.model.StockBizType;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -11,8 +12,9 @@ import java.time.LocalDateTime;
  * @param bizPrice   业务单价（来源单据的不含税单价），可为空
  * @param costPrice  成本单价，供应商寄售仓不计价为空
  * @param costAmount 成本金额，与数量同号
+ * @param bizDate    业务日期：在途调拨的验收、退回、让步接收按操作日期，为空取单据的业务日期
  */
 public record StockFlow(StockBizType bizType, Long docId, String docNo, Long warehouseId, long locationId, Long materialId,
                         String batchNo, BigDecimal qty, BigDecimal bizPrice, BigDecimal costPrice, BigDecimal costAmount,
-                        Long partnerId, String partnerName, Long createBy, LocalDateTime createTime) {
+                        Long partnerId, String partnerName, Long createBy, LocalDateTime createTime, LocalDate bizDate) {
 }

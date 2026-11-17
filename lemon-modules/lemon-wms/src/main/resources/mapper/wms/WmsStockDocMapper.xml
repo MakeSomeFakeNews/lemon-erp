@@ -4,7 +4,8 @@
 
     <sql id="viewColumns">
         d.id, d.doc_no, d.kind, d.biz_type, d.io_category, d.warehouse_id, w.name AS warehouse_name, d.to_warehouse_id,
-        tw.name AS to_warehouse_name, d.biz_date, d.status, d.total_qty, d.remark, d.source_no, d.in_transit,
+        tw.name AS to_warehouse_name, d.biz_date, d.status, d.total_qty, d.remark, d.source_no, d.in_transit, d.expected_date,
+        d.origin_id, od.doc_no AS origin_no,
         d.receive_by, ru.nickname AS receive_by_name, d.receive_date, d.receive_time, d.red_of, rd.doc_no AS red_of_no, d.reversed, d.partner_id, d.partner_name, d.flow_instance_id, d.dept_id,
         d.transfer_pricing, d.price_level, d.price_factor, d.cost_amount, d.transfer_amount, d.fee, d.fee_settle, d.fee_account_id,
         d.fee_carrier_id, d.fee_io_id, d.fee_bill_id,
@@ -20,10 +21,15 @@
         LEFT JOIN sys_user fu ON fu.id = d.confirm_by
         LEFT JOIN sys_user ru ON ru.id = d.receive_by
         LEFT JOIN wms_stock_doc rd ON rd.id = d.red_of
+        LEFT JOIN wms_stock_doc od ON od.id = d.origin_id
     </sql>
 
     <select id="selectPageList" resultType="com.lemon.erp.modules.wms.entity.WmsStockDoc">
         SELECT <include refid="viewColumns"/>
+        <!-- 在途调拨的验收进度 -->
+        <if test="kind.name() == 'TRANSFER'">, CASE WHEN d.in_transit = 1 THEN (SELECT SUM(ti.received_qty) FROM wms_stock_doc_item ti WHERE ti.doc_id = d.id) END AS received_qty,
+            CASE WHEN d.in_transit = 1 THEN (SELECT SUM(ti.qty - ti.received_qty - ti.diff_qty - ti.returned_qty - ti.lost_qty)
+                                             FROM wms_stock_doc_item ti WHERE ti.doc_id = d.id) END AS remaining_qty</if>
         <include refid="viewJoins"/>
         WHERE d.kind = #{kind}
         <if test="q.docNo != null and q.docNo != ''">AND d.doc_no LIKE CONCAT('%', #{q.docNo}, '%')</if>
@@ -33,6 +39,9 @@
         <if test="q.warehouseId != null">AND (d.to_warehouse_id = #{q.warehouseId}
             OR EXISTS (SELECT 1 FROM wms_stock_doc_item wi WHERE wi.doc_id = d.id AND COALESCE(wi.warehouse_id, d.warehouse_id) = #{q.warehouseId}))</if>
         <if test="q.status != null and q.status != ''">AND d.status = #{q.status}</if>
+        <!-- 在途进度：未完结（在途、部分到货、验收异常）；超过预计到达日期仍未完结 -->
+        <if test="q.transitState != null">AND d.status IN ('TRANSIT', 'PARTIAL', 'EXCEPTION')</if>
+        <if test="q.transitState != null and q.transitState.name() == 'OVERDUE'">AND d.expected_date &lt; #{today}</if>
         <if test="q.beginDate != null">AND d.biz_date &gt;= #{q.beginDate}</if>
         <if test="q.endDate != null">AND d.biz_date &lt;= #{q.endDate}</if>
         ORDER BY d.id DESC
@@ -55,16 +64,39 @@
         WHERE d.id = #{id}
     </select>
 
-    <!-- 调拨汇总：已调出（在途、已完成，含红字）的调拨单按 调出仓库 → 调入仓库 汇总，按业务日期筛选 -->
+    <select id="selectForUpdate" resultType="com.lemon.erp.modules.wms.entity.WmsStockDoc">
+        SELECT * FROM wms_stock_doc WHERE id = #{id} FOR UPDATE
+    </select>
+
+    <select id="selectByOrigin" resultType="com.lemon.erp.modules.wms.entity.WmsStockDoc">
+        SELECT id, doc_no, kind, status, biz_date, total_qty, in_transit, warehouse_id, to_warehouse_id
+        FROM wms_stock_doc
+        WHERE origin_id = #{originId}
+        ORDER BY id
+    </select>
+
+    <!-- 调拨汇总：已调出（在途、部分到货、验收异常、已完成，含红字）的调拨单按 调出仓库 → 调入仓库 汇总，按业务日期筛选。
+         在途调拨退回调出仓、确认损耗的数量不算调出（数量、调出成本金额、调拨金额按明细的调出成本价、调拨价扣除），
+         在途数量 = 实发 - 已验收 - 退回 - 损耗（含差异待处理的数量） -->
     <select id="selectTransferSummary" resultType="com.lemon.erp.modules.wms.dto.TransferSummaryRow">
         SELECT d.warehouse_id, w.name AS warehouse_name, d.to_warehouse_id, tw.name AS to_warehouse_name,
-               SUM(CASE WHEN d.red_of IS NULL THEN 1 ELSE 0 END) AS doc_count, SUM(d.total_qty) AS total_qty,
-               SUM(COALESCE(d.cost_amount, 0)) AS cost_amount, SUM(COALESCE(d.transfer_amount, 0)) AS transfer_amount,
+               SUM(CASE WHEN d.red_of IS NULL THEN 1 ELSE 0 END) AS doc_count, SUM(d.total_qty - COALESCE(x.back_qty, 0)) AS total_qty,
+               SUM(COALESCE(d.cost_amount, 0) - COALESCE(x.back_cost, 0)) AS cost_amount,
+               SUM(COALESCE(d.transfer_amount, 0) - COALESCE(x.back_transfer, 0)) AS transfer_amount,
+               SUM(COALESCE(x.transit_qty, 0)) AS transit_qty, SUM(COALESCE(x.back_qty, 0)) AS back_qty,
                SUM(d.fee) AS fee
         FROM wms_stock_doc d
         LEFT JOIN wms_warehouse w ON w.id = d.warehouse_id
         LEFT JOIN wms_warehouse tw ON tw.id = d.to_warehouse_id
-        WHERE d.kind = 'TRANSFER' AND d.status IN ('TRANSIT', 'DONE')
+        LEFT JOIN (SELECT i.doc_id, SUM(i.returned_qty + i.lost_qty) AS back_qty,
+                          SUM(ROUND((i.returned_qty + i.lost_qty) * COALESCE(i.cost_price, 0), 2)) AS back_cost,
+                          SUM(ROUND((i.returned_qty + i.lost_qty) * COALESCE(i.transfer_price, 0), 2)) AS back_transfer,
+                          SUM(i.qty - i.received_qty - i.returned_qty - i.lost_qty) AS transit_qty
+                   FROM wms_stock_doc_item i
+                   JOIN wms_stock_doc di ON di.id = i.doc_id
+                   WHERE di.kind = 'TRANSFER' AND di.in_transit = 1
+                   GROUP BY i.doc_id) x ON x.doc_id = d.id
+        WHERE d.kind = 'TRANSFER' AND d.status IN ('TRANSIT', 'PARTIAL', 'EXCEPTION', 'DONE')
         <if test="q.warehouseId != null">AND (d.warehouse_id = #{q.warehouseId} OR d.to_warehouse_id = #{q.warehouseId})</if>
         <if test="q.beginDate != null">AND d.biz_date &gt;= #{q.beginDate}</if>
         <if test="q.endDate != null">AND d.biz_date &lt;= #{q.endDate}</if>

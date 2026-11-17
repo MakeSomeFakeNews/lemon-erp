@@ -84,7 +84,14 @@ export const formatQty = (n) => qty(n, 4, currentLocale())
 export const warehouseText = (r) => (r.warehouseNames?.length ? r.warehouseNames : [r.warehouseName]).filter(Boolean).join(t('components.excel.listSep'))
 
 /** 已完成、非业务单据生成、非红字、未冲销的单据可以冲销 */
-export const canReverse = (d) => d.status === WmsDocStatus.DONE && !d.sourceNo && !d.redOf && d.reversed !== 1
+/** 已完成的手工单据可以冲销；在途调拨只有全部验收（没有退回、损耗）的才能冲销（列表按已验收合计，详情按明细判断） */
+export const canReverse = (d) => d.status === WmsDocStatus.DONE && !d.sourceNo && !d.redOf && d.reversed !== 1 && fullyReceived(d)
+
+function fullyReceived(d) {
+  if (!(d.inTransit === true || d.inTransit === 1)) return true
+  if (d.items) return d.items.every((i) => Number(i.receivedQty) === Number(i.qty))
+  return d.receivedQty == null || Number(d.receivedQty) === Number(d.totalQty)
+}
 
 /** 负数（红字单据）标红 */
 export const negativeClass = (n) => (Number(n) < 0 ? 'qty-negative' : undefined)

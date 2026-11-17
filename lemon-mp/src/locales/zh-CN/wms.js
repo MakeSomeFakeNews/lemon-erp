@@ -8,7 +8,8 @@ export default {
     pick: '拣货',
     check: '盘点',
     report: '报工',
-    quickSale: '快速开单'
+    quickSale: '快速开单',
+    transferReceive: '调拨验收'
   },
   common: {
     warehouse: '仓库',
@@ -186,6 +187,35 @@ export default {
       LAST_PRICE: '最近价',
       REF_COST: '参考成本'
     }
+  },
+  transfer: {
+    scanDoc: '扫描或输入调拨单号',
+    noDocs: '没有待验收的在途调拨单',
+    receivedOf: '已验收 {received} / {total}',
+    changeDoc: '换单据',
+    logisticsNo: '物流单号',
+    plateNo: '车牌号',
+    optional: '选填',
+    allArrived: '全部到货',
+    clearAll: '清空',
+    scanTip: '扫描物料条码或序列号',
+    receiveQty: '本次验收',
+    diffType: '差异',
+    noDiff: '无差异',
+    diffQty: '差异数量',
+    diffRemark: '差异说明',
+    serialDiffOnWeb: '序列号物料的差异请在电脑端登记',
+    exceeds: '验收与差异合计超过未到数量，多发请选择「多发」',
+    thisTime: '本次验收',
+    diffN: '，差异 {n}',
+    submit: '确认验收',
+    noRemaining: '该调拨单没有未到的数量',
+    notInDoc: '{code} 不在该调拨单中',
+    overQty: '{name} 已超过未到数量',
+    added: '{name} +{qty}，共 {total}',
+    serialNotInTransit: '序列号 {code} 不在未到的序列号中',
+    lineExceeds: '{name}：验收与差异合计超过未到数量',
+    success: '验收成功'
   },
   receive: {
     scanOrder: '扫描或输入采购订单号',

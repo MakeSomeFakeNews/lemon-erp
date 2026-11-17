@@ -55,6 +55,18 @@ public class WmsStockDocItem extends BaseEntity {
 
     private String remark;
 
+    /** 在途调拨：已验收入库数量（含让步接收） */
+    private BigDecimal receivedQty;
+
+    /** 在途调拨：登记了差异、待处理的数量（不含多发） */
+    private BigDecimal diffQty;
+
+    /** 在途调拨：退回调出仓库的数量 */
+    private BigDecimal returnedQty;
+
+    /** 在途调拨：确认损耗的数量 */
+    private BigDecimal lostQty;
+
     /** 批次登记的生产日期、有效期（出库等单据随批次带出显示） */
     @TableField(exist = false)
     private LocalDate batchProductionDate;
@@ -89,6 +101,15 @@ public class WmsStockDocItem extends BaseEntity {
     /** 实际仓库的名称（明细仓库，为空时为表头仓库） */
     @TableField(exist = false)
     private String warehouseName;
+
+    /** 在途调拨的未到数量 = 实发 - 已验收 - 差异待处理 - 退回 - 损耗 */
+    public BigDecimal getRemainingQty() {
+        return qty == null ? null : qty.subtract(nz(receivedQty)).subtract(nz(diffQty)).subtract(nz(returnedQty)).subtract(nz(lostQty));
+    }
+
+    private static BigDecimal nz(BigDecimal v) {
+        return v == null ? BigDecimal.ZERO : v;
+    }
 
     /** 本行实际的仓库：明细仓库，为空时为表头仓库 */
     public Long warehouseOr(Long headerWarehouseId) {

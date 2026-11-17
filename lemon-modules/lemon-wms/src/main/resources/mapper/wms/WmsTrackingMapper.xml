@@ -8,7 +8,7 @@
         SELECT DISTINCT d.doc_no
         FROM wms_stock_doc d
         JOIN wms_stock_doc_item i ON i.doc_id = d.id
-        WHERE i.material_id = #{materialId} AND d.status IN ('TRANSIT', 'APPROVING')
+        WHERE i.material_id = #{materialId} AND d.status IN ('TRANSIT', 'PARTIAL', 'EXCEPTION', 'APPROVING')
         ORDER BY d.doc_no
     </select>
 

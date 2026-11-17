@@ -4,10 +4,10 @@
 
     <insert id="insertBatch">
         INSERT INTO wms_stock_flow (biz_type, doc_id, doc_no, warehouse_id, location_id, material_id, batch_no, qty,
-                                    biz_price, cost_price, cost_amount, partner_id, partner_name, create_by, create_time) VALUES
+                                    biz_price, cost_price, cost_amount, partner_id, partner_name, create_by, create_time, biz_date) VALUES
         <foreach collection="list" item="f" separator=",">
             (#{f.bizType}, #{f.docId}, #{f.docNo}, #{f.warehouseId}, #{f.locationId}, #{f.materialId}, #{f.batchNo},
-             #{f.qty}, #{f.bizPrice}, #{f.costPrice}, #{f.costAmount}, #{f.partnerId}, #{f.partnerName}, #{f.createBy}, #{f.createTime})
+             #{f.qty}, #{f.bizPrice}, #{f.costPrice}, #{f.costAmount}, #{f.partnerId}, #{f.partnerName}, #{f.createBy}, #{f.createTime}, #{f.bizDate})
         </foreach>
     </insert>
 
@@ -104,7 +104,7 @@
         </choose>
     </sql>
 
-    <sql id="historyDate">COALESCE(CASE WHEN f.qty &gt; 0 THEN sd.receive_date END, sd.biz_date, ck.biz_date, CAST(f.create_time AS DATE))</sql>
+    <sql id="historyDate">COALESCE(f.biz_date, sd.biz_date, ck.biz_date, CAST(f.create_time AS DATE))</sql>
 
     <select id="selectHistoryOpening" resultType="java.util.Map">
         SELECT COALESCE(SUM(f.qty), 0) AS "qty", COALESCE(SUM(f.cost_amount), 0) AS "amount",
