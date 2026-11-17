@@ -42,7 +42,7 @@ public class WmsCheckController {
         return R.ok(checkService.page(current, size, query));
     }
 
-    /** 按仓库当前库存生成盘点明细（不保存） */
+    /** 按仓库当前库存生成盘点明细（不保存）；电脑端改用「选择商品」，保留供接口调用 */
     @GetMapping("/snapshot")
     @PreAuthorize("@ss.hasAnyPerm('wms:check:add', 'wms:check:edit')")
     public R<List<WmsCheckItem>> snapshot(@RequestParam Long warehouseId,
@@ -52,7 +52,7 @@ public class WmsCheckController {
         return R.ok(checkService.snapshot(warehouseId, locationId, keyword, category));
     }
 
-    /** 选择盘点的物料：物料资料，可只看一段时间内有过库存变动的（动态盘点） */
+    /** 选择盘点的物料：物料资料，可只看盘点仓库的货品、一段时间内有过库存变动的（动态盘点）等 */
     @GetMapping("/materials")
     @PreAuthorize("@ss.hasAnyPerm('wms:check:add', 'wms:check:edit')")
     public R<PageResult<CheckMaterialView>> materials(@RequestParam(defaultValue = "1") long current,

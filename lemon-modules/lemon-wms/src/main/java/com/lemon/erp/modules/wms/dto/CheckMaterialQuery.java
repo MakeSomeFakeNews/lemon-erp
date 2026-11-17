@@ -2,6 +2,7 @@ package com.lemon.erp.modules.wms.dto;
 
 import com.lemon.erp.common.enums.EnableStatus;
 import com.lemon.erp.framework.data.SearchKeys;
+import com.lemon.erp.modules.wms.model.StockSign;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
@@ -10,7 +11,8 @@ import java.time.LocalDateTime;
 /**
  * 盘点单「选择商品」的查询条件：数据来源是物料资料（不是库存），可只列出一段时间内有过库存变动的物料（动态盘点）
  *
- * @param warehouseId   盘点仓库：当前库存、库存 &gt; 0、变动、货位都按该仓库；为空时为全部仓库
+ * @param warehouseId   盘点仓库：当前库存、库存条件、变动、货位都按该仓库；为空时为全部仓库
+ * @param warehouseGoods 只看盘点仓库的货品：在该仓库有库存记录（含已出完的）、有过库存流水，或默认库位在该仓库
  * @param keyword       编码、名称、规格、条码或检索列（拼音首字母等）模糊匹配
  * @param category      分类编码，含下级分类
  * @param brand         品牌（业务字典 wms_material_brand）
@@ -21,9 +23,10 @@ import java.time.LocalDateTime;
  * @param purchaseBegin 最新进货日期起：最近一次采购入库（已完成）的业务日期在范围内，全公司
  * @param salesBegin    最新销售日期起：最近一次销售出库（已完成）的业务日期在范围内，全公司
  * @param status        物料状态，为空不限（停用的物料可能还有库存，也可以盘点）
- * @param inStock       只看库存 &gt; 0 的物料
+ * @param stock         库存条件：&gt; 0、= 0（含没有库存记录的）、&lt; 0，按盘点仓库的合计；为空不限
+ * @param inStock       只看库存 &gt; 0 的物料（兼容旧参数，等同于 stock = POSITIVE）
  */
-public record CheckMaterialQuery(Long warehouseId, String keyword, String category, String brand, Long locationId,
+public record CheckMaterialQuery(Long warehouseId, Boolean warehouseGoods, String keyword, String category, String brand, Long locationId,
                                  Boolean changed,
                                  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate changeBegin,
                                  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate changeEnd,
@@ -31,14 +34,20 @@ public record CheckMaterialQuery(Long warehouseId, String keyword, String catego
                                  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate purchaseEnd,
                                  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate salesBegin,
                                  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate salesEnd,
-                                 EnableStatus status, Boolean inStock) {
+                                 EnableStatus status, StockSign stock, Boolean inStock) {
 
     public boolean changedOnly() {
         return Boolean.TRUE.equals(changed);
     }
 
-    public boolean inStockOnly() {
-        return Boolean.TRUE.equals(inStock);
+    /** 只看盘点仓库的货品（未选仓库时不限） */
+    public boolean warehouseGoodsOnly() {
+        return warehouseId != null && Boolean.TRUE.equals(warehouseGoods);
+    }
+
+    /** 库存条件，旧参数 inStock = true 等同于 &gt; 0 */
+    public StockSign stockSign() {
+        return stock != null ? stock : Boolean.TRUE.equals(inStock) ? StockSign.POSITIVE : null;
     }
 
     /** 变动时间下限（含）：起始日期的 0 点 */
