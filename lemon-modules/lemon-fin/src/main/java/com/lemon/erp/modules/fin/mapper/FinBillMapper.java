@@ -4,6 +4,7 @@ import com.lemon.erp.modules.fin.dto.FxRevaluation;
 import com.lemon.erp.modules.fin.model.BillKind;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.lemon.erp.framework.data.Sort;
 import com.lemon.erp.modules.fin.dto.AgingRow;
 import com.lemon.erp.modules.fin.dto.BillQuery;
 import com.lemon.erp.modules.fin.entity.FinBill;
@@ -22,11 +23,12 @@ public interface FinBillMapper extends BaseMapper<FinBill> {
     /**
      * 账龄分析：未核销余额按到期日分段
      *
-     * @param d30 asOf - 30 天，到期日早于它的逾期超过 30 天，依此类推
+     * @param d30  asOf - 30 天，到期日早于它的逾期超过 30 天，依此类推
+     * @param sort 列头排序（Service 按白名单校验），为空时按余额从大到小
      */
     IPage<AgingRow> selectAging(IPage<AgingRow> page, @Param("kind") BillKind kind, @Param("asOf") LocalDate asOf,
                                 @Param("d30") LocalDate d30, @Param("d60") LocalDate d60, @Param("d90") LocalDate d90,
-                                @Param("withAp") boolean withAp);
+                                @Param("withAp") boolean withAp, @Param("sort") Sort sort);
 
     /** 核销（金额与单据同号），累计不超过单据金额；返回 0 表示超出 */
     int addSettled(@Param("id") Long id, @Param("amount") BigDecimal amount);

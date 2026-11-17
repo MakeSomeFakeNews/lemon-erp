@@ -3,6 +3,7 @@ package com.lemon.erp.modules.fin.controller;
 import com.lemon.erp.modules.fin.model.BillStatus;
 import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.common.i18n.Messages;
+import com.lemon.erp.framework.data.SortParam;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.framework.log.OperLog;
@@ -71,8 +72,8 @@ public class FinBillController {
                                          @RequestParam(defaultValue = "1") long current,
                                          @RequestParam(defaultValue = "10") long size,
                                          @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate asOf,
-                                         @RequestParam(defaultValue = "false") boolean withAp) {
-        return R.ok(billService.aging(current, size, billKind(kind), asOf, withAp));
+                                         @RequestParam(defaultValue = "false") boolean withAp, SortParam sort) {
+        return R.ok(billService.aging(current, size, billKind(kind), asOf, withAp, sort));
     }
 
     /** 往来汇总：一个往来单位一行（期初、单据余额、预收预付、坏账、净欠款），可按单位、负责人（客户）、是否有余额筛选 */
@@ -85,8 +86,9 @@ public class FinBillController {
                                                     @RequestParam(required = false) String keyword,
                                                     @RequestParam(required = false) Long ownerId,
                                                     @RequestParam(defaultValue = "true") boolean onlyBalance,
-                                                    @RequestParam(defaultValue = "false") boolean withAp) {
-        return R.ok(partnerLedgerService.summary(current, size, new PartnerSummaryRow.Query(billKind(kind), partnerId, keyword, ownerId, onlyBalance, withAp)));
+                                                    @RequestParam(defaultValue = "false") boolean withAp, SortParam sort) {
+        return R.ok(partnerLedgerService.summary(current, size,
+                new PartnerSummaryRow.Query(billKind(kind), partnerId, keyword, ownerId, onlyBalance, withAp), sort));
     }
 
     /** 往来汇总的合计（筛选条件同上） */

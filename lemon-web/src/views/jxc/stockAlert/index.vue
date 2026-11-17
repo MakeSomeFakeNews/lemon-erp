@@ -89,7 +89,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { ClusterOutlined, DownloadOutlined, QuestionCircleOutlined } from '@ant-design/icons-vue'
 import StockHistory from '@/components/wms/StockHistory.vue'
@@ -136,11 +136,13 @@ function params() {
   return cleanParams({ ...query, keyword: query.keyword?.trim(), alertFilter: query.tab === StockAlertTab.WAREHOUSE ? query.alertFilter : undefined })
 }
 
-const { rows, summary, result, loading, exporting, pagination, load, search, onChange, exportRows } = useStockReport(jxcStockAlert, params)
+const { rows, summary, result, loading, exporting, pagination, load, search, onChange, exportRows, sorter, sortColumns } = useStockReport(jxcStockAlert, params)
+// 各标签页的列不同，切换时取消排序
+watch(() => query.tab, () => sorter.reset())
 
 /** 列按上一次查询的标签页和权限（切换标签页后表格与数据一起更新） */
 const shownTab = computed(() => result.value.tab || StockAlertTab.WAREHOUSE)
-const columns = computed(() => alertColumns(shownTab.value, result.value, enabledLevels.value, canHistory))
+const columns = computed(() => sortColumns(alertColumns(shownTab.value, result.value, enabledLevels.value, canHistory)))
 const scrollX = computed(() => columns.value.reduce((s, c) => s + (c.width || 100), 0))
 
 const tip = computed(() => {

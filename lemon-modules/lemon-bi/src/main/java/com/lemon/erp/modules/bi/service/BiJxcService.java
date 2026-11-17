@@ -3,6 +3,9 @@ package com.lemon.erp.modules.bi.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.Sort;
+import com.lemon.erp.framework.data.SortParam;
+import com.lemon.erp.framework.data.Sorts;
 import com.lemon.erp.framework.security.SecurityUtils;
 import com.lemon.erp.framework.security.datascope.DataPermission;
 import com.lemon.erp.modules.bi.dto.JxcQuery;
@@ -65,20 +68,30 @@ public class BiJxcService {
      */
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
     public JxcViews.DetailPage detail(boolean sales, JxcQuery q, long current, long size) {
+        return detail(sales, q, null, current, size);
+    }
+
+    /** 带列头排序（issue #122），可排序的列见 {@link #detailSorts}，不传时按业务日期、单据 */
+    @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
+    public JxcViews.DetailPage detail(boolean sales, JxcQuery q, SortParam sort, long current, long size) {
         prepare(sales, q, MAX_DAYS);
-        boolean bottom = AdjustMode.orDefault(q.getAdjustMode()) == AdjustMode.BOTTOM;
-        Page<JxcViews.DetailRow> page = jxcMapper.selectDetail(Page.of(current, size), sales, q);
+        q.setAdjustMode(AdjustMode.orDefault(q.getAdjustMode()));
+        boolean bottom = q.getAdjustMode() == AdjustMode.BOTTOM;
+        Sort order = detailSorts(sales, bottom).resolve(sort);
+        Page<JxcViews.DetailRow> page = jxcMapper.selectDetail(Page.of(current, size), sales, q, order);
         page.getRecords().forEach(r -> fillDetail(sales, bottom, r));
         JxcViews.SummaryRow total = total(sales, q);
         return new JxcViews.DetailPage(page.getRecords(), page.getTotal(), adjustments(sales, bottom, total), total);
     }
 
-    /** 导出明细：最多 {@link #EXPORT_LIMIT} 行，调整行与合计同 {@link #detail} */
+    /** 导出明细：最多 {@link #EXPORT_LIMIT} 行，排序、调整行与合计同 {@link #detail} */
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
-    public JxcViews.DetailExport export(boolean sales, JxcQuery q) {
+    public JxcViews.DetailExport export(boolean sales, JxcQuery q, SortParam sort) {
         prepare(sales, q, MAX_DAYS);
-        boolean bottom = AdjustMode.orDefault(q.getAdjustMode()) == AdjustMode.BOTTOM;
-        List<JxcViews.DetailRow> list = jxcMapper.selectDetailList(sales, q, EXPORT_LIMIT + 1);
+        q.setAdjustMode(AdjustMode.orDefault(q.getAdjustMode()));
+        boolean bottom = q.getAdjustMode() == AdjustMode.BOTTOM;
+        Sort order = detailSorts(sales, bottom).resolve(sort);
+        List<JxcViews.DetailRow> list = jxcMapper.selectDetailList(sales, q, order, EXPORT_LIMIT + 1);
         List<JxcViews.DetailRow> rows = new ArrayList<>(list.subList(0, Math.min(list.size(), EXPORT_LIMIT)));
         rows.forEach(r -> fillDetail(sales, bottom, r));
         JxcViews.SummaryRow total = total(sales, q);
@@ -91,8 +104,15 @@ public class BiJxcService {
      */
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
     public JxcViews.DocPage docs(boolean sales, JxcQuery q, long current, long size) {
+        return docs(sales, q, null, current, size);
+    }
+
+    /** 带列头排序（issue #122），可排序的列见 {@link #docSorts}，不传时按业务日期、单据 */
+    @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
+    public JxcViews.DocPage docs(boolean sales, JxcQuery q, SortParam sort, long current, long size) {
         prepare(sales, q, MAX_DAYS);
-        Page<JxcViews.DocRow> page = jxcMapper.selectDocs(Page.of(current, size), sales, q);
+        Sort order = docSorts(sales).resolve(sort);
+        Page<JxcViews.DocRow> page = jxcMapper.selectDocs(Page.of(current, size), sales, q, order);
         page.getRecords().forEach(r -> fillDoc(sales, r));
         return new JxcViews.DocPage(page.getRecords(), page.getTotal(), total(sales, q));
     }
@@ -100,11 +120,39 @@ public class BiJxcService {
     /** 导出单据列表：最多 {@link #EXPORT_LIMIT} 行，带全部单据的合计 */
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
     public JxcViews.DocExport exportDocs(boolean sales, JxcQuery q) {
+        return exportDocs(sales, q, null);
+    }
+
+    /** 带列头排序（与单据列表一致） */
+    @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
+    public JxcViews.DocExport exportDocs(boolean sales, JxcQuery q, SortParam sort) {
         prepare(sales, q, MAX_DAYS);
-        List<JxcViews.DocRow> list = jxcMapper.selectDocList(sales, q, EXPORT_LIMIT + 1);
+        Sort order = docSorts(sales).resolve(sort);
+        List<JxcViews.DocRow> list = jxcMapper.selectDocList(sales, q, order, EXPORT_LIMIT + 1);
         List<JxcViews.DocRow> rows = new ArrayList<>(list.subList(0, Math.min(list.size(), EXPORT_LIMIT)));
         rows.forEach(r -> fillDoc(sales, r));
         return new JxcViews.DocExport(rows, list.size() > EXPORT_LIMIT, total(sales, q));
+    }
+
+    /**
+     * 明细可排序的列（与页面显示的列一致）：汇总到底部时只有价税合计、销售金额（进货为扣折让后金额）、成本、毛利，
+     * 分摊到各行时另有货款、整单优惠、净额和各调整项；进货没有业务员、成本、运费、坏账
+     */
+    public static Sorts.Fields detailSorts(boolean sales, boolean bottom) {
+        Sorts.Fields fields = Sorts.fields("bizDate", "docNo", "partnerName", "material", "category", "brand", "warehouseName", "qty", "price",
+                "taxedAmount", "remark").addIf(sales, "salesmanName");
+        if (!bottom) {
+            fields.add("goodsAmount", "discount", "amount", "settleDiscount").addIf(sales, "freight", "badDebt");
+        }
+        return sales ? fields.add("salesAmount", "cost", "profit") : fields.add("amountAfterDiscount");
+    }
+
+    /** 单据列表可排序的列 */
+    public static Sorts.Fields docSorts(boolean sales) {
+        Sorts.Fields fields = Sorts.fields("bizDate", "docNo", "partnerName", "warehouseName", "lineCount", "qty", "goodsAmount", "discount",
+                "amount", "taxedAmount", "settleDiscount", "remark");
+        return sales ? fields.add("salesmanName", "freight", "badDebt", "salesAmount", "cost", "profit", "margin")
+                : fields.add("amountAfterDiscount");
     }
 
     // ---------------------------------------------------------------- 经营状况

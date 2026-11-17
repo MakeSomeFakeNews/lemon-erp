@@ -89,6 +89,7 @@
         :pagination="data.rows.length > 50 ? { pageSize: 50, showSizeChanger: false, showTotal: (n) => $t('common.table.total', { total: n }) } : false"
         :scroll="{ x: scrollX, y: '100%' }"
         :custom-row="(r) => ({ onClick: () => drill(r), class: 'click-row' })"
+        @change="(p, f, s) => sorter.change(s)"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'group'">
@@ -146,6 +147,7 @@ import JxcDocs from './JxcDocs.vue'
 import TableActions from '@/components/common/TableActions.vue'
 import { jxcSummary } from '@/api/bi/jxc'
 import { useDict } from '@/composables/useDict'
+import { useTableSort } from '@/composables/useTableSort'
 import { toOptions } from '@/utils/dict'
 import { money, price, qty } from '@/utils/number'
 import { writeExcel } from '@/utils/excel'
@@ -156,6 +158,7 @@ import { t } from '@/locales'
 /**
  * 销售报表 / 进货报表：按维度汇总出入库单（净额 = 出库 − 退货）。汇总行的两种穿透（issue #88）：【单据】列出该汇总项下的单据（每张一行），
  * 再点单据看该单的明细；【商品明细】列出出入库明细。点击行时，按类别、品牌、商品汇总到商品明细，其他维度到单据列表；明细中点击单据号查看单据
+ * 汇总一次取全部（最多 1000 行），列头排序在前端完成（issue #122），导出按页面的顺序，合计行不参与排序
  * - report：sales | purchase
  */
 const props = defineProps({
@@ -173,6 +176,9 @@ const data = ref({ rows: [], total: {}, truncated: false })
 const total = computed(() => data.value.total || {})
 const loading = ref(false)
 const tip = computed(() => t(sales.value ? 'jxc.sales.tip' : 'jxc.purchase.tip'))
+const sorter = useTableSort()
+/** 汇总项按显示名称排序，日、月按时间 */
+const groupSortValue = (r) => ([JxcDimension.DAY, JxcDimension.MONTH].includes(groupBy.value) ? r.groupKey : groupLabel(groupBy.value, r, dict))
 
 /**
  * 金额口径（issue #93）：出库（入库）货款 − 退货货款 = 货款（优惠前）；货款 − 整单优惠 = 净额（销售收入 / 进货金额）；
@@ -180,12 +186,13 @@ const tip = computed(() => t(sales.value ? 'jxc.sales.tip' : 'jxc.purchase.tip')
  */
 const columns = computed(() => {
   const s = sales.value
-  const m = (key, titleKey, width = 120) => ({ title: t(titleKey), key, width, align: 'right', money: true })
-  return [
-    { title: t(`jxc.dim.${groupBy.value}`), key: 'group', width: 220, fixed: 'left', ellipsis: true },
-    { title: t(s ? 'jxc.field.outQty' : 'jxc.field.inQty'), key: 'bizQty', width: 110, align: 'right', qty: true },
-    { title: t('jxc.field.returnQty'), key: 'returnQty', width: 100, align: 'right', qty: true },
-    { title: t('jxc.field.netQty'), key: 'netQty', width: 100, align: 'right', qty: true },
+  const m = (key, titleKey, width = 120) => ({ title: t(titleKey), key, width, align: 'right', money: true, sortable: true })
+  const q = (key, titleKey, width) => ({ title: t(titleKey), key, width, align: 'right', qty: true, sortable: true })
+  return sorter.columns([
+    { title: t(`jxc.dim.${groupBy.value}`), key: 'group', width: 220, fixed: 'left', ellipsis: true, sortable: true, sortValue: groupSortValue },
+    q('bizQty', s ? 'jxc.field.outQty' : 'jxc.field.inQty', 110),
+    q('returnQty', 'jxc.field.returnQty', 100),
+    q('netQty', 'jxc.field.netQty', 100),
     m('bizAmount', s ? 'jxc.field.outAmount' : 'jxc.field.inAmount', 130),
     m('returnAmount', 'jxc.field.returnAmount'),
     m('goodsAmount', 'jxc.field.goodsAmount', 130),
@@ -198,9 +205,9 @@ const columns = computed(() => {
           m('badDebt', 'jxc.field.badDebt', 110),
           m('salesAmount', 'jxc.field.salesAmount', 130),
           m('taxedAmount', 'jxc.field.taxedAmount', 130),
-          { title: t('jxc.field.cost'), key: 'cost', width: 170, align: 'right' },
+          { title: t('jxc.field.cost'), key: 'cost', width: 170, align: 'right', sortable: true },
           m('profit', 'jxc.field.profit'),
-          { title: t('jxc.field.margin'), key: 'margin', width: 90, align: 'right' }
+          { title: t('jxc.field.margin'), key: 'margin', width: 90, align: 'right', sortable: true }
         ]
       : [
           m('taxedAmount', 'jxc.field.taxedAmount', 130),
@@ -208,10 +215,10 @@ const columns = computed(() => {
           m('settleDiscount', 'jxc.field.purchaseDiscount', 110),
           m('netAfterDiscount', 'jxc.field.netAfterDiscount', 150)
         ]),
-    { title: t('jxc.field.avgPrice'), key: 'avgPrice', width: 100, align: 'right' },
-    { title: t('jxc.field.docCount'), key: 'docCount', dataIndex: 'docCount', width: 80, align: 'right' },
+    { title: t('jxc.field.avgPrice'), key: 'avgPrice', width: 100, align: 'right', sortable: true },
+    { title: t('jxc.field.docCount'), key: 'docCount', dataIndex: 'docCount', width: 80, align: 'right', sortable: true },
     drillColumn()
-  ]
+  ])
 })
 
 const scrollX = computed(() => columns.value.reduce((sum, c) => sum + c.width, 0))
@@ -265,7 +272,7 @@ function exportSummary() {
     const v = r[c.key]
     return v === null || v === undefined ? '' : Number(v)
   }
-  const rows = data.value.rows.map((r) => cols.map((c) => cell(c, r)))
+  const rows = sorter.sortRows(data.value.rows, cols).map((r) => cols.map((c) => cell(c, r)))
   rows.push(cols.map((c) => (c.key === 'group' ? t('jxc.common.total') : cell(c, total.value))))
   const name = `${t(sales.value ? 'jxc.sales.title' : 'jxc.purchase.title')}_${t(`jxc.dim.${groupBy.value}`)}_${range.value[0]}_${range.value[1]}`
   writeExcel(name, cols.map((c) => ({ title: c.title, width: c.key === 'group' ? 30 : 14 })), rows, { withStamp: false })

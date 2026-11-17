@@ -3,6 +3,7 @@ import { t } from '@/locales'
 import { writeExcel } from '@/utils/excel'
 import { dictLabel } from '@/components/bi/jxc/jxc'
 import { pageStock } from '@/api/wms/stock'
+import { useTableSort } from '@/composables/useTableSort'
 
 /** 导出：每次取的行数（分页上限）与最多导出的行数 */
 const EXPORT_PAGE = 500
@@ -13,6 +14,16 @@ const TEXT_KEYS = ['code', 'name', 'spec', 'unit', 'warehouseName', 'locationCod
 /** 去掉空的查询参数 */
 export const cleanParams = (p) => Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined && v !== null && v !== ''))
 
+/** 商品列（编码、名称、类别、品牌、规格、单位），可点击列头排序（类别、品牌按编码排序） */
+export const goodsColumns = (codeTitle = t('jxc.stock.code')) => [
+  { title: codeTitle, key: 'code', width: 130, sortable: true },
+  { title: t('jxc.field.material'), dataIndex: 'name', key: 'name', width: 180, ellipsis: true, sortable: true },
+  { title: t('jxc.field.category'), key: 'category', width: 110, sortable: true },
+  { title: t('jxc.field.brand'), key: 'brand', width: 100, sortable: true },
+  { title: t('jxc.field.spec'), dataIndex: 'spec', key: 'spec', width: 130, ellipsis: true, sortable: true },
+  { title: t('jxc.field.unit'), dataIndex: 'unit', key: 'unit', width: 64, sortable: true }
+]
+
 /** 联查库存分布（StockDistributionModal 的 loader） */
 export const loadStock = async (materialId) => (await pageStock({ materialId, current: 1, size: 500 })).records
 
@@ -21,7 +32,11 @@ export const loadStock = async (materialId) => (await pageStock({ materialId, cu
  *
  * @param fetcher 接口函数（params → { records, total, summary, ... }）
  * @param params  返回本次查询参数（不含分页）的函数
- * @returns rows、summary、result（上一次查询的完整返回）、loading、exporting、pagination、load、search、onChange、exportRows
+ * 列头排序（issue #122）：服务端排序，列定义写 sortable: true，表格的列用 sortColumns(columns) 生成；排序作用于全部数据，
+ * 导出与页面排序一致，合计行不参与排序。切换标签页等导致列不同时调用 sorter.reset()
+ *
+ * @returns rows、summary、result（上一次查询的完整返回）、loading、exporting、pagination、load、search、onChange、exportRows、
+ *          sorter、sortColumns
  */
 export function useStockReport(fetcher, params) {
   const rows = ref([])
@@ -30,13 +45,15 @@ export function useStockReport(fetcher, params) {
   const loading = ref(false)
   const exporting = ref(false)
   const pagination = reactive({ current: 1, pageSize: 20, total: 0, showSizeChanger: true, showTotal: (n) => t('common.table.total', { total: n }) })
+  const sorter = useTableSort({ remote: true })
+  const query = () => ({ ...params(), ...sorter.params() })
 
   let seq = 0
   async function load() {
     const current = ++seq
     loading.value = true
     try {
-      const res = await fetcher({ ...params(), current: pagination.current, size: pagination.pageSize })
+      const res = await fetcher({ ...query(), current: pagination.current, size: pagination.pageSize })
       if (current !== seq) return
       rows.value = res.records
       pagination.total = res.total
@@ -52,14 +69,15 @@ export function useStockReport(fetcher, params) {
     load()
   }
 
-  function onChange(p) {
-    pagination.current = p.current
+  /** 翻页、改每页条数、列头排序（排序变化时回到第一页） */
+  function onChange(p, filters, sort) {
+    pagination.current = sorter.change(sort) ? 1 : p.current
     pagination.pageSize = p.pageSize
     load()
   }
 
   /**
-   * 导出全部页（最多 5000 行）和合计行
+   * 导出全部页（最多 5000 行，按当前排序）和合计行
    *
    * @param name        文件名
    * @param cols        导出的列（页面的列，不含操作列）
@@ -72,7 +90,7 @@ export function useStockReport(fetcher, params) {
     try {
       const all = []
       for (let page = 1; all.length < Math.min(pagination.total, EXPORT_MAX); page++) {
-        const res = await fetcher({ ...params(), current: page, size: EXPORT_PAGE })
+        const res = await fetcher({ ...query(), current: page, size: EXPORT_PAGE })
         all.push(...res.records)
         if (res.records.length < EXPORT_PAGE) break
       }
@@ -93,5 +111,5 @@ export function useStockReport(fetcher, params) {
     }
   }
 
-  return { rows, summary, result, loading, exporting, pagination, load, search, onChange, exportRows }
+  return { rows, summary, result, loading, exporting, pagination, load, search, onChange, exportRows, sorter, sortColumns: sorter.columns }
 }

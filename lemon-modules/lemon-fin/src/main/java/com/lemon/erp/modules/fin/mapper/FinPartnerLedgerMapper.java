@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.fin.mapper;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.lemon.erp.framework.data.Sort;
 import com.lemon.erp.modules.fin.dto.FinAnalysis;
 import com.lemon.erp.modules.fin.dto.PartnerSummaryRow;
 import com.lemon.erp.modules.fin.model.SettleKind;
@@ -36,9 +37,10 @@ public interface FinPartnerLedgerMapper {
     List<FinAnalysis.PartnerFlow> selectRows(@Param("billKind") BillKind billKind, @Param("settleKind") SettleKind settleKind,
                                          @Param("partnerId") Long partnerId, @Param("begin") LocalDate begin, @Param("end") LocalDate end);
 
-    /** 往来汇总：一个往来单位一行（当前余额），按净欠款降序；withAp 挂接关联供应商的应付（仅应收） */
+    /** 往来汇总：一个往来单位一行（当前余额），默认按净欠款降序，sort 为列头排序；withAp 挂接关联供应商的应付（仅应收） */
     IPage<PartnerSummaryRow> selectSummary(IPage<PartnerSummaryRow> page, @Param("q") PartnerSummaryRow.Query query,
-                                           @Param("settleKind") SettleKind settleKind, @Param("withAp") boolean withAp);
+                                           @Param("settleKind") SettleKind settleKind, @Param("withAp") boolean withAp,
+                                           @Param("sort") Sort sort);
 
     /** 往来汇总的合计（同样的筛选条件） */
     PartnerSummaryRow selectSummaryTotal(@Param("q") PartnerSummaryRow.Query query, @Param("settleKind") SettleKind settleKind,

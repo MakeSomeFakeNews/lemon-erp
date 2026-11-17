@@ -74,7 +74,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ClusterOutlined, DownloadOutlined, QuestionCircleOutlined } from '@ant-design/icons-vue'
 import StockHistory from '@/components/wms/StockHistory.vue'
 import StockDistributionModal from '@/components/wms/StockDistributionModal.vue'
@@ -83,7 +83,7 @@ import StockGoodsFilters from '@/components/bi/jxc/StockGoodsFilters.vue'
 import { actionColumn } from '@/components/common/tableActions'
 import { jxcSalesRate } from '@/api/bi/jxc'
 import { dictLabel, rangePresets, thisMonth } from '@/components/bi/jxc/jxc'
-import { cleanParams, loadStock, useStockReport } from '@/components/bi/jxc/useStockReport'
+import { cleanParams, goodsColumns, loadStock, useStockReport } from '@/components/bi/jxc/useStockReport'
 import { useDict } from '@/composables/useDict'
 import { useUserStore } from '@/store/user'
 import { qty } from '@/utils/number'
@@ -116,27 +116,24 @@ function params() {
   return cleanParams({ ...query, keyword: query.keyword?.trim(), begin: range.value[0], end: range.value[1] })
 }
 
-const { rows, summary, result, loading, exporting, pagination, load, search, onChange, exportRows } = useStockReport(jxcSalesRate, params)
+const { rows, summary, result, loading, exporting, pagination, load, search, onChange, exportRows, sorter, sortColumns } = useStockReport(jxcSalesRate, params)
+// 期初库存、本期进货两列只在基数为「期初库存 + 本期进货量」时显示，切换基数时取消排序
+watch(() => query.base, () => sorter.reset())
 
 function changeMode(mode) {
   query.ratio = DEFAULT_RATIO[mode]
   search()
 }
 
-const q = (key, label, extra = {}) => ({ title: t(label), key, width: 110, align: 'right', qty: true, ...extra })
-const columns = computed(() => [
-  { title: t('jxc.stock.code'), key: 'code', width: 130 },
-  { title: t('jxc.field.material'), dataIndex: 'name', key: 'name', width: 180, ellipsis: true },
-  { title: t('jxc.field.category'), key: 'category', width: 110 },
-  { title: t('jxc.field.brand'), key: 'brand', width: 100 },
-  { title: t('jxc.field.spec'), dataIndex: 'spec', key: 'spec', width: 130, ellipsis: true },
-  { title: t('jxc.field.unit'), dataIndex: 'unit', key: 'unit', width: 64 },
+const q = (key, label, extra = {}) => ({ title: t(label), key, width: 110, align: 'right', qty: true, sortable: true, ...extra })
+const columns = computed(() => sortColumns([
+  ...goodsColumns(),
   q('salesQty', 'jxc.salesRate.salesQty', { tip: t('jxc.stock.outTip') }),
   ...(result.value.base === SalesRateBase.OPENING_PURCHASE ? [q('openQty', 'jxc.salesRate.openQty'), q('purchaseQty', 'jxc.salesRate.purchaseQty')] : []),
   q('baseQty', 'jxc.salesRate.baseQty', { tip: t('jxc.salesRate.baseQtyTip') }),
-  { title: t('jxc.salesRate.ratio'), key: 'ratio', width: 110, align: 'right' },
+  { title: t('jxc.salesRate.ratio'), key: 'ratio', width: 110, align: 'right', sortable: true },
   ...(canHistory ? [actionColumn(2)] : [])
-])
+]))
 const scrollX = computed(() => columns.value.reduce((s, c) => s + (c.width || 100), 0))
 
 const tip = computed(() => {

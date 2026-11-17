@@ -5,6 +5,7 @@ import { t } from '@/locales'
 import { useDictStore } from '@/store/dict'
 import { findDict } from '@/utils/dict'
 import { writeExcel } from '@/utils/excel'
+import { useTableSort } from '@/composables/useTableSort'
 
 /** 导出最多读取的页数（每页 500 条） */
 const EXPORT_MAX_PAGES = 20
@@ -17,6 +18,9 @@ const EXPORT_MAX_PAGES = 20
  * 列定义上 dict: '字典类型' 时导出字典标签，exportValue: (record) => 值 可自定义；操作列不导出。
  * 一列合并显示了几项信息（如「订单 / 交货日期」）时，用 exportColumns: [{ title, dataIndex | exportValue, dict }] 导出为多列，
  * 便于在 Excel 中筛选、计算；金额、数量导出原始数值，不带货币符号和千分位
+ *
+ * 列头排序（issue #122，服务端排序）：列定义写 sortable: true，并用 useColumns(columns, key, { sorter }) 或 sorter.columns(columns)
+ * 生成表格的列；点击列头后带 sortField / sortOrder 回到第一页重新查询，导出按同样的排序（后端须为该接口声明排序白名单）
  */
 export function useTable(fetcher, query = {}, options = {}) {
   const route = useRoute()
@@ -33,14 +37,19 @@ export function useTable(fetcher, query = {}, options = {}) {
     showTotal: (total) => t('common.table.total', { total })
   })
 
+  const sorter = useTableSort({ remote: true })
+
   // 请求序号：快速切换筛选条件时，只采用最后一次请求的结果，避免旧数据覆盖新数据
   let requestSeq = 0
+
+  /** 本次查询的参数（不含分页）：查询条件 + 列头排序 */
+  const queryParams = () => ({ ...(options.params ? options.params({ ...query }) : { ...query }), ...sorter.params() })
 
   async function load() {
     const seq = ++requestSeq
     loading.value = true
     try {
-      const params = options.params ? options.params({ ...query }) : { ...query }
+      const params = queryParams()
       const res = await fetcher({ current: pagination.current, size: pagination.pageSize, ...params })
       if (seq !== requestSeq) return
       list.value = res.records
@@ -60,8 +69,9 @@ export function useTable(fetcher, query = {}, options = {}) {
     load()
   }
 
-  function onTableChange(pag) {
-    pagination.current = pag.current
+  /** 翻页、改每页条数、列头排序（排序变化时回到第一页） */
+  function onTableChange(pag, filters, sort) {
+    pagination.current = sorter.change(sort) ? 1 : pag.current
     pagination.pageSize = pag.pageSize
     load()
   }
@@ -80,7 +90,7 @@ export function useTable(fetcher, query = {}, options = {}) {
     await Promise.all(
       [...new Set(cols.map((c) => c.dict).filter(Boolean))].map(async (t) => (dicts[t] = await dictStore.load(t)))
     )
-    const params = options.params ? options.params({ ...query }) : { ...query }
+    const params = queryParams()
     const records = []
     let total = 0
     for (let page = 1; page <= EXPORT_MAX_PAGES; page++) {
@@ -105,5 +115,5 @@ export function useTable(fetcher, query = {}, options = {}) {
     )
   }
 
-  return { list, loading, size, pagination, selectedKeys, rowSelection, load, search, onTableChange, exportAll }
+  return { list, loading, size, pagination, selectedKeys, rowSelection, load, search, onTableChange, exportAll, sorter }
 }

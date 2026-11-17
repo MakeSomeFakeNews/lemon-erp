@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.Sort;
+import com.lemon.erp.framework.data.SortParam;
+import com.lemon.erp.framework.data.Sorts;
 import com.lemon.erp.framework.security.datascope.DataPermission;
 import com.lemon.erp.modules.bi.dto.JxcQuery;
 import com.lemon.erp.modules.bi.dto.JxcViews;
@@ -27,6 +30,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 /**
@@ -126,50 +130,77 @@ public class BiJxcAnalysisService {
 
     // ---------------------------------------------------------------- 商品分析
 
+    /** 商品分析各标签页可排序的列（issue #122，与页面的列一致；商品列按编码） */
+    public static final Map<String, Set<String>> GOODS_SORTS = Map.of(
+            "top", goodsSorts("salesQty", "salesAmount", "cost", "profit", "margin", "stockQty"),
+            "slow", goodsSorts("stockQty", "stockAmount", "salesQty", "salesAmount", "lastSaleDate"),
+            "overstock", goodsSorts("stockQty", "stockAmount", "salesQty", "coverDays"),
+            "shortage", goodsSorts("availableQty", "safetyStock", "soOpen", "gapQty", "poOpen", "stockQty"),
+            "turnover", goodsSorts("openQty", "closeQty", "salesQty", "cost", "turnover", "turnoverDays"));
+
+    private static Set<String> goodsSorts(String... fields) {
+        return Sorts.fields("material", "category", "brand").add(fields).toSet();
+    }
+
+    private static Sort goodsSort(String type, SortParam sort) {
+        return Sorts.resolve(sort, GOODS_SORTS.get(type));
+    }
+
     /** 畅销：期间净销量大于 0，按净销量 / 净销售额 / 毛利排序 */
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<JxcViews.GoodsRow> top(JxcQuery q, long current, long size) {
+        return top(q, null, current, size);
+    }
+
+    /** sort 为列头排序，排在排行依据之前 */
+    @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
+    public PageResult<JxcViews.GoodsRow> top(JxcQuery q, SortParam sort, long current, long size) {
         goodsRange(q);
         if (q.getRankBy() == null) {
             q.setRankBy(GoodsRankBy.AMOUNT);
         }
-        return page(jxcMapper.selectGoodsTop(Page.of(current, size), q), BiJxcAnalysisService::fillProfit);
+        Sort order = goodsSort("top", sort);
+        return page(jxcMapper.selectGoodsTop(Page.of(current, size), q, order), BiJxcAnalysisService::fillProfit);
     }
 
     /** 滞销：有库存、期间净销量不超过 slowQty（默认 0，即没有销售） */
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
-    public PageResult<JxcViews.GoodsRow> slow(JxcQuery q, long current, long size) {
+    public PageResult<JxcViews.GoodsRow> slow(JxcQuery q, SortParam sort, long current, long size) {
         goodsRange(q);
         if (q.getSlowQty() == null || q.getSlowQty().signum() < 0) {
             q.setSlowQty(BigDecimal.ZERO);
         }
-        return page(jxcMapper.selectGoodsSlow(Page.of(current, size), q), r -> r.setStockAmount(Decimals.money(r.getStockAmount())));
+        Sort order = goodsSort("slow", sort);
+        return page(jxcMapper.selectGoodsSlow(Page.of(current, size), q, order), r -> r.setStockAmount(Decimals.money(r.getStockAmount())));
     }
 
     /** 积压：可销天数 = 库存 / (期间净销量 / 期间天数) 超过 overstockDays（默认 90） */
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
-    public PageResult<JxcViews.GoodsRow> overstock(JxcQuery q, long current, long size) {
+    public PageResult<JxcViews.GoodsRow> overstock(JxcQuery q, SortParam sort, long current, long size) {
         long days = goodsRange(q);
         if (q.getOverstockDays() == null || q.getOverstockDays() < 1) {
             q.setOverstockDays(DEFAULT_OVERSTOCK_DAYS);
         }
-        return page(jxcMapper.selectGoodsOverstock(Page.of(current, size), q, days), r -> {
+        Sort order = goodsSort("overstock", sort);
+        return page(jxcMapper.selectGoodsOverstock(Page.of(current, size), q, days, order), r -> {
             r.setStockAmount(Decimals.money(r.getStockAmount()));
             r.setCoverDays(coverDays(r.getStockQty(), r.getSalesQty(), days));
         });
     }
 
     /** 缺货（当前）：可用库存低于安全库存，或不够未出库的销售订单 */
-    public PageResult<JxcViews.GoodsRow> shortage(JxcQuery q, long current, long size) {
-        return page(jxcMapper.selectGoodsShortage(Page.of(current, size), q), r -> r.setGapQty(Decimals.qty(
+    public PageResult<JxcViews.GoodsRow> shortage(JxcQuery q, SortParam sort, long current, long size) {
+        Sort order = goodsSort("shortage", sort);
+        return page(jxcMapper.selectGoodsShortage(Page.of(current, size), q, order), r -> r.setGapQty(Decimals.qty(
                 Decimals.nz(r.getSafetyStock()).add(Decimals.nz(r.getSoOpen())).subtract(Decimals.nz(r.getAvailableQty())))));
     }
 
     /** 周转：周转次数 = 净销量 / 平均库存，周转天数 = 期间天数 / 周转次数（按数量） */
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
-    public PageResult<JxcViews.GoodsRow> turnover(JxcQuery q, long current, long size) {
+    public PageResult<JxcViews.GoodsRow> turnover(JxcQuery q, SortParam sort, long current, long size) {
         long days = goodsRange(q);
-        return page(jxcMapper.selectGoodsTurnover(Page.of(current, size), q), r -> {
+        Sort order = goodsSort("turnover", sort);
+        return page(jxcMapper.selectGoodsTurnover(Page.of(current, size), q, order), r -> {
             fillProfit(r);
             BigDecimal[] t = turnover(r.getOpenQty(), r.getCloseQty(), r.getSalesQty(), days);
             r.setTurnover(t[0]);

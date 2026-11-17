@@ -2,6 +2,7 @@ package com.lemon.erp.modules.wms.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.lemon.erp.framework.data.Sort;
 import com.lemon.erp.modules.wms.dto.StockQuery;
 import com.lemon.erp.modules.wms.dto.StockSummaryView;
 import com.lemon.erp.modules.wms.dto.StockView;
@@ -31,13 +32,14 @@ public interface WmsStockMapper extends BaseMapper<WmsStock> {
     int unfreeze(@Param("warehouseId") Long warehouseId, @Param("locationId") long locationId,
                  @Param("materialId") Long materialId, @Param("batchNo") String batchNo, @Param("qty") BigDecimal qty);
 
-    IPage<StockView> selectPageList(IPage<StockView> page, @Param("q") StockQuery query);
+    /** sort 为列头排序（Service 按白名单校验），为空时按物料、仓库、库位、批次 */
+    IPage<StockView> selectPageList(IPage<StockView> page, @Param("q") StockQuery query, @Param("sort") Sort sort);
 
     /** 不分页的库存明细，盘点按仓库生成明细时使用 */
     List<StockView> selectStockList(@Param("q") StockQuery query);
 
     /** 按物料汇总（可按仓库筛选），在数据库中 GROUP BY */
-    IPage<StockSummaryView> selectSummary(IPage<StockSummaryView> page, @Param("q") StockQuery query);
+    IPage<StockSummaryView> selectSummary(IPage<StockSummaryView> page, @Param("q") StockQuery query, @Param("sort") Sort sort);
 
     /**
      * 库存查询的合计（全部页）

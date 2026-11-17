@@ -59,9 +59,29 @@
         </where>
     </sql>
 
+    <!-- 库存明细的列头排序（issue #122，sort 由 Service 按白名单校验，均价、金额需要「查看成本金额」） -->
+    <sql id="stockSort">
+        <if test="sort != null">
+            <choose>
+                <when test="sort.field == 'material'">m.code</when>
+                <when test="sort.field == 'spec'">m.spec</when>
+                <when test="sort.field == 'warehouseName'">w.name</when>
+                <when test="sort.field == 'location'">l.code</when>
+                <when test="sort.field == 'batchNo'">s.batch_no</when>
+                <when test="sort.field == 'qty'">s.qty</when>
+                <when test="sort.field == 'frozenQty'">s.frozen_qty</when>
+                <when test="sort.field == 'unit'">m.unit</when>
+                <when test="sort.field == 'unitCost'">CASE WHEN w.type &lt;&gt; 'CONSIGN_IN' THEN <include refid="avgCost"/> END</when>
+                <when test="sort.field == 'amount'">CASE WHEN w.type &lt;&gt; 'CONSIGN_IN' THEN s.qty * COALESCE(<include refid="avgCost"/>, 0) END</when>
+                <when test="sort.field == 'productionDate'">b.production_date</when>
+                <when test="sort.field == 'expiryDate'">b.expiry_date</when>
+            </choose><if test="sort.desc"> DESC</if>,
+        </if>
+    </sql>
+
     <select id="selectPageList" resultType="com.lemon.erp.modules.wms.dto.StockView">
         <include refid="stockSelect"/>
-        ORDER BY m.code, w.sort, s.warehouse_id, l.code, s.batch_no
+        ORDER BY <include refid="stockSort"/>m.code, w.sort, s.warehouse_id, l.code, s.batch_no
     </select>
 
     <select id="selectStockList" resultType="com.lemon.erp.modules.wms.dto.StockView">
@@ -100,9 +120,27 @@
         </choose>
     </sql>
 
+    <!-- 按物料汇总的列头排序 -->
+    <sql id="summarySort">
+        <if test="sort != null">
+            <choose>
+                <when test="sort.field == 'material'">m.code</when>
+                <when test="sort.field == 'spec'">m.spec</when>
+                <when test="sort.field == 'category'">m.category</when>
+                <when test="sort.field == 'unit'">m.unit</when>
+                <when test="sort.field == 'safetyStock'">sa.min_qty</when>
+                <when test="sort.field == 'maxStock'">sa.max_qty</when>
+                <when test="sort.field == 'qty'">COALESCE(SUM(s.qty), 0)</when>
+                <when test="sort.field == 'frozenQty'">COALESCE(SUM(s.frozen_qty), 0)</when>
+                <when test="sort.field == 'unitCost'"><include refid="avgCost"/></when>
+                <when test="sort.field == 'amount'">COALESCE(SUM(CASE WHEN w.type &lt;&gt; 'CONSIGN_IN' THEN s.qty ELSE 0 END), 0) * COALESCE(<include refid="avgCost"/>, 0)</when>
+            </choose><if test="sort.desc"> DESC</if>,
+        </if>
+    </sql>
+
     <select id="selectSummary" resultType="com.lemon.erp.modules.wms.dto.StockSummaryView">
         <include refid="summarySelect"/>
-        ORDER BY m.code
+        ORDER BY <include refid="summarySort"/>m.code
     </select>
 
     <!-- 库存查询的合计（全部页）：库存明细、按物料汇总分别按各自的条件 -->

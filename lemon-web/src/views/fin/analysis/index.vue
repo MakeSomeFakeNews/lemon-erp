@@ -40,10 +40,11 @@
             <a-table
               row-key="materialId"
               size="middle"
-              :columns="qtyColumns"
+              :columns="qtySorter.columns(qtyColumns)"
               :data-source="inventory.qtyDiffs"
               :pagination="inventory.qtyDiffs?.length > 20 ? { pageSize: 20 } : false"
               :locale="{ emptyText: $t('fin.analysis.qtyEmpty') }"
+              @change="(p, f, s) => qtySorter.change(s)"
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'material'">{{ record.code }} {{ record.name }}</template>
@@ -92,6 +93,7 @@
             :loading="age.loading"
             :pagination="{ pageSize: 50, showSizeChanger: false, showTotal: (n) => $t('fin.analysis.totalMaterials', { n }) }"
             :scroll="{ x: 700 + ageColumns.length * 110 }"
+            @change="(p, f, s) => ageSorter.change(s)"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'material'">
@@ -123,6 +125,7 @@ import PeriodPicker from '@/components/fin/PeriodPicker.vue'
 import { inventoryCheck, stockAge } from '@/api/fin'
 import WarehouseSelect from '@/components/wms/WarehouseSelect.vue'
 import { useDict } from '@/composables/useDict'
+import { useTableSort } from '@/composables/useTableSort'
 import { formatQty, today } from '@/components/wms/wms'
 import { currentPeriod, formatMoney } from '@/components/fin/fin'
 import { useI18n } from 'vue-i18n'
@@ -140,11 +143,13 @@ const accountColumns = [
   { title: t('fin.analysis.costAmount'), key: 'costAmount', width: 220, align: 'right' },
   { title: t('fin.analysis.diff'), key: 'diff', width: 160, align: 'right' }
 ]
+// 数量差异、库龄分析：列头排序在前端完成（issue #122），物料按编码，库龄分段按数量
+const qtySorter = useTableSort()
 const qtyColumns = [
-  { title: t('fin.analysis.material'), key: 'material', width: 260 },
-  { title: t('fin.analysis.costQty'), key: 'costQty', width: 200, align: 'right' },
-  { title: t('fin.analysis.stockQty'), key: 'stockQty', width: 180, align: 'right' },
-  { title: t('fin.analysis.diff'), key: 'diff', width: 140, align: 'right' }
+  { title: t('fin.analysis.material'), key: 'material', width: 260, sortable: true, sortValue: (r) => r.code },
+  { title: t('fin.analysis.costQty'), key: 'costQty', width: 200, align: 'right', sortable: true },
+  { title: t('fin.analysis.stockQty'), key: 'stockQty', width: 180, align: 'right', sortable: true },
+  { title: t('fin.analysis.diff'), key: 'diff', width: 140, align: 'right', sortable: true }
 ]
 async function loadInventory() {
   invLoading.value = true
@@ -162,13 +167,15 @@ watch(tab, (t) => {
 // ---------------------------------------------------------------- 库龄分析
 const dict = useDict('wms_material_category')
 const age = reactive({ asOf: today(), warehouseId: undefined, category: undefined, keyword: '', buckets: '', loading: false, result: null })
-const ageColumns = computed(() => [
-  { title: t('fin.analysis.material'), key: 'material', width: 240, fixed: 'left' },
-  { title: t('fin.analysis.balanceQty'), key: 'qty', width: 130, align: 'right' },
-  { title: t('fin.analysis.balanceAmount'), key: 'amount', width: 140, align: 'right' },
-  ...(age.result?.buckets || []).map((b, i) => ({ title: b.label, key: `age${i}`, ageIndex: i, width: 110, align: 'right' })),
-  { title: t('fin.analysis.oldestDate'), key: 'oldestDate', width: 140 }
-])
+const ageSorter = useTableSort()
+const ageColumns = computed(() => ageSorter.columns([
+  { title: t('fin.analysis.material'), key: 'material', width: 240, fixed: 'left', sortable: true, sortValue: (r) => r.code },
+  { title: t('fin.analysis.balanceQty'), key: 'qty', width: 130, align: 'right', sortable: true },
+  { title: t('fin.analysis.balanceAmount'), key: 'amount', width: 140, align: 'right', sortable: true },
+  ...(age.result?.buckets || []).map((b, i) => ({ title: b.label, key: `age${i}`, ageIndex: i, width: 110, align: 'right', sortable: true,
+    sortValue: (r) => r.ages?.[i]?.qty })),
+  { title: t('fin.analysis.oldestDate'), key: 'oldestDate', width: 140, sortable: true }
+]))
 const percent = (part, all) => (Number(all) ? `${((Number(part) / Number(all)) * 100).toFixed(1)}%` : '-')
 async function loadAge() {
   age.loading = true

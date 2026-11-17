@@ -125,7 +125,7 @@
           <a-table
             row-key="partnerId"
             size="middle"
-            :columns="agingColumns"
+            :columns="aging.sorter.columns(agingColumns)"
             :data-source="aging.list.value"
             :loading="aging.loading.value"
             :pagination="aging.pagination"
@@ -392,14 +392,15 @@ async function submitBadDebt() {
 
 // ---------------------------------------------------------------- 账龄
 const asOf = ref(today())
+// 账龄：列头排序为服务端排序（issue #122），往来单位按编码
 const agingColumns = [
-  { title: conf.partnerLabel, key: 'partner', width: 240 },
-  { title: t('fin.billPage.unsettledBalance'), key: 'balance', width: 150, align: 'right' },
-  { title: t('fin.billPage.notDue'), key: 'notDue', width: 130, align: 'right' },
-  { title: t('fin.billPage.d30'), key: 'd30', width: 150, align: 'right' },
-  { title: t('fin.billPage.d60'), key: 'd60', width: 130, align: 'right' },
-  { title: t('fin.billPage.d90'), key: 'd90', width: 130, align: 'right' },
-  { title: t('fin.billPage.over90'), key: 'over90', width: 130, align: 'right' }
+  { title: conf.partnerLabel, key: 'partner', width: 240, sortable: true },
+  { title: t('fin.billPage.unsettledBalance'), key: 'balance', width: 150, align: 'right', sortable: true },
+  { title: t('fin.billPage.notDue'), key: 'notDue', width: 130, align: 'right', sortable: true },
+  { title: t('fin.billPage.d30'), key: 'd30', width: 150, align: 'right', sortable: true },
+  { title: t('fin.billPage.d60'), key: 'd60', width: 130, align: 'right', sortable: true },
+  { title: t('fin.billPage.d90'), key: 'd90', width: 130, align: 'right', sortable: true },
+  { title: t('fin.billPage.over90'), key: 'over90', width: 130, align: 'right', sortable: true }
 ]
 const agingWithAp = ref(false)
 const aging = useTable((p) => billAging(props.kind, { ...p, asOf: asOf.value, withAp: agingWithAp.value }), reactive({}))

@@ -107,21 +107,22 @@ const tx = {
 
 // 挂接应付（issue #95）：只用于应收，需要应付的查看权限；挂接后另列关联供应商的应付净额（负数），净欠款 = 应收 − 应付
 const canLinkAp = ar && useUserStore().hasPerm('fin:ap:list')
+// 列头排序为服务端排序（issue #122），往来单位按编码；合计行不参与排序
 const columns = [
-  { title: props.conf.partnerLabel, key: 'partner', width: 220 },
-  { title: tx.opening, key: 'opening', width: 140, align: 'right', money: true },
-  { title: tx.bills, key: 'billBalance', width: 150, align: 'right', money: true },
-  { title: tx.advance, key: 'advanceBalance', width: 150, align: 'right', money: true },
-  { title: tx.badDebt, key: 'badDebt', width: 120, align: 'right' },
-  { title: tx.discount, key: 'discount', width: 120, align: 'right' },
-  { title: tx.net, key: 'net', width: 150, align: 'right' },
+  { title: props.conf.partnerLabel, key: 'partner', width: 220, sortable: true },
+  { title: tx.opening, key: 'opening', width: 140, align: 'right', money: true, sortable: true },
+  { title: tx.bills, key: 'billBalance', width: 150, align: 'right', money: true, sortable: true },
+  { title: tx.advance, key: 'advanceBalance', width: 150, align: 'right', money: true, sortable: true },
+  { title: tx.badDebt, key: 'badDebt', width: 120, align: 'right', sortable: true },
+  { title: tx.discount, key: 'discount', width: 120, align: 'right', sortable: true },
+  { title: tx.net, key: 'net', width: 150, align: 'right', sortable: true },
   actionColumn(ar ? 3 : 2, [tx.settle, t('fin.partnerSummary.statement')])
 ]
-const linkedColumn = { title: t('fin.linkedAp.column'), key: 'linkedAp', width: 140, align: 'right', money: true }
+const linkedColumn = { title: t('fin.linkedAp.column'), key: 'linkedAp', width: 140, align: 'right', money: true, sortable: true }
 const tableColumns = computed(() => {
-  if (!query.withAp) return columns
+  if (!query.withAp) return sorter.columns(columns)
   const i = columns.findIndex((c) => c.key === 'net')
-  return [...columns.slice(0, i), linkedColumn, ...columns.slice(i)]
+  return sorter.columns([...columns.slice(0, i), linkedColumn, ...columns.slice(i)])
 })
 // 行操作：收款 / 付款、往来对账单
 const rowActions = (record) => [
@@ -134,7 +135,9 @@ const rowActions = (record) => [
 const query = reactive({ partnerId: undefined, keyword: undefined, ownerId: undefined, onlyBalance: true, withAp: false })
 const nettingRef = ref()
 const total = ref({})
-const { list, loading, pagination, load, search, onTableChange } = useTable((p) => billSummary(props.kind, p), query)
+const { list, loading, pagination, load, search, onTableChange, sorter } = useTable((p) => billSummary(props.kind, p), query)
+// 取消挂接应付时「关联应付」列不再显示，按它排序时取消
+watch(() => query.withAp, (v) => !v && sorter.sort.field === 'linkedAp' && sorter.reset())
 async function loadTotal() {
   total.value = await billSummaryTotal(props.kind, { ...query })
 }

@@ -40,7 +40,8 @@
         :data-source="filtered"
         :loading="loading"
         :pagination="{ pageSize: 50, showSizeChanger: false, showTotal: (n) => $t('common.table.total', { total: n }) }"
-        :scroll="{ x: canDrill ? 1180 : 1080, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
+        @change="(p, f, s) => sorter.change(s)"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'customer'">
@@ -87,6 +88,7 @@ import { jxcRfm } from '@/api/bi/jxc'
 import { drillActions, drillColumn, last12Months, rangePresets } from '@/components/bi/jxc/jxc'
 import { useUserStore } from '@/store/user'
 import { useDict } from '@/composables/useDict'
+import { useTableSort } from '@/composables/useTableSort'
 import { toOptions } from '@/utils/dict'
 import { money } from '@/utils/number'
 import { writeExcel } from '@/utils/excel'
@@ -118,19 +120,21 @@ const rfmParams = ref({})
 const loading = ref(false)
 const filtered = computed(() => (segment.value ? data.value.rows.filter((r) => r.segment === segment.value) : data.value.rows))
 
-const columns = [
-  { title: t('jxc.rfm.customer'), key: 'customer', width: 200, fixed: 'left', ellipsis: true },
-  { title: t('jxc.rfm.lastDate'), dataIndex: 'lastDate', width: 100 },
-  { title: t('jxc.rfm.recency'), key: 'recency', width: 100, align: 'right', sorter: (a, b) => a.recency - b.recency },
-  { title: t('jxc.rfm.frequency'), dataIndex: 'frequency', width: 90, align: 'right', sorter: (a, b) => a.frequency - b.frequency },
-  { title: t('jxc.rfm.monthlyFrequency'), key: 'monthlyFrequency', width: 100, align: 'right',
-    sorter: (a, b) => Number(a.monthlyFrequency) - Number(b.monthlyFrequency) },
-  { title: t('jxc.rfm.monetary'), key: 'monetary', width: 130, align: 'right', sorter: (a, b) => Number(a.monetary) - Number(b.monetary) },
-  { title: t('jxc.rfm.avgAmount'), key: 'avgAmount', width: 120, align: 'right', sorter: (a, b) => Number(a.avgAmount) - Number(b.avgAmount) },
-  { title: t('jxc.rfm.score'), key: 'score', width: 120 },
-  { title: t('jxc.rfm.segment'), key: 'segment', width: 120 },
+/** 列头排序在前端完成（issue #122，一次取全部客户），导出按页面的顺序；得分按 R + F + M，客户按名称，分群按名称 */
+const sorter = useTableSort()
+const columns = computed(() => sorter.columns([
+  { title: t('jxc.rfm.customer'), key: 'customer', width: 200, fixed: 'left', ellipsis: true, sortable: true, sortValue: (r) => r.name },
+  { title: t('jxc.rfm.lastDate'), dataIndex: 'lastDate', width: 100, sortable: true },
+  { title: t('jxc.rfm.recency'), key: 'recency', width: 100, align: 'right', sortable: true },
+  { title: t('jxc.rfm.frequency'), dataIndex: 'frequency', width: 90, align: 'right', sortable: true },
+  { title: t('jxc.rfm.monthlyFrequency'), key: 'monthlyFrequency', width: 100, align: 'right', sortable: true },
+  { title: t('jxc.rfm.monetary'), key: 'monetary', width: 130, align: 'right', sortable: true },
+  { title: t('jxc.rfm.avgAmount'), key: 'avgAmount', width: 120, align: 'right', sortable: true },
+  { title: t('jxc.rfm.score'), key: 'score', width: 120, sortable: true, sortType: 'number', sortValue: (r) => r.r + r.f + r.m },
+  { title: t('jxc.rfm.segment'), key: 'segment', width: 120, sortable: true, sortValue: (r) => t(`jxc.rfm.seg.${r.segment}`) },
   ...(canDrill ? [drillColumn()] : [])
-]
+]))
+const scrollX = computed(() => columns.value.reduce((s, c) => s + (c.width || 100), 0))
 
 async function load() {
   loading.value = true
@@ -161,7 +165,7 @@ function drill(r, lines = false) {
 function exportRows() {
   const headers = [t('common.field.code'), t('jxc.rfm.customer'), t('jxc.rfm.lastDate'), t('jxc.rfm.recency'), t('jxc.rfm.frequency'),
     t('jxc.rfm.monthlyFrequency'), t('jxc.rfm.monetary'), t('jxc.rfm.avgAmount'), 'R', 'F', 'M', t('jxc.rfm.segment')].map((title) => ({ title }))
-  const rows = filtered.value.map((r) => [r.code, r.name, r.lastDate, r.recency, r.frequency, Number(r.monthlyFrequency), Number(r.monetary),
+  const rows = sorter.sortRows(filtered.value, columns.value).map((r) => [r.code, r.name, r.lastDate, r.recency, r.frequency, Number(r.monthlyFrequency), Number(r.monetary),
     Number(r.avgAmount), r.r, r.f, r.m, t(`jxc.rfm.seg.${r.segment}`)])
   writeExcel(`RFM_${range.value[0]}_${range.value[1]}`, headers, rows, { withStamp: false })
 }

@@ -3,6 +3,9 @@ package com.lemon.erp.modules.bi.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.Sort;
+import com.lemon.erp.framework.data.SortParam;
+import com.lemon.erp.framework.data.Sorts;
 import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.datascope.DataPermission;
 import com.lemon.erp.modules.bi.dto.JxcViews;
@@ -29,7 +32,8 @@ import java.util.Set;
  * （销售出库 − 销售退货，按所选仓库）与积压分析相同，统计在 SQL 中完成（BiJxcMapper.xml「库存分析」）。
  * 销量、进货量按出入库单的制单人部门 + 制单人做数据权限（与商品分析、积压分析一致）。
  * 金额按权限过滤：库存均价、库存金额、资金占用需要「查看成本金额」，参考进价需要采购查看权限，
- * 零售价、批发价需要售价查看权限或「商品价格」页面权限（规则同商品速查），停用的价格列不返回
+ * 零售价、批发价需要售价查看权限或「商品价格」页面权限（规则同商品速查），停用的价格列不返回。
+ * 列头排序（issue #122）按各报表的白名单（sortFields），没有权限、不返回的列不能排序
  */
 @Service
 @RequiredArgsConstructor
@@ -43,6 +47,8 @@ public class BiStockAnalysisService {
     /** 周转率、销售比例、系数的小数位 */
     private static final int RATE_SCALE = 2;
     private static final BigDecimal TWO = BigDecimal.valueOf(2);
+    /** 商品列（各报表共有） */
+    private static final String[] GOODS_SORTS = {"code", "name", "category", "brand", "spec", "unit"};
 
     private final BiJxcMapper jxcMapper;
     private final PermissionService permissionService;
@@ -56,7 +62,7 @@ public class BiStockAnalysisService {
      * 按金额维度时用 数量 × 单价 计算（单价为空的商品不计算），合计行按合计的数量或金额计算
      */
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
-    public JxcViews.TurnoverPage turnover(StockAnalysisQuery q, long current, long size) {
+    public JxcViews.TurnoverPage turnover(StockAnalysisQuery q, SortParam sort, long current, long size) {
         long days = BiJxcService.checkRange(q.getBegin(), q.getEnd(), BiJxcService.MAX_DAYS);
         if (q.getBasis() == null) {
             q.setBasis(TurnoverBasis.QTY);
@@ -68,8 +74,9 @@ public class BiStockAnalysisService {
         checkBasis(q, cost);
         q.resolve(null, cost);
         boolean amountVisible = q.getBasis() != TurnoverBasis.QTY || cost;
+        Sort order = turnoverSorts(amountVisible).resolve(sort);
 
-        Page<JxcViews.TurnoverRow> page = jxcMapper.selectTurnover(Page.of(current, size), q);
+        Page<JxcViews.TurnoverRow> page = jxcMapper.selectTurnover(Page.of(current, size), q, order);
         for (JxcViews.TurnoverRow r : page.getRecords()) {
             BigDecimal price = r.getPrice();
             r.setOutAmount(amount(r.getOutQty(), price));
@@ -86,6 +93,12 @@ public class BiStockAnalysisService {
         summary.setCloseAmount(summary.getCloseAmount() == null ? null : Decimals.money(summary.getCloseAmount()));
         fillTurnover(summary, q.getBasis(), days, amountVisible);
         return new JxcViews.TurnoverPage(page.getRecords(), page.getTotal(), summary, days, q.getBasis(), amountVisible);
+    }
+
+    /** 周转分析可排序的列：金额列只在返回时（按金额维度，或按数量且有「查看成本金额」） */
+    public static Sorts.Fields turnoverSorts(boolean amountVisible) {
+        return Sorts.fields(GOODS_SORTS).add("turnoverDays", "turnoverRate", "outQty", "openQty", "closeQty")
+                .addIf(amountVisible, "outAmount", "openAmount", "closeAmount");
     }
 
     /** 金额维度的权限与价格列：成本价需要「查看成本金额」，零售价 / 批发价需要售价查看权限且价格列已启用 */
@@ -156,7 +169,7 @@ public class BiStockAnalysisService {
      * 基数不大于 0 的商品（期间没有进货，或期初加进货不大于 0）无法计算比例，不参与
      */
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
-    public JxcViews.SalesRatePage salesRate(StockAnalysisQuery q, long current, long size) {
+    public JxcViews.SalesRatePage salesRate(StockAnalysisQuery q, SortParam sort, long current, long size) {
         BiJxcService.checkRange(q.getBegin(), q.getEnd(), BiJxcService.MAX_DAYS);
         if (q.getMode() == null) {
             q.setMode(SalesRateMode.SLOW);
@@ -169,7 +182,8 @@ public class BiStockAnalysisService {
         } else if (q.getRatio().signum() < 0) {
             throw new BizException("bi.error.salesRateRatio");
         }
-        Page<JxcViews.SalesRateRow> page = jxcMapper.selectSalesRate(Page.of(current, size), q);
+        Sort order = salesRateSorts(q.getBase()).resolve(sort);
+        Page<JxcViews.SalesRateRow> page = jxcMapper.selectSalesRate(Page.of(current, size), q, order);
         page.getRecords().forEach(r -> r.setRatio(Decimals.percent(r.getSalesQty(), r.getBaseQty(), RATE_SCALE)));
         JxcViews.SalesRateRow summary = jxcMapper.selectSalesRateTotal(q);
         if (summary == null) {
@@ -177,6 +191,12 @@ public class BiStockAnalysisService {
         }
         summary.setRatio(Decimals.percent(summary.getSalesQty(), summary.getBaseQty(), RATE_SCALE));
         return new JxcViews.SalesRatePage(page.getRecords(), page.getTotal(), summary, q.getMode(), q.getBase(), q.getRatio());
+    }
+
+    /** 滞销 / 畅销可排序的列：期初库存、本期进货只在基数为「期初库存 + 本期进货量」时显示 */
+    public static Sorts.Fields salesRateSorts(SalesRateBase base) {
+        return Sorts.fields(GOODS_SORTS).add("salesQty", "baseQty", "ratio")
+                .addIf(base == SalesRateBase.OPENING_PURCHASE, "openQty", "purchaseQty");
     }
 
     // ---------------------------------------------------------------- 库存预警
@@ -187,7 +207,7 @@ public class BiStockAnalysisService {
      * 补货资金 = 库存均价 × 补货数量；系数 = 数量 ÷ 基数。预警口径同库存查询（按总库存比较所有仓库的合计，分仓库按仓库）
      */
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
-    public JxcViews.StockAlertPage stockAlert(StockAnalysisQuery q, long current, long size) {
+    public JxcViews.StockAlertPage stockAlert(StockAnalysisQuery q, SortParam sort, long current, long size) {
         LocalDate today = LocalDate.now();
         if (q.getDate() == null) {
             q.setDate(today);
@@ -203,8 +223,9 @@ public class BiStockAnalysisService {
         q.resolve(q.getDate().minusMonths(1).plusDays(1), cost);
         Set<Integer> levels = sales ? priceLevelService.enabledLevels() : Set.of();
         boolean gap = q.getTab() != StockAlertTab.WAREHOUSE;
+        Sort order = stockAlertSorts(q.getTab(), cost, purchase, levels).resolve(sort);
 
-        Page<JxcViews.StockAlertRow> page = jxcMapper.selectStockAlert(Page.of(current, size), q);
+        Page<JxcViews.StockAlertRow> page = jxcMapper.selectStockAlert(Page.of(current, size), q, order);
         for (JxcViews.StockAlertRow r : page.getRecords()) {
             r.setStockAmount(cost ? Decimals.money(Decimals.nz(r.getOwnQty()).multiply(Decimals.nz(r.getUnitCost()))) : null);
             r.setUnitCost(cost ? r.getUnitCost() : null);
@@ -229,6 +250,21 @@ public class BiStockAnalysisService {
         summary.setGapAmount(cost && gap ? Decimals.money(summary.getGapAmount()) : null);
         return new JxcViews.StockAlertPage(page.getRecords(), page.getTotal(), summary, q.getTab(), q.getDate(), q.getMonthBegin(),
                 cost, purchase, sales);
+    }
+
+    /**
+     * 库存预警可排序的列（按标签页）：库存金额、均价、资金需要「查看成本金额」，参考进价需要采购查看权限，
+     * 零售价、批发价只有返回的（有售价查看权限且已启用的价格列）
+     */
+    public static Sorts.Fields stockAlertSorts(StockAlertTab tab, boolean cost, boolean purchase, Set<Integer> levels) {
+        Sorts.Fields fields = Sorts.fields(GOODS_SORTS).add("warehouseName", "monthQty", "stockQty").addIf(cost, "stockAmount");
+        if (tab != StockAlertTab.WAREHOUSE) {
+            return fields.add("baseQty", "ratio", "gapQty").addIf(cost, "gapAmount");
+        }
+        fields.add("createDate", "lastInDate", "lastSaleDate", "orderQty", "maxQty", "minQty", "locationCode")
+                .addIf(cost, "unitCost").addIf(purchase, "refCost");
+        levels.stream().sorted().forEach(level -> fields.add(level == PriceLevels.RETAIL ? "retailPrice" : "wholesalePrice" + level));
+        return fields;
     }
 
     /** 积压 / 补货系数 = 数量 ÷ 基数，基数不大于 0 时为空 */

@@ -93,6 +93,7 @@ import TradeDocDetail from '@/components/scm/TradeDocDetail.vue'
 import { jxcDetail, jxcExport } from '@/api/bi/jxc'
 import { useDict } from '@/composables/useDict'
 import { useAdjustMode } from '@/composables/useAdjustMode'
+import { useTableSort } from '@/composables/useTableSort'
 import { money, price, qty } from '@/utils/number'
 import { writeExcel } from '@/utils/excel'
 import { findDict } from '@/utils/dict'
@@ -103,7 +104,8 @@ import { t } from '@/locales'
 /**
  * 进销存报表的明细子页：按汇总的筛选条件 + 穿透的维度取值列出出入库单明细（退货为负数），点击单据号打开单据详情。
  * 调整项（整单优惠、本公司运费、收付款折让、坏账）两种显示方式（issue #93）：汇总到底部（行上为优惠前的货款，底部按类别列出调整行）
- * 或分摊到各行；合计都等于汇总行。用法：ref.open({ params, dim, key, label })，params 为汇总页的查询条件（含日期范围）
+ * 或分摊到各行；合计都等于汇总行。用法：ref.open({ params, dim, key, label })，params 为汇总页的查询条件（含日期范围）。
+ * 列头排序为服务端排序（issue #122），导出按同样的顺序；调整行、合计行不参与排序
  */
 const props = defineProps({
   report: { type: String, required: true }
@@ -122,6 +124,7 @@ const summary = ref({})
 const loading = ref(false)
 const exporting = ref(false)
 const pagination = reactive({ current: 1, pageSize: 20, total: 0, showSizeChanger: true, showTotal: (n) => t('common.table.total', { total: n }) })
+const sorter = useTableSort({ remote: true })
 
 const title = computed(() => (label.value ? t('jxc.detail.title', { name: label.value }) : t('jxc.detail.titleAll')))
 const modeTip = computed(() => t(`jxc.adjust.${sales.value ? 'sales' : 'purchase'}${bottom.value ? 'BottomTip' : 'AllocateTip'}`))
@@ -135,44 +138,44 @@ const adjustLabel = (item) => (item === AdjustItem.SETTLE_DISCOUNT && !sales.val
 
 /** 金额列（按报表和显示方式），合计行、导出共用 */
 const moneyColumns = computed(() => {
-  const m = (key, titleKey, width = 120) => ({ title: t(titleKey), key, width, align: 'right', money: true })
+  const m = (key, titleKey, width = 120) => ({ title: t(titleKey), key, width, align: 'right', money: true, sortable: true })
+  const cost = { title: t('jxc.field.cost'), key: 'cost', width: 160, align: 'right', sortable: true }
   if (bottom.value) {
     return sales.value
-      ? [m('taxedAmount', 'jxc.field.grossTaxedAmount', 130), m('salesAmount', 'jxc.field.salesAmount'),
-          { title: t('jxc.field.cost'), key: 'cost', width: 160, align: 'right' }, m('profit', 'jxc.field.profit')]
+      ? [m('taxedAmount', 'jxc.field.grossTaxedAmount', 130), m('salesAmount', 'jxc.field.salesAmount'), cost, m('profit', 'jxc.field.profit')]
       : [m('taxedAmount', 'jxc.field.grossTaxedAmount', 130), m('amountAfterDiscount', 'jxc.field.amount')]
   }
   return sales.value
     ? [m('goodsAmount', 'jxc.field.goodsAmount'), m('discount', 'jxc.field.discount', 110), m('amount', 'jxc.field.netAmount'),
         m('taxedAmount', 'jxc.field.taxedAmount'), m('freight', 'jxc.field.freight', 110), m('settleDiscount', 'jxc.field.receiptDiscount', 110),
-        m('badDebt', 'jxc.field.badDebt', 110), m('salesAmount', 'jxc.field.salesAmount'),
-        { title: t('jxc.field.cost'), key: 'cost', width: 160, align: 'right' }, m('profit', 'jxc.field.profit')]
+        m('badDebt', 'jxc.field.badDebt', 110), m('salesAmount', 'jxc.field.salesAmount'), cost, m('profit', 'jxc.field.profit')]
     : [m('goodsAmount', 'jxc.field.goodsAmount'), m('discount', 'jxc.field.discount', 110), m('amount', 'jxc.field.netAmount'),
         m('taxedAmount', 'jxc.field.taxedAmount'), m('settleDiscount', 'jxc.field.purchaseDiscount', 110),
         m('amountAfterDiscount', 'jxc.field.amountAfterDiscount', 140)]
 })
 
-const columns = computed(() => [
-  { title: t('jxc.field.bizDate'), dataIndex: 'bizDate', key: 'bizDate', width: 105, fixed: 'left' },
-  { title: t('jxc.field.docNo'), key: 'docNo', width: 210, fixed: 'left' },
-  { title: t(sales.value ? 'jxc.field.customer' : 'jxc.field.supplier'), dataIndex: 'partnerName', key: 'partnerName', width: 170, ellipsis: true },
-  ...(sales.value ? [{ title: t('jxc.field.salesman'), dataIndex: 'salesmanName', key: 'salesmanName', width: 100, ellipsis: true }] : []),
-  { title: t('jxc.field.material'), key: 'material', width: 220, ellipsis: true },
-  { title: t('jxc.field.category'), key: 'category', width: 100 },
-  { title: t('jxc.field.brand'), key: 'brand', width: 100 },
-  { title: t('jxc.field.warehouse'), dataIndex: 'warehouseName', key: 'warehouseName', width: 110, ellipsis: true },
-  { title: t('jxc.field.qty'), key: 'qty', width: 110, align: 'right' },
-  { title: t(bottom.value ? 'jxc.field.grossPrice' : 'jxc.field.price'), key: 'price', width: 110, align: 'right' },
+/** 列头排序：商品按编码，类别、品牌按编码 */
+const columns = computed(() => sorter.columns([
+  { title: t('jxc.field.bizDate'), dataIndex: 'bizDate', key: 'bizDate', width: 105, fixed: 'left', sortable: true },
+  { title: t('jxc.field.docNo'), key: 'docNo', width: 210, fixed: 'left', sortable: true },
+  { title: t(sales.value ? 'jxc.field.customer' : 'jxc.field.supplier'), dataIndex: 'partnerName', key: 'partnerName', width: 170, ellipsis: true, sortable: true },
+  ...(sales.value ? [{ title: t('jxc.field.salesman'), dataIndex: 'salesmanName', key: 'salesmanName', width: 100, ellipsis: true, sortable: true }] : []),
+  { title: t('jxc.field.material'), key: 'material', width: 220, ellipsis: true, sortable: true },
+  { title: t('jxc.field.category'), key: 'category', width: 100, sortable: true },
+  { title: t('jxc.field.brand'), key: 'brand', width: 100, sortable: true },
+  { title: t('jxc.field.warehouse'), dataIndex: 'warehouseName', key: 'warehouseName', width: 110, ellipsis: true, sortable: true },
+  { title: t('jxc.field.qty'), key: 'qty', width: 110, align: 'right', sortable: true },
+  { title: t(bottom.value ? 'jxc.field.grossPrice' : 'jxc.field.price'), key: 'price', width: 110, align: 'right', sortable: true },
   ...moneyColumns.value,
-  { title: t('jxc.field.remark'), dataIndex: 'remark', key: 'remark', width: 140, ellipsis: true }
-])
+  { title: t('jxc.field.remark'), dataIndex: 'remark', key: 'remark', width: 140, ellipsis: true, sortable: true }
+]))
 const scrollX = computed(() => columns.value.reduce((s, c) => s + c.width, 0))
 
 /** 去掉空值，避免把空字符串当作筛选条件 */
 const clean = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null && v !== ''))
 
 function query() {
-  return clean({ ...params.value, adjustMode: mode.value, current: pagination.current, size: pagination.pageSize })
+  return clean({ ...params.value, adjustMode: mode.value, ...sorter.params(), current: pagination.current, size: pagination.pageSize })
 }
 
 async function load() {
@@ -188,13 +191,16 @@ async function load() {
   }
 }
 
+/** 切换调整项的显示方式：两种方式的金额列不同，取消排序 */
 function reload() {
+  sorter.reset()
   pagination.current = 1
   load()
 }
 
-function onChange(p) {
-  pagination.current = p.current
+/** 翻页、改每页条数、列头排序（排序变化时回到第一页） */
+function onChange(p, filters, sort) {
+  pagination.current = sorter.change(sort) ? 1 : p.current
   pagination.pageSize = p.pageSize
   load()
 }
@@ -208,6 +214,7 @@ function openDetail({ params: p, dim, key, label: l }) {
   if (!dim) delete params.value.key
   label.value = l || ''
   pagination.current = 1
+  sorter.reset()
   rows.value = []
   adjustments.value = []
   summary.value = {}
@@ -229,7 +236,7 @@ function openDoc(r) {
 async function exportRows() {
   exporting.value = true
   try {
-    const p = { ...params.value, adjustMode: mode.value }
+    const p = { ...params.value, adjustMode: mode.value, ...sorter.params() }
     const res = await jxcExport(props.report, clean(p))
     const kindLabel = (k) => findDict(dict.scm_trade_kind, k)?.label || k
     const s = sales.value

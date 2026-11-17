@@ -150,44 +150,43 @@ const dict = useDict('wms_material_category')
 const canCost = useUserStore().hasPerm('wms:stock:cost')
 const COST_COLUMNS = canCost
   ? [
-      { title: t('wms.stock.unitCost'), key: 'unitCost', width: 110, align: 'right' },
-      { title: t('wms.stock.amount'), key: 'amount', width: 130, align: 'right' }
+      { title: t('wms.stock.unitCost'), key: 'unitCost', width: 110, align: 'right', sortable: true },
+      { title: t('wms.stock.amount'), key: 'amount', width: 130, align: 'right', sortable: true }
     ]
   : []
 
 /** 操作列：流水、序列号（启用序列号的物料） */
 const actionCol = () => actionColumn(2, [t('wms.history.action')])
+// 列头排序为服务端排序（issue #122）：物料按编码，库位按编码；均价、金额只在有「查看成本金额」时显示和排序
 const DETAIL_COLUMNS = [
-  { title: t('wms.common.material'), key: 'material', width: 200 },
-  { title: t('wms.inout.spec'), dataIndex: 'spec', width: 140, ellipsis: true },
-  { title: t('wms.common.warehouse'), dataIndex: 'warehouseName', width: 130 },
-  { title: t('wms.common.location'), key: 'location', width: 110 },
-  { title: t('wms.common.batch'), key: 'batchNo', width: 130 },
-  { title: t('common.field.quantity'), key: 'qty', width: 110, align: 'right' },
-  { title: t('wms.stock.frozen'), key: 'frozenQty', width: 90, align: 'right' },
-  { title: t('common.field.unit'), dataIndex: 'unit', width: 70 },
+  { title: t('wms.common.material'), key: 'material', width: 200, sortable: true },
+  { title: t('wms.inout.spec'), dataIndex: 'spec', width: 140, ellipsis: true, sortable: true },
+  { title: t('wms.common.warehouse'), dataIndex: 'warehouseName', width: 130, sortable: true },
+  { title: t('wms.common.location'), key: 'location', width: 110, sortable: true },
+  { title: t('wms.common.batch'), key: 'batchNo', width: 130, sortable: true },
+  { title: t('common.field.quantity'), key: 'qty', width: 110, align: 'right', sortable: true },
+  { title: t('wms.stock.frozen'), key: 'frozenQty', width: 90, align: 'right', sortable: true },
+  { title: t('common.field.unit'), dataIndex: 'unit', width: 70, sortable: true },
   ...COST_COLUMNS,
-  { title: t('wms.common.productionDate'), dataIndex: 'productionDate', width: 110 },
-  { title: t('wms.common.expiryDate'), key: 'expiryDate', width: 190 },
+  { title: t('wms.common.productionDate'), dataIndex: 'productionDate', width: 110, sortable: true },
+  { title: t('wms.common.expiryDate'), key: 'expiryDate', width: 190, sortable: true },
   actionCol()
 ]
 const SUMMARY_COLUMNS = [
-  { title: t('wms.common.material'), key: 'material', width: 220 },
-  { title: t('wms.inout.spec'), dataIndex: 'spec', width: 160, ellipsis: true },
-  { title: t('wms.inout.category'), key: 'category', width: 160, dict: 'wms_material_category' },
-  { title: t('common.field.unit'), dataIndex: 'unit', width: 70 },
-  { title: t('wms.stock.safetyStock'), key: 'safetyStock', width: 110, align: 'right' },
-  { title: t('wms.stockLimit.maxStock'), key: 'maxStock', width: 110, align: 'right' },
-  { title: t('wms.stock.qty'), key: 'qty', width: 260, align: 'right' },
-  { title: t('wms.stock.frozen'), key: 'frozenQty', width: 100, align: 'right' },
+  { title: t('wms.common.material'), key: 'material', width: 220, sortable: true },
+  { title: t('wms.inout.spec'), dataIndex: 'spec', width: 160, ellipsis: true, sortable: true },
+  { title: t('wms.inout.category'), key: 'category', width: 160, dict: 'wms_material_category', sortable: true },
+  { title: t('common.field.unit'), dataIndex: 'unit', width: 70, sortable: true },
+  { title: t('wms.stock.safetyStock'), key: 'safetyStock', width: 110, align: 'right', sortable: true },
+  { title: t('wms.stockLimit.maxStock'), key: 'maxStock', width: 110, align: 'right', sortable: true },
+  { title: t('wms.stock.qty'), key: 'qty', width: 260, align: 'right', sortable: true },
+  { title: t('wms.stock.frozen'), key: 'frozenQty', width: 100, align: 'right', sortable: true },
   ...COST_COLUMNS,
   actionCol()
 ]
 
 const route = useRoute()
 const mode = ref('detail')
-const detailCols = useColumns(DETAIL_COLUMNS, 'wms-stock')
-const summaryCols = useColumns(SUMMARY_COLUMNS, 'wms-stock-summary')
 const current = computed(() => (mode.value === 'detail' ? detailCols : summaryCols))
 const columns = computed(() => (mode.value === 'detail' ? DETAIL_COLUMNS : SUMMARY_COLUMNS))
 const checked = computed({
@@ -209,7 +208,7 @@ const emptyQuery = () => ({
   highStock: false
 })
 const query = reactive(emptyQuery())
-const { list, loading, size, pagination, load, search, onTableChange, exportAll } = useTable(
+const { list, loading, size, pagination, load, search, onTableChange, exportAll, sorter } = useTable(
   (params) => (mode.value === 'detail' ? pageStock(params) : pageStockSummary(params)),
   query,
   {
@@ -217,6 +216,9 @@ const { list, loading, size, pagination, load, search, onTableChange, exportAll 
       mode.value === 'detail' ? { ...rest, locationId, batchNo } : { ...rest, lowStock, highStock }
   }
 )
+
+const detailCols = useColumns(DETAIL_COLUMNS, 'wms-stock', { sorter })
+const summaryCols = useColumns(SUMMARY_COLUMNS, 'wms-stock-summary', { sorter })
 
 // 合计（全部页）：列表刷新后按相同条件查询
 const total = ref(null)
@@ -232,6 +234,7 @@ function resetQuery() {
 }
 
 function switchMode() {
+  sorter.reset()
   list.value = []
   total.value = null
   search()

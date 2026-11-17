@@ -33,7 +33,8 @@
       <a-row :gutter="[16, 16]">
         <a-col :xs="24" :xl="8">
           <a-card :bordered="false" class="page-card" :title="$t('jxc.assets.funds')">
-            <a-table row-key="accountId" size="small" :columns="fundColumns" :data-source="data.funds" :pagination="false">
+            <a-table row-key="accountId" size="small" :columns="fundColumns" :data-source="data.funds" :pagination="false"
+              @change="(p, f, s) => fundSorter.change(s)">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'account'">{{ record.code }} {{ record.name }}</template>
                 <template v-else-if="column.key === 'balance'">
@@ -55,7 +56,8 @@
         </a-col>
         <a-col :xs="24" :xl="12">
           <a-card :bordered="false" class="page-card" :title="$t('jxc.assets.topAr')">
-            <a-table row-key="partnerId" size="small" :columns="partnerColumns" :data-source="data.topReceivables" :pagination="false">
+            <a-table row-key="partnerId" size="small" :columns="receivableColumns" :data-source="data.topReceivables" :pagination="false"
+              @change="(p, f, s) => receivableSorter.change(s)">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'amount'">{{ money(record.amount) }}</template>
               </template>
@@ -64,7 +66,8 @@
         </a-col>
         <a-col :xs="24" :xl="12">
           <a-card :bordered="false" class="page-card" :title="$t('jxc.assets.topAp')">
-            <a-table row-key="partnerId" size="small" :columns="partnerColumns" :data-source="data.topPayables" :pagination="false">
+            <a-table row-key="partnerId" size="small" :columns="payableColumns" :data-source="data.topPayables" :pagination="false"
+              @change="(p, f, s) => payableSorter.change(s)">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'amount'">{{ money(record.amount) }}</template>
               </template>
@@ -85,6 +88,7 @@ import { jxcAssets } from '@/api/bi/jxc'
 import { shortMoney } from '@/components/charts/charts'
 import { dictLabel } from '@/components/bi/jxc/jxc'
 import { useDict } from '@/composables/useDict'
+import { useTableSort } from '@/composables/useTableSort'
 import { money } from '@/utils/number'
 import { t } from '@/locales'
 
@@ -119,14 +123,20 @@ const kpis = computed(() => {
 })
 const unvouchered = computed(() => data.value.unvouchered || {})
 
-const fundColumns = [
-  { title: t('jxc.assets.account'), key: 'account', ellipsis: true },
-  { title: t('jxc.assets.balance'), key: 'balance', align: 'right', width: 140 }
-]
-const partnerColumns = [
-  { title: t('jxc.assets.partner'), dataIndex: 'partnerName', ellipsis: true },
-  { title: t('jxc.assets.amount'), key: 'amount', align: 'right', width: 160 }
-]
+// 资金账户、往来余额排行：列头排序在前端完成（issue #122）
+const fundSorter = useTableSort()
+const receivableSorter = useTableSort()
+const payableSorter = useTableSort()
+const fundColumns = computed(() => fundSorter.columns([
+  { title: t('jxc.assets.account'), key: 'account', ellipsis: true, sortable: true, sortValue: (r) => r.code },
+  { title: t('jxc.assets.balance'), key: 'balance', align: 'right', width: 140, sortable: true }
+]))
+const partnerColumns = (sorter) => sorter.columns([
+  { title: t('jxc.assets.partner'), dataIndex: 'partnerName', ellipsis: true, sortable: true },
+  { title: t('jxc.assets.amount'), key: 'amount', align: 'right', width: 160, sortable: true }
+])
+const receivableColumns = computed(() => partnerColumns(receivableSorter))
+const payableColumns = computed(() => partnerColumns(payableSorter))
 
 function pie(list = [], name) {
   return {

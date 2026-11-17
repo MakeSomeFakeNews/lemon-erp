@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.result.PageResult;
+import com.lemon.erp.framework.data.Sort;
+import com.lemon.erp.framework.data.SortParam;
+import com.lemon.erp.framework.data.Sorts;
 import com.lemon.erp.modules.wms.dto.BatchQuery;
 import com.lemon.erp.modules.wms.dto.InOutQuery;
 import com.lemon.erp.modules.wms.dto.InOutRow;
@@ -68,9 +71,31 @@ public class WmsStockQueryService {
     private final WmsMaterialMapper materialMapper;
     private final PermissionService permissionService;
 
+    /** 列头排序可用的列（issue #122）：库存明细、按物料汇总、收发存汇总；均价、库存金额需要「查看成本金额」 */
+    public static Sorts.Fields stockSorts(boolean costVisible) {
+        return Sorts.fields("material", "spec", "warehouseName", "location", "batchNo", "qty", "frozenQty", "unit", "productionDate", "expiryDate")
+                .addIf(costVisible, "unitCost", "amount");
+    }
+
+    public static Sorts.Fields summarySorts(boolean costVisible) {
+        return Sorts.fields("material", "spec", "category", "unit", "safetyStock", "maxStock", "qty", "frozenQty")
+                .addIf(costVisible, "unitCost", "amount");
+    }
+
+    public static Sorts.Fields inOutSorts() {
+        return Sorts.fields("material", "spec", "category", "unit", "openQty", "purchaseIn", "productionIn", "salesReturn", "otherIn",
+                "salesOut", "productionOut", "purchaseReturn", "otherOut", "closeQty");
+    }
+
     public PageResult<StockView> stockPage(long current, long size, StockQuery query) {
+        return stockPage(current, size, query, null);
+    }
+
+    /** 库存明细，sort 为列头排序（不传时按物料、仓库、库位、批次） */
+    public PageResult<StockView> stockPage(long current, long size, StockQuery query, SortParam sort) {
+        Sort order = stockSorts(costVisible()).resolve(sort);
         Page<StockView> page = Page.of(current, size);
-        stockMapper.selectPageList(page, query);
+        stockMapper.selectPageList(page, query, order);
         if (!costVisible()) {
             page.getRecords().forEach(v -> {
                 v.setUnitCost(null);
@@ -81,8 +106,14 @@ public class WmsStockQueryService {
     }
 
     public PageResult<StockSummaryView> summaryPage(long current, long size, StockQuery query) {
+        return summaryPage(current, size, query, null);
+    }
+
+    /** 按物料汇总，sort 为列头排序（不传时按物料编码） */
+    public PageResult<StockSummaryView> summaryPage(long current, long size, StockQuery query, SortParam sort) {
+        Sort order = summarySorts(costVisible()).resolve(sort);
         Page<StockSummaryView> page = Page.of(current, size);
-        stockMapper.selectSummary(page, query);
+        stockMapper.selectSummary(page, query, order);
         if (!costVisible()) {
             page.getRecords().forEach(v -> {
                 v.setUnitCost(null);
@@ -222,6 +253,12 @@ public class WmsStockQueryService {
 
     /** 收发存汇总：日期范围内各物料的期初、各类出入库和期末数量；开始日期默认本月 1 日，结束日期默认今天，跨度不超过一年 */
     public PageResult<InOutRow> inOutPage(long current, long size, InOutQuery query) {
+        return inOutPage(current, size, query, null);
+    }
+
+    /** 收发存汇总，sort 为列头排序（不传时按物料编码） */
+    public PageResult<InOutRow> inOutPage(long current, long size, InOutQuery query, SortParam sort) {
+        Sort order = inOutSorts().resolve(sort);
         LocalDate end = query.endDate() == null ? LocalDate.now() : query.endDate();
         LocalDate begin = query.beginDate() == null ? end.withDayOfMonth(1) : query.beginDate();
         if (end.isBefore(begin)) {
@@ -231,7 +268,7 @@ public class WmsStockQueryService {
             throw new BizException("wms.error.dateRangeCannotExceedOneYear");
         }
         Page<InOutRow> page = Page.of(current, size);
-        inOutMapper.selectPage(page, new InOutQuery(begin, end, query.warehouseId(), query.category(), query.keyword()));
+        inOutMapper.selectPage(page, new InOutQuery(begin, end, query.warehouseId(), query.category(), query.keyword()), order);
         return PageResult.of(page);
     }
 

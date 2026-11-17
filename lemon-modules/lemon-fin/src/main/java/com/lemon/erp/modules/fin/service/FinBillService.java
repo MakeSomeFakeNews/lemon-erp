@@ -1,6 +1,9 @@
 package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.Sort;
+import com.lemon.erp.framework.data.SortParam;
+import com.lemon.erp.framework.data.Sorts;
 import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.lemon.erp.modules.fin.model.FinConstants;
@@ -147,10 +150,21 @@ public class FinBillService {
 
     /** @param withAp 挂接应付（仅应收）：关联供应商的应付按到期日计入同一分段，取负数 */
     public PageResult<AgingRow> aging(long current, long size, BillKind kind, LocalDate asOf, boolean withAp) {
+        return aging(current, size, kind, asOf, withAp, null);
+    }
+
+    /** 账龄可排序的列（issue #122）：往来单位（按编码）、余额与各账龄分段 */
+    public static Sorts.Fields agingSorts() {
+        return Sorts.fields("partner", "balance", "notDue", "d30", "d60", "d90", "over90");
+    }
+
+    /** @param sort 列头排序，不传时按余额从大到小 */
+    public PageResult<AgingRow> aging(long current, long size, BillKind kind, LocalDate asOf, boolean withAp, SortParam sort) {
         checkKind(kind);
+        Sort order = agingSorts().resolve(sort);
         LocalDate date = asOf == null ? LocalDate.now() : asOf;
         Page<AgingRow> page = Page.of(current, size);
-        billMapper.selectAging(page, kind, date, date.minusDays(30), date.minusDays(60), date.minusDays(90), linkedAp(kind, withAp));
+        billMapper.selectAging(page, kind, date, date.minusDays(30), date.minusDays(60), date.minusDays(90), linkedAp(kind, withAp), order);
         return PageResult.of(page);
     }
 
