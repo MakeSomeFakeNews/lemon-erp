@@ -40,6 +40,7 @@
             :data-source="data.salesmen"
             :pagination="data.salesmen.length > 10 ? { pageSize: 10 } : false"
             :custom-row="(r) => ({ onClick: () => drill(JxcDimension.SALESMAN, r), class: 'click-row' })"
+            @change="(p, f, s) => salesmanSorter.change(s)"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'name'"><a>{{ groupLabel(JxcDimension.SALESMAN, record, dict) }}</a></template>
@@ -63,6 +64,7 @@
             :data-source="data.customers"
             :pagination="false"
             :custom-row="(r) => ({ onClick: () => r.groupKey && drill(JxcDimension.CUSTOMER, r), class: r.groupKey ? 'click-row' : '' })"
+            @change="(p, f, s) => customerSorter.change(s)"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'name'">
@@ -100,6 +102,7 @@ import { jxcBusiness } from '@/api/bi/jxc'
 import { monthLabel, shortMoney } from '@/components/charts/charts'
 import { DICT_TYPES, drillActions, drillColumn, groupLabel, marginText, rangePresets, thisYear } from '@/components/bi/jxc/jxc'
 import { useDict } from '@/composables/useDict'
+import { useTableSort } from '@/composables/useTableSort'
 import { useUserStore } from '@/store/user'
 import { money } from '@/utils/number'
 import { JxcDimension } from '@/constants/enums'
@@ -189,22 +192,27 @@ const customerOption = computed(() => ({
   }]
 }))
 
-const salesmanColumns = [
-  { title: t('jxc.field.salesman'), key: 'name', ellipsis: true },
-  { title: t('jxc.field.salesAmount'), key: 'salesAmount', align: 'right', money: true, width: 120 },
-  { title: t('jxc.field.profit'), key: 'profit', align: 'right', money: true, width: 110 },
-  { title: t('jxc.field.margin'), key: 'margin', align: 'right', width: 80 },
-  { title: t('jxc.field.docCount'), dataIndex: 'docCount', align: 'right', width: 70 },
+// 员工销售、客户销售分布：列头排序在前端完成（issue #122）；客户表中「其他」一行（前 10 名之外的合计）始终排在最后
+const salesmanSorter = useTableSort()
+const customerSorter = useTableSort()
+const salesmanColumns = computed(() => salesmanSorter.columns([
+  { title: t('jxc.field.salesman'), key: 'name', ellipsis: true, sortable: true, sortValue: (r) => groupLabel(JxcDimension.SALESMAN, r, dict) },
+  { title: t('jxc.field.salesAmount'), key: 'salesAmount', align: 'right', money: true, width: 120, sortable: true },
+  { title: t('jxc.field.profit'), key: 'profit', align: 'right', money: true, width: 110, sortable: true },
+  { title: t('jxc.field.margin'), key: 'margin', align: 'right', width: 80, sortable: true },
+  { title: t('jxc.field.docCount'), dataIndex: 'docCount', align: 'right', width: 70, sortable: true },
   ...(canDrill ? [drillColumn({ fixed: false })] : [])
-]
-const customerColumns = [
-  { title: t('jxc.field.customer'), key: 'name', ellipsis: true },
-  { title: t('jxc.field.salesAmount'), key: 'salesAmount', align: 'right', money: true, width: 120 },
-  { title: t('jxc.business.share'), key: 'share', align: 'right', width: 70 },
-  { title: t('jxc.field.profit'), key: 'profit', align: 'right', money: true, width: 110 },
-  { title: t('jxc.field.margin'), key: 'margin', align: 'right', width: 80 },
+]))
+/** 「其他」一行的排序值为空（空值排在最后） */
+const exceptOthers = (key) => (r) => (r.groupKey ? r[key] : null)
+const customerColumns = computed(() => customerSorter.columns([
+  { title: t('jxc.field.customer'), key: 'name', ellipsis: true, sortable: true, sortValue: exceptOthers('groupName') },
+  { title: t('jxc.field.salesAmount'), key: 'salesAmount', align: 'right', money: true, width: 120, sortable: true, sortValue: exceptOthers('salesAmount') },
+  { title: t('jxc.business.share'), key: 'share', align: 'right', width: 70, sortable: true, sortValue: exceptOthers('salesAmount') },
+  { title: t('jxc.field.profit'), key: 'profit', align: 'right', money: true, width: 110, sortable: true, sortValue: exceptOthers('profit') },
+  { title: t('jxc.field.margin'), key: 'margin', align: 'right', width: 80, sortable: true, sortValue: exceptOthers('margin') },
   ...(canDrill ? [drillColumn({ fixed: false })] : [])
-]
+]))
 
 function share(v) {
   const all = num(data.value.total?.salesAmount)

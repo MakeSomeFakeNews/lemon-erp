@@ -191,7 +191,102 @@
         <if test="sales">LEFT JOIN sys_user u ON u.id = o.salesman_id</if>
         LEFT JOIN wms_warehouse w ON w.id = COALESCE(i.warehouse_id, d.warehouse_id)
         <include refid="tradeWhere"/>
-        ORDER BY d.biz_date, d.id, i.id
+        ORDER BY <include refid="detailSort"/>d.biz_date, d.id, i.id
+    </sql>
+
+    <!-- ============================================================ 列头排序（issue #122）
+         sort 为 Service 按白名单校验后的排序（framework/data/Sort），这里把字段映射为表达式，之后接默认排序；
+         Service 的白名单只放该报表当前显示的列（销售 / 进货、显示方式、权限），所以这里引用的关联一定存在 -->
+
+    <!-- 明细行上的金额（与 Service 的 fillDetail 一致，带退货的符号）：成本、运费、收付款折让、坏账，销售金额、扣折让后金额
+         （汇总到底部时为货款，分摊到各行时为净额扣除调整项） -->
+    <sql id="lineCost"><include refid="sign"/> * i.qty * <include refid="saleUnitCost"/></sql>
+    <sql id="lineFreight"><include refid="freightAmount"/> * <include refid="docShare"/></sql>
+    <sql id="lineSettle">COALESCE(sd.amount, 0) * <include refid="docShare"/></sql>
+    <sql id="lineBadDebt">COALESCE(bd.amount, 0) * <include refid="docShare"/></sql>
+    <sql id="lineSalesAmount">
+        <choose>
+            <when test="q.adjustMode.name() == 'BOTTOM'">(<include refid="sign"/> * <include refid="lineGoods"/>)</when>
+            <otherwise>(<include refid="sign"/> * (i.amount - i.tax_amount) - <include refid="lineFreight"/> - <include refid="lineSettle"/> - <include refid="lineBadDebt"/>)</otherwise>
+        </choose>
+    </sql>
+    <sql id="lineAfterDiscount">
+        <choose>
+            <when test="q.adjustMode.name() == 'BOTTOM'">(<include refid="sign"/> * <include refid="lineGoods"/>)</when>
+            <otherwise>(<include refid="sign"/> * (i.amount - i.tax_amount) - <include refid="lineSettle"/>)</otherwise>
+        </choose>
+    </sql>
+
+    <!-- 明细：q.adjustMode 由 Service 补上默认值（汇总到底部时单价为优惠前单价、价税合计含整单优惠） -->
+    <sql id="detailSort">
+        <if test="sort != null">
+            <choose>
+                <when test="sort.field == 'bizDate'">d.biz_date</when>
+                <when test="sort.field == 'docNo'">d.doc_no</when>
+                <when test="sort.field == 'partnerName'">p.name</when>
+                <when test="sort.field == 'salesmanName'">u.nickname</when>
+                <when test="sort.field == 'material'">m.code</when>
+                <when test="sort.field == 'category'">m.category</when>
+                <when test="sort.field == 'brand'">m.brand</when>
+                <when test="sort.field == 'warehouseName'">w.name</when>
+                <when test="sort.field == 'qty'"><include refid="sign"/> * i.qty</when>
+                <when test="sort.field == 'price'">
+                    <choose>
+                        <when test="q.adjustMode.name() == 'BOTTOM'">COALESCE(i.gross_price, i.price)</when>
+                        <otherwise>i.price</otherwise>
+                    </choose>
+                </when>
+                <when test="sort.field == 'goodsAmount'"><include refid="sign"/> * <include refid="lineGoods"/></when>
+                <when test="sort.field == 'discount'"><include refid="sign"/> * <include refid="lineDiscount"/></when>
+                <when test="sort.field == 'amount'"><include refid="sign"/> * (i.amount - i.tax_amount)</when>
+                <when test="sort.field == 'taxedAmount'">
+                    <choose>
+                        <when test="q.adjustMode.name() == 'BOTTOM'"><include refid="sign"/> * (i.amount + i.discount_share)</when>
+                        <otherwise><include refid="sign"/> * i.amount</otherwise>
+                    </choose>
+                </when>
+                <when test="sort.field == 'cost'"><include refid="lineCost"/></when>
+                <when test="sort.field == 'freight'"><include refid="lineFreight"/></when>
+                <when test="sort.field == 'settleDiscount'"><include refid="lineSettle"/></when>
+                <when test="sort.field == 'badDebt'"><include refid="lineBadDebt"/></when>
+                <when test="sort.field == 'salesAmount'"><include refid="lineSalesAmount"/></when>
+                <when test="sort.field == 'profit'"><include refid="lineSalesAmount"/> - <include refid="lineCost"/></when>
+                <when test="sort.field == 'amountAfterDiscount'"><include refid="lineAfterDiscount"/></when>
+                <when test="sort.field == 'remark'">i.remark</when>
+            </choose><if test="sort.desc"> DESC</if>,
+        </if>
+    </sql>
+
+    <!-- 单据列表：按单汇总的金额（与 docSelect 的合计一致），销售金额 = 净额 − 运费 − 收款折让 − 坏账 -->
+    <sql id="docSalesAmount">(SUM(<include refid="sign"/> * (i.amount - i.tax_amount)) - SUM(<include refid="lineFreight"/>) - SUM(<include refid="lineSettle"/>) - SUM(<include refid="lineBadDebt"/>))</sql>
+    <sql id="docSort">
+        <if test="sort != null">
+            <choose>
+                <when test="sort.field == 'bizDate'">d.biz_date</when>
+                <when test="sort.field == 'docNo'">d.doc_no</when>
+                <when test="sort.field == 'partnerName'">p.name</when>
+                <when test="sort.field == 'salesmanName'">u.nickname</when>
+                <when test="sort.field == 'warehouseName'">w.name</when>
+                <when test="sort.field == 'lineCount'">COUNT(*)</when>
+                <when test="sort.field == 'qty'">SUM(<include refid="sign"/> * i.qty)</when>
+                <when test="sort.field == 'goodsAmount'">SUM(<include refid="sign"/> * <include refid="lineGoods"/>)</when>
+                <when test="sort.field == 'discount'">SUM(<include refid="sign"/> * <include refid="lineDiscount"/>)</when>
+                <when test="sort.field == 'amount'">SUM(<include refid="sign"/> * (i.amount - i.tax_amount))</when>
+                <when test="sort.field == 'taxedAmount'">SUM(<include refid="sign"/> * i.amount)</when>
+                <when test="sort.field == 'freight'">SUM(<include refid="lineFreight"/>)</when>
+                <when test="sort.field == 'settleDiscount'">SUM(<include refid="lineSettle"/>)</when>
+                <when test="sort.field == 'badDebt'">SUM(<include refid="lineBadDebt"/>)</when>
+                <when test="sort.field == 'salesAmount'"><include refid="docSalesAmount"/></when>
+                <when test="sort.field == 'cost'">SUM(<include refid="lineCost"/>)</when>
+                <when test="sort.field == 'profit'"><include refid="docSalesAmount"/> - SUM(<include refid="lineCost"/>)</when>
+                <when test="sort.field == 'margin'">
+                    CASE WHEN <include refid="docSalesAmount"/> &lt;&gt; 0
+                         THEN (<include refid="docSalesAmount"/> - SUM(<include refid="lineCost"/>)) / <include refid="docSalesAmount"/> END
+                </when>
+                <when test="sort.field == 'amountAfterDiscount'">SUM(<include refid="sign"/> * (i.amount - i.tax_amount)) - SUM(<include refid="lineSettle"/>)</when>
+                <when test="sort.field == 'remark'">d.remark</when>
+            </choose><if test="sort.desc"> DESC</if>,
+        </if>
     </sql>
 
     <select id="selectDetail" resultType="com.lemon.erp.modules.bi.dto.JxcViews$DetailRow">
@@ -225,7 +320,7 @@
         LEFT JOIN wms_warehouse w ON w.id = d.warehouse_id
         <include refid="tradeWhere"/>
         GROUP BY d.id, d.doc_no, d.kind, d.biz_date, p.name, w.name, d.remark<if test="sales">, u.nickname</if>
-        ORDER BY d.biz_date, d.id
+        ORDER BY <include refid="docSort"/>d.biz_date, d.id
     </sql>
 
     <select id="selectDocs" resultType="com.lemon.erp.modules.bi.dto.JxcViews$DocRow">
@@ -434,20 +529,56 @@
         </if>
     </sql>
 
+    <!-- 商品分析各标签页的列头排序（issue #122，各页的列由 Service 的白名单限定）：毛利、毛利率、可销天数、缺口、周转次数 / 天数
+         按与 Service 相同的公式计算 -->
+    <sql id="goodsSort">
+        <if test="sort != null">
+            <choose>
+                <when test="sort.field == 'material'">x.code</when>
+                <when test="sort.field == 'category'">x.category</when>
+                <when test="sort.field == 'brand'">x.brand</when>
+                <when test="sort.field == 'salesQty'">x.sales_qty</when>
+                <when test="sort.field == 'salesAmount'">x.sales_amount</when>
+                <when test="sort.field == 'cost'">x.cost</when>
+                <when test="sort.field == 'profit'">x.sales_amount - x.cost</when>
+                <when test="sort.field == 'margin'">CASE WHEN x.sales_amount &lt;&gt; 0 THEN (x.sales_amount - x.cost) / x.sales_amount END</when>
+                <when test="sort.field == 'stockQty'">x.stock_qty</when>
+                <when test="sort.field == 'stockAmount'">x.stock_amount</when>
+                <when test="sort.field == 'lastSaleDate'">x.last_sale_date</when>
+                <when test="sort.field == 'coverDays'">x.stock_qty / x.sales_qty</when>
+                <when test="sort.field == 'availableQty'">x.available_qty</when>
+                <when test="sort.field == 'safetyStock'">x.safety_stock</when>
+                <when test="sort.field == 'soOpen'">x.so_open</when>
+                <when test="sort.field == 'gapQty'">COALESCE(x.safety_stock, 0) + x.so_open - x.available_qty</when>
+                <when test="sort.field == 'poOpen'">x.po_open</when>
+                <when test="sort.field == 'openQty'">x.open_qty</when>
+                <when test="sort.field == 'closeQty'">x.close_qty</when>
+                <when test="sort.field == 'turnover'">
+                    CASE WHEN x.open_qty + x.close_qty &gt; 0 THEN CASE WHEN x.sales_qty &gt; 0 THEN x.sales_qty ELSE 0 END / (x.open_qty + x.close_qty) END
+                </when>
+                <when test="sort.field == 'turnoverDays'">
+                    CASE WHEN x.open_qty + x.close_qty &gt; 0 AND x.sales_qty &gt; 0 THEN (x.open_qty + x.close_qty) / x.sales_qty END
+                </when>
+            </choose><if test="sort.desc"> DESC</if>,
+        </if>
+    </sql>
+
     <select id="selectGoodsTop" resultType="com.lemon.erp.modules.bi.dto.JxcViews$GoodsRow">
-        SELECT m.id AS material_id, m.code AS code, m.name AS name, m.spec AS spec, m.unit AS unit, m.category AS category, m.brand AS brand,
-               sl.qty AS sales_qty, sl.amount AS sales_amount, sl.cost AS cost, COALESCE(st.qty, 0) AS stock_qty
-        FROM (<include refid="periodSales"/>) sl
-        JOIN wms_material m ON m.id = sl.material_id
-        LEFT JOIN (<include refid="stock"/>) st ON st.material_id = m.id
-        WHERE sl.qty &gt; 0
-        <include refid="materialFilters"/>
-        ORDER BY
+        SELECT x.* FROM (
+            SELECT m.id AS material_id, m.code AS code, m.name AS name, m.spec AS spec, m.unit AS unit, m.category AS category, m.brand AS brand,
+                   sl.qty AS sales_qty, sl.amount AS sales_amount, sl.cost AS cost, COALESCE(st.qty, 0) AS stock_qty
+            FROM (<include refid="periodSales"/>) sl
+            JOIN wms_material m ON m.id = sl.material_id
+            LEFT JOIN (<include refid="stock"/>) st ON st.material_id = m.id
+            WHERE sl.qty &gt; 0
+            <include refid="materialFilters"/>
+        ) x
+        ORDER BY <include refid="goodsSort"/>
         <choose>
-            <when test="q.rankBy.name() == 'QTY'">sl.qty</when>
-            <when test="q.rankBy.name() == 'PROFIT'">sl.amount - sl.cost</when>
-            <otherwise>sl.amount</otherwise>
-        </choose> DESC, m.code
+            <when test="q.rankBy.name() == 'QTY'">x.sales_qty</when>
+            <when test="q.rankBy.name() == 'PROFIT'">x.sales_amount - x.cost</when>
+            <otherwise>x.sales_amount</otherwise>
+        </choose> DESC, x.code
     </select>
 
     <!-- 滞销：有库存、期间净销量不超过阈值 -->
@@ -467,7 +598,7 @@
             WHERE st.qty &gt; 0 AND COALESCE(sl.qty, 0) &lt;= #{q.slowQty}
             <include refid="materialFilters"/>
         ) x
-        ORDER BY x.stock_amount DESC, x.code
+        ORDER BY <include refid="goodsSort"/>x.stock_amount DESC, x.code
     </select>
 
     <!-- 积压：有库存、期间有销售，可销天数（库存 / 日均销量）超过阈值；没有销售的在滞销中 -->
@@ -482,7 +613,7 @@
             WHERE st.qty &gt; 0 AND sl.qty &gt; 0 AND st.qty * #{days} &gt; sl.qty * #{q.overstockDays}
             <include refid="materialFilters"/>
         ) x
-        ORDER BY x.stock_qty / x.sales_qty DESC, x.code
+        ORDER BY <include refid="goodsSort"/>x.stock_qty / x.sales_qty DESC, x.code
     </select>
 
     <!-- orderKind 由 include 的 property 静态替换（SALES / PURCHASE），不是请求参数 -->
@@ -517,7 +648,7 @@
             <include refid="materialFilters"/>
         ) x
         WHERE (x.safety_stock &gt; 0 AND x.available_qty &lt; x.safety_stock) OR x.available_qty &lt; x.so_open
-        ORDER BY COALESCE(x.safety_stock, 0) + x.so_open - x.available_qty DESC, x.code
+        ORDER BY <include refid="goodsSort"/>COALESCE(x.safety_stock, 0) + x.so_open - x.available_qty DESC, x.code
     </select>
 
     <!-- 期初（开始日期之前）、期末（截至结束日期）库存数量，按单据业务日期（在途调拨的调入按收货日期）；不选仓库时不计调拨 -->
@@ -550,7 +681,7 @@
             <include refid="materialFilters"/>
         ) x
         WHERE x.open_qty &lt;&gt; 0 OR x.close_qty &lt;&gt; 0 OR x.sales_qty &lt;&gt; 0
-        ORDER BY CASE WHEN x.open_qty + x.close_qty &gt; 0 THEN x.sales_qty / (x.open_qty + x.close_qty) ELSE 999999999 END, x.code
+        ORDER BY <include refid="goodsSort"/>CASE WHEN x.open_qty + x.close_qty &gt; 0 THEN x.sales_qty / (x.open_qty + x.close_qty) ELSE 999999999 END, x.code
     </select>
 
     <!-- ============================================================ 积压分析、库存分析共用的片段 -->
@@ -652,10 +783,125 @@
         <include refid="goodsFilters"/>
     </sql>
 
+    <!-- 积压分析的列头排序（issue #122）：在库天数 = 截至日 − 最近进货日期（没有时为登记日期），天数越多日期越早，按日期反向排；
+         积压系数 = 库存 ÷ 积压基数 -->
+    <sql id="overstockSort">
+        <if test="sort != null">
+            <choose>
+                <when test="sort.field == 'stockDays'">COALESCE(x.last_purchase_date, x.create_date)<if test="!sort.desc"> DESC</if></when>
+                <otherwise>
+                    <choose>
+                        <when test="sort.field == 'code'">x.code</when>
+                        <when test="sort.field == 'name'">x.name</when>
+                        <when test="sort.field == 'category'">x.category</when>
+                        <when test="sort.field == 'brand'">x.brand</when>
+                        <when test="sort.field == 'spec'">x.spec</when>
+                        <when test="sort.field == 'unit'">x.unit</when>
+                        <when test="sort.field == 'createDate'">x.create_date</when>
+                        <when test="sort.field == 'lastPurchaseDate'">x.last_purchase_date</when>
+                        <when test="sort.field == 'lastSaleDate'">x.last_sale_date</when>
+                        <when test="sort.field == 'stockQty'">x.stock_qty</when>
+                        <when test="sort.field == 'baseQty'">x.base_qty</when>
+                        <when test="sort.field == 'ratio'">CASE WHEN x.base_qty &gt; 0 THEN x.stock_qty / x.base_qty END</when>
+                        <when test="sort.field == 'overQty'">x.over_qty</when>
+                        <when test="sort.field == 'amount'">x.amount</when>
+                    </choose><if test="sort.desc"> DESC</if>
+                </otherwise>
+            </choose>,
+        </if>
+    </sql>
+
+    <!-- 周转分析的列头排序：周转天数、周转率按 Service 的公式（按金额维度时价格为空的商品不计算，同为空值）；
+         单个商品按金额与按数量的结果相同，价格在分子分母中约掉 -->
+    <sql id="turnoverAverage">t.open_qty + t.close_qty &gt; 0<if test="q.basis.name() != 'QTY'"> AND t.price IS NOT NULL</if></sql>
+    <sql id="turnoverSort">
+        <if test="sort != null">
+            <choose>
+                <when test="sort.field == 'code'">t.code</when>
+                <when test="sort.field == 'name'">t.name</when>
+                <when test="sort.field == 'category'">t.category</when>
+                <when test="sort.field == 'brand'">t.brand</when>
+                <when test="sort.field == 'spec'">t.spec</when>
+                <when test="sort.field == 'unit'">t.unit</when>
+                <when test="sort.field == 'turnoverDays'">
+                    CASE WHEN <include refid="turnoverAverage"/> AND t.out_qty &gt; 0 THEN (t.open_qty + t.close_qty) / t.out_qty END
+                </when>
+                <when test="sort.field == 'turnoverRate'">
+                    CASE WHEN <include refid="turnoverAverage"/> THEN CASE WHEN t.out_qty &gt; 0 THEN t.out_qty ELSE 0 END / (t.open_qty + t.close_qty) END
+                </when>
+                <when test="sort.field == 'outQty'">t.out_qty</when>
+                <when test="sort.field == 'openQty'">t.open_qty</when>
+                <when test="sort.field == 'closeQty'">t.close_qty</when>
+                <when test="sort.field == 'outAmount'">t.out_qty * t.price</when>
+                <when test="sort.field == 'openAmount'">t.open_qty * t.price</when>
+                <when test="sort.field == 'closeAmount'">t.close_qty * t.price</when>
+            </choose><if test="sort.desc"> DESC</if>,
+        </if>
+    </sql>
+
+    <!-- 滞销 / 畅销的列头排序：销售比例 = 净销量 ÷ 基数（基数大于 0） -->
+    <sql id="salesRateSort">
+        <if test="sort != null">
+            <choose>
+                <when test="sort.field == 'code'">t.code</when>
+                <when test="sort.field == 'name'">t.name</when>
+                <when test="sort.field == 'category'">t.category</when>
+                <when test="sort.field == 'brand'">t.brand</when>
+                <when test="sort.field == 'spec'">t.spec</when>
+                <when test="sort.field == 'unit'">t.unit</when>
+                <when test="sort.field == 'salesQty'">t.sales_qty</when>
+                <when test="sort.field == 'openQty'">t.open_qty</when>
+                <when test="sort.field == 'purchaseQty'">t.purchase_qty</when>
+                <when test="sort.field == 'baseQty'">t.base_qty</when>
+                <when test="sort.field == 'ratio'">t.sales_qty / t.base_qty</when>
+            </choose><if test="sort.desc"> DESC</if>,
+        </if>
+    </sql>
+
+    <!-- 库存预警的列头排序：库存金额 = 自有库存 × 库存均价，积压 / 补货系数 = 数量 ÷ 基数，资金 = 数量 × 库存均价 -->
+    <sql id="stockAlertSort">
+        <if test="sort != null">
+            <choose>
+                <when test="sort.field == 'code'">t.code</when>
+                <when test="sort.field == 'name'">t.name</when>
+                <when test="sort.field == 'category'">t.category</when>
+                <when test="sort.field == 'brand'">t.brand</when>
+                <when test="sort.field == 'spec'">t.spec</when>
+                <when test="sort.field == 'unit'">t.unit</when>
+                <when test="sort.field == 'warehouseName'">t.warehouse_name</when>
+                <when test="sort.field == 'createDate'">t.create_date</when>
+                <when test="sort.field == 'lastInDate'">t.last_in_date</when>
+                <when test="sort.field == 'lastSaleDate'">t.last_sale_date</when>
+                <when test="sort.field == 'monthQty'">t.month_qty</when>
+                <when test="sort.field == 'orderQty'">t.order_qty</when>
+                <when test="sort.field == 'stockQty'">t.stock_qty</when>
+                <when test="sort.field == 'stockAmount'">t.own_qty * t.unit_cost</when>
+                <when test="sort.field == 'unitCost'">t.unit_cost</when>
+                <when test="sort.field == 'refCost'">t.ref_cost</when>
+                <when test="sort.field == 'retailPrice'">t.retail_price</when>
+                <when test="sort.field == 'wholesalePrice1'">t.wholesale_price1</when>
+                <when test="sort.field == 'wholesalePrice2'">t.wholesale_price2</when>
+                <when test="sort.field == 'wholesalePrice3'">t.wholesale_price3</when>
+                <when test="sort.field == 'wholesalePrice4'">t.wholesale_price4</when>
+                <when test="sort.field == 'wholesalePrice5'">t.wholesale_price5</when>
+                <when test="sort.field == 'wholesalePrice6'">t.wholesale_price6</when>
+                <when test="sort.field == 'wholesalePrice7'">t.wholesale_price7</when>
+                <when test="sort.field == 'wholesalePrice8'">t.wholesale_price8</when>
+                <when test="sort.field == 'maxQty'">t.max_qty</when>
+                <when test="sort.field == 'minQty'">t.min_qty</when>
+                <when test="sort.field == 'locationCode'">t.location_code</when>
+                <when test="sort.field == 'baseQty'">t.base_qty</when>
+                <when test="sort.field == 'ratio'">CASE WHEN t.base_qty &gt; 0 THEN t.gap_qty / t.base_qty END</when>
+                <when test="sort.field == 'gapQty'">t.gap_qty</when>
+                <when test="sort.field == 'gapAmount'">t.gap_qty * t.unit_cost</when>
+            </choose><if test="sort.desc"> DESC</if>,
+        </if>
+    </sql>
+
     <select id="selectOverstock" resultType="com.lemon.erp.modules.bi.dto.JxcViews$OverstockRow">
         SELECT x.* FROM (<include refid="overstockRows"/>) x
         WHERE x.base_qty IS NOT NULL AND x.over_qty &gt; 0
-        ORDER BY <if test="q.costVisible">x.amount DESC, </if>x.over_qty DESC, x.code
+        ORDER BY <include refid="overstockSort"/><if test="q.costVisible">x.amount DESC, </if>x.over_qty DESC, x.code
     </select>
 
     <select id="selectOverstockTotal" resultType="com.lemon.erp.modules.bi.dto.JxcViews$OverstockRow">
@@ -729,7 +975,7 @@
     <!-- 周转最慢的在前（有库存没有出库的排最前，没有库存只有出库的排最后） -->
     <select id="selectTurnover" resultType="com.lemon.erp.modules.bi.dto.JxcViews$TurnoverRow">
         SELECT t.* FROM (<include refid="turnoverRows"/>) t
-        ORDER BY CASE WHEN t.open_qty + t.close_qty &gt; 0 THEN t.out_qty / (t.open_qty + t.close_qty) ELSE 999999999 END, t.code
+        ORDER BY <include refid="turnoverSort"/>CASE WHEN t.open_qty + t.close_qty &gt; 0 THEN t.out_qty / (t.open_qty + t.close_qty) ELSE 999999999 END, t.code
     </select>
 
     <!-- 合计：金额只含有价格的商品 -->
@@ -769,7 +1015,7 @@
     <!-- 滞销按销售比例从低到高，畅销从高到低 -->
     <select id="selectSalesRate" resultType="com.lemon.erp.modules.bi.dto.JxcViews$SalesRateRow">
         SELECT t.* FROM (<include refid="salesRateRows"/>) t
-        ORDER BY t.sales_qty / t.base_qty <if test="q.mode.name() == 'HOT'">DESC</if>, t.code
+        ORDER BY <include refid="salesRateSort"/>t.sales_qty / t.base_qty <if test="q.mode.name() == 'HOT'">DESC</if>, t.code
     </select>
 
     <select id="selectSalesRateTotal" resultType="com.lemon.erp.modules.bi.dto.JxcViews$SalesRateRow">
@@ -960,11 +1206,11 @@
         <choose>
             <when test="q.tab.name() == 'WAREHOUSE'">
                 SELECT t.* FROM (<include refid="alertWarehouseRows"/>) t
-                ORDER BY t.warehouse_sort, t.warehouse_id, t.code
+                ORDER BY <include refid="stockAlertSort"/>t.warehouse_sort, t.warehouse_id, t.code
             </when>
             <otherwise>
                 SELECT t.* FROM (<include refid="alertUnitRows"/>) t
-                ORDER BY <if test="q.costVisible">t.gap_qty * t.unit_cost DESC, </if>t.gap_qty DESC, t.code, t.warehouse_sort
+                ORDER BY <include refid="stockAlertSort"/><if test="q.costVisible">t.gap_qty * t.unit_cost DESC, </if>t.gap_qty DESC, t.code, t.warehouse_sort
             </otherwise>
         </choose>
     </select>

@@ -108,7 +108,21 @@
 
     <select id="selectSummary" resultType="com.lemon.erp.modules.fin.dto.PartnerSummaryRow">
         SELECT r.* FROM (<include refid="summaryRows"/>) r
-        ORDER BY r.net DESC, r.partner_id
+        ORDER BY
+        <!-- 列头排序（issue #122，sort 由 Service 按白名单校验） -->
+        <if test="sort != null">
+            <choose>
+                <when test="sort.field == 'partner'">r.partner_code</when>
+                <when test="sort.field == 'opening'">r.opening</when>
+                <when test="sort.field == 'billBalance'">r.bill_balance</when>
+                <when test="sort.field == 'advanceBalance'">r.advance_balance</when>
+                <when test="sort.field == 'badDebt'">r.bad_debt</when>
+                <when test="sort.field == 'discount'">r.discount</when>
+                <when test="sort.field == 'linkedAp'">r.linked_ap</when>
+                <when test="sort.field == 'net'">r.net</when>
+            </choose><if test="sort.desc"> DESC</if>,
+        </if>
+        r.net DESC, r.partner_id
     </select>
 
     <select id="selectSummaryTotal" resultType="com.lemon.erp.modules.fin.dto.PartnerSummaryRow">

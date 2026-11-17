@@ -3,6 +3,9 @@ package com.lemon.erp.modules.bi.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.util.Decimals;
+import com.lemon.erp.framework.data.Sort;
+import com.lemon.erp.framework.data.SortParam;
+import com.lemon.erp.framework.data.Sorts;
 import com.lemon.erp.framework.security.PermissionService;
 import com.lemon.erp.framework.security.datascope.DataPermission;
 import com.lemon.erp.modules.bi.dto.JxcViews;
@@ -37,10 +40,12 @@ public class BiOverstockService {
     private final BiJxcMapper jxcMapper;
     private final PermissionService permissionService;
 
+    /** sort 为列头排序（issue #122），可排序的列见 {@link #sortFields}；不传时有成本权限按资金占用、否则按积压数量从大到小 */
     @DataPermission(table = "scm_trade_doc", deptColumn = "dept_id", userColumn = "create_by")
-    public JxcViews.OverstockPage page(OverstockQuery q, long current, long size) {
+    public JxcViews.OverstockPage page(OverstockQuery q, SortParam sort, long current, long size) {
         prepare(q);
-        Page<JxcViews.OverstockRow> page = jxcMapper.selectOverstock(Page.of(current, size), q);
+        Sort order = sortFields(q.isCostVisible()).resolve(sort);
+        Page<JxcViews.OverstockRow> page = jxcMapper.selectOverstock(Page.of(current, size), q, order);
         for (JxcViews.OverstockRow r : page.getRecords()) {
             fill(r, q);
         }
@@ -52,6 +57,12 @@ public class BiOverstockService {
         boolean bySales = q.getBase() != OverstockBase.MAX_STOCK;
         return new JxcViews.OverstockPage(page.getRecords(), page.getTotal(), summary, q.getDate(),
                 bySales ? q.getSalesBegin() : null, bySales ? q.getSalesEnd() : null, q.isCostVisible());
+    }
+
+    /** 可排序的列：资金占用需要「查看成本金额」（没有权限时不返回，也不能按它排序） */
+    public static Sorts.Fields sortFields(boolean costVisible) {
+        return Sorts.fields("createDate", "lastPurchaseDate", "lastSaleDate", "code", "name", "category", "brand", "spec", "unit",
+                "stockQty", "stockDays", "baseQty", "ratio", "overQty").addIf(costVisible, "amount");
     }
 
     /** 默认值与校验：截至日期不晚于今天，默认今天；积压基数默认最近 N 天销量，N 为 1–366，默认 60 */

@@ -76,7 +76,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ClusterOutlined, DownloadOutlined, QuestionCircleOutlined } from '@ant-design/icons-vue'
 import StockHistory from '@/components/wms/StockHistory.vue'
 import StockDistributionModal from '@/components/wms/StockDistributionModal.vue'
@@ -86,7 +86,7 @@ import { actionColumn } from '@/components/common/tableActions'
 import { usePriceLevels } from '@/components/wms/priceLevels'
 import { jxcTurnover } from '@/api/bi/jxc'
 import { dictLabel, rangePresets, thisMonth } from '@/components/bi/jxc/jxc'
-import { cleanParams, loadStock, useStockReport } from '@/components/bi/jxc/useStockReport'
+import { cleanParams, goodsColumns, loadStock, useStockReport } from '@/components/bi/jxc/useStockReport'
 import { useDict } from '@/composables/useDict'
 import { useUserStore } from '@/store/user'
 import { money, qty } from '@/utils/number'
@@ -129,21 +129,18 @@ function params() {
     priceLevel: level || undefined })
 }
 
-const { rows, summary, result, loading, exporting, pagination, load, search, onChange, exportRows } = useStockReport(jxcTurnover, params)
+const { rows, summary, result, loading, exporting, pagination, load, search, onChange, exportRows, sorter, sortColumns } = useStockReport(jxcTurnover, params)
+// 金额列随计算维度显示 / 隐藏，切换时取消排序
+watch(basisKey, () => sorter.reset())
 
-const q = (key, label, extra = {}) => ({ title: t(label), key, width: 110, align: 'right', qty: true, ...extra })
-const m = (key, label) => ({ title: t(label), key, width: 120, align: 'right', money: true })
+const q = (key, label, extra = {}) => ({ title: t(label), key, width: 110, align: 'right', qty: true, sortable: true, ...extra })
+const m = (key, label) => ({ title: t(label), key, width: 120, align: 'right', money: true, sortable: true })
 const columns = computed(() => {
   const amounts = !!result.value.amountVisible
-  return [
-    { title: t('jxc.stock.code'), key: 'code', width: 130 },
-    { title: t('jxc.field.material'), dataIndex: 'name', key: 'name', width: 180, ellipsis: true },
-    { title: t('jxc.field.category'), key: 'category', width: 110 },
-    { title: t('jxc.field.brand'), key: 'brand', width: 100 },
-    { title: t('jxc.field.spec'), dataIndex: 'spec', key: 'spec', width: 130, ellipsis: true },
-    { title: t('jxc.field.unit'), dataIndex: 'unit', key: 'unit', width: 64 },
-    { title: t('jxc.turnover.turnoverDays'), key: 'turnoverDays', width: 110, align: 'right', tip: t('jxc.turnover.turnoverDaysTip') },
-    { title: t('jxc.turnover.turnoverRate'), key: 'turnoverRate', width: 110, align: 'right', tip: t('jxc.turnover.turnoverRateTip') },
+  return sortColumns([
+    ...goodsColumns(),
+    { title: t('jxc.turnover.turnoverDays'), key: 'turnoverDays', width: 110, align: 'right', sortable: true, tip: t('jxc.turnover.turnoverDaysTip') },
+    { title: t('jxc.turnover.turnoverRate'), key: 'turnoverRate', width: 110, align: 'right', sortable: true, tip: t('jxc.turnover.turnoverRateTip') },
     q('outQty', 'jxc.turnover.outQty', { tip: t('jxc.stock.outTip') }),
     ...(amounts ? [m('outAmount', 'jxc.turnover.outAmount')] : []),
     q('openQty', 'jxc.turnover.openQty'),
@@ -151,7 +148,7 @@ const columns = computed(() => {
     q('closeQty', 'jxc.turnover.closeQty'),
     ...(amounts ? [m('closeAmount', 'jxc.turnover.closeAmount')] : []),
     ...(canHistory ? [actionColumn(2)] : [])
-  ]
+  ])
 })
 const scrollX = computed(() => columns.value.reduce((s, c) => s + (c.width || 100), 0))
 

@@ -37,8 +37,9 @@ const titleWidth = (title) => (typeof title === 'string' && title ? Math.ceil(te
  * scrollX 为显示中的列宽合计，用作表格的 scroll.x（有勾选列时 + 32）：
  * 不要写死数字：写死的值比列宽合计大时各列被拉宽，用户隐藏列后表格仍然横向滚动
  * 列定义带 dict（字典标签列，也用于导出）且不是省略列时，宽度按字典标签自动加宽（dictColumnWidth）
+ * options.sorter 为 useTable 返回的 sorter（或 useTableSort()）时，sortable: true 的列可点击列头排序（issue #122）
  */
-export function useColumns(columns, storageKey) {
+export function useColumns(columns, storageKey, options = {}) {
   const allKeys = columns.map(columnKey)
   const cacheKey = storageKey ? `table-hidden-columns:${storageKey}` : null
   const saved = cacheKey ? load(cacheKey, null) : null
@@ -58,7 +59,10 @@ export function useColumns(columns, storageKey) {
       return width === c.width ? c : { ...c, width }
     })
   )
-  const visibleColumns = computed(() => sized.value.filter((c) => checked.value.includes(columnKey(c))))
+  const visibleColumns = computed(() => {
+    const cols = sized.value.filter((c) => checked.value.includes(columnKey(c)))
+    return options.sorter ? options.sorter.columns(cols) : cols
+  })
   const scrollX = computed(() => sumWidth(visibleColumns.value))
   return { checked, visibleColumns, scrollX }
 }

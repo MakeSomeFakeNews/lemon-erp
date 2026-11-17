@@ -55,6 +55,7 @@
         :pagination="data.rows.length > 50 ? { pageSize: 50, showSizeChanger: false, showTotal: (n) => $t('common.table.total', { total: n }) } : false"
         :scroll="{ x: scrollX, y: '100%' }"
         :custom-row="config.drill ? (r) => ({ onClick: () => openDetail(r), class: 'click-row' }) : undefined"
+        @change="(p, f, s) => sorter.change(s)"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'status'">
@@ -98,6 +99,7 @@ import WorkCenterSelect from '@/components/mes/WorkCenterSelect.vue'
 import MesStatReportDetail from './MesStatReportDetail.vue'
 import { mesStat } from '@/api/mes/stat'
 import { useDict } from '@/composables/useDict'
+import { useTableSort } from '@/composables/useTableSort'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { money, qty } from '@/utils/number'
@@ -109,6 +111,7 @@ import { WorkOrderStatus } from '@/constants/enums'
 
 /**
  * 生产统计报表页（生产制造 → 生产统计）：按维度汇总，人员计件、工序产量可点击汇总行查看报工明细；导出当前汇总结果。
+ * 汇总一次取全部，列头排序在前端完成（issue #122）：文字列按显示的名称，状态按名称，其他按数值；导出按页面的顺序，合计行不参与排序。
  * - report：piece | output | wo | product | usage，配置见 stat.js 的 REPORTS
  */
 const props = defineProps({
@@ -133,7 +136,15 @@ const loading = ref(false)
 const has = (f) => config.value.filters.includes(f)
 /** 工单状态：报表只统计已下达的工单，不列出草稿 */
 const statusOptions = computed(() => toOptions(dict.mes_wo_status).filter((o) => o.value !== WorkOrderStatus.DRAFT))
-const columns = computed(() => config.value.columns(groupBy.value, costVisible))
+const sorter = useTableSort()
+/** 不按数值比较的列：文字（含状态、交期，按显示的名称）、日期 */
+const TEXT_TYPES = ['text', 'date']
+const columns = computed(() => sorter.columns(config.value.columns(groupBy.value, costVisible).map((c) => ({
+  ...c,
+  sortable: true,
+  sortType: TEXT_TYPES.includes(c.type) ? 'text' : 'number',
+  sortValue: c.type === 'text' ? (r) => exportCell(c, r, dict) : undefined
+}))))
 const scrollX = computed(() => columns.value.reduce((sum, c) => sum + (c.width || 100), 0))
 const kpis = computed(() => config.value.kpis.filter((k) => !k.cost || costVisible))
 const overCount = computed(() => data.value.rows.filter((r) => Number(r.varianceQty) > 0).length)
@@ -179,7 +190,7 @@ function openDetail(row) {
 
 function exportSummary() {
   const cols = columns.value
-  const rows = data.value.rows.map((r) => cols.map((c) => exportCell(c, r, dict)))
+  const rows = sorter.sortRows(data.value.rows, cols).map((r) => cols.map((c) => exportCell(c, r, dict)))
   if (!config.value.noTotal) {
     rows.push(cols.map((c, i) => (i === 0 ? t('mesStat.common.total') : c.type === 'text' || NO_TOTAL.includes(c.key) ? '' : exportCell(c, total.value, dict))))
   }

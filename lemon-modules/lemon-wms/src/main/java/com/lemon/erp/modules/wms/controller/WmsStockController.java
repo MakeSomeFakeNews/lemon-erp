@@ -2,6 +2,7 @@ package com.lemon.erp.modules.wms.controller;
 
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
+import com.lemon.erp.framework.data.SortParam;
 import com.lemon.erp.modules.wms.dto.BatchQuery;
 import com.lemon.erp.modules.wms.dto.InOutQuery;
 import com.lemon.erp.modules.wms.dto.InOutRow;
@@ -54,16 +55,16 @@ public class WmsStockController {
     @PreAuthorize(STOCK_READ_PERMS)
     public R<PageResult<StockView>> stockPage(@RequestParam(defaultValue = "1") long current,
                                               @RequestParam(defaultValue = "10") long size,
-                                              StockQuery query) {
-        return R.ok(queryService.stockPage(current, size, query));
+                                              StockQuery query, SortParam sort) {
+        return R.ok(queryService.stockPage(current, size, query, sort));
     }
 
     @GetMapping("/stock/summary")
     @PreAuthorize("@ss.hasPerm('wms:stock:list')")
     public R<PageResult<StockSummaryView>> summaryPage(@RequestParam(defaultValue = "1") long current,
                                                        @RequestParam(defaultValue = "10") long size,
-                                                       StockQuery query) {
-        return R.ok(queryService.summaryPage(current, size, query));
+                                                       StockQuery query, SortParam sort) {
+        return R.ok(queryService.summaryPage(current, size, query, sort));
     }
 
     /** 分仓库预警的明细：物料各仓库的当前库存与上下限（只含设置了上下限的仓库） */
@@ -99,8 +100,8 @@ public class WmsStockController {
     @PreAuthorize("@ss.hasPerm('wms:inout:list')")
     public R<PageResult<InOutRow>> inOutPage(@RequestParam(defaultValue = "1") long current,
                                              @RequestParam(defaultValue = "10") long size,
-                                             InOutQuery query) {
-        return R.ok(queryService.inOutPage(current, size, query));
+                                             InOutQuery query, SortParam sort) {
+        return R.ok(queryService.inOutPage(current, size, query, sort));
     }
 
     /** 某个库存位置上的在库序列号 */

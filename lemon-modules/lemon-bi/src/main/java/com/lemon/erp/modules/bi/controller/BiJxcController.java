@@ -2,6 +2,7 @@ package com.lemon.erp.modules.bi.controller;
 
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
+import com.lemon.erp.framework.data.SortParam;
 import com.lemon.erp.modules.bi.dto.JxcQuery;
 import com.lemon.erp.modules.bi.dto.JxcViews;
 import com.lemon.erp.modules.bi.model.JxcDimension;
@@ -25,7 +26,8 @@ import java.time.LocalDate;
 /**
  * 进销存报表 /bi/jxc：销售报表、进货报表（汇总 → 商品明细 / 单据列表 → 单据明细）、经营状况、资产状况、商品分析、积压分析、
  * 库存分析（周转、滞销 / 畅销、库存预警）、客户 RFM。
- * 查询条件见 {@link JxcQuery}，日期范围必填；明细的 dim + key 为穿透的汇总维度和取值
+ * 查询条件见 {@link JxcQuery}，日期范围必填；明细的 dim + key 为穿透的汇总维度和取值。
+ * 分页报表支持列头排序（{@link SortParam}：sortField、sortOrder = asc | desc，issue #122），字段按各报表的白名单校验，导出与页面排序一致
  */
 @RestController
 @RequestMapping("/bi/jxc")
@@ -47,29 +49,29 @@ public class BiJxcController {
 
     @GetMapping("/sales/detail")
     @PreAuthorize("@ss.hasPerm('bi:jxc:sales')")
-    public R<JxcViews.DetailPage> salesDetail(JxcQuery q, @RequestParam(defaultValue = "1") long current,
+    public R<JxcViews.DetailPage> salesDetail(JxcQuery q, SortParam sort, @RequestParam(defaultValue = "1") long current,
                                                          @RequestParam(defaultValue = "20") long size) {
-        return R.ok(jxcService.detail(true, q, current, size));
+        return R.ok(jxcService.detail(true, q, sort, current, size));
     }
 
     @GetMapping("/sales/export")
     @PreAuthorize("@ss.hasPerm('bi:jxc:sales')")
-    public R<JxcViews.DetailExport> salesExport(JxcQuery q) {
-        return R.ok(jxcService.export(true, q));
+    public R<JxcViews.DetailExport> salesExport(JxcQuery q, SortParam sort) {
+        return R.ok(jxcService.export(true, q, sort));
     }
 
     /** 单据列表：汇总项下的出入库单 / 退货单，每张一行（docId 穿透到该单的明细用 /detail） */
     @GetMapping("/sales/docs")
     @PreAuthorize("@ss.hasPerm('bi:jxc:sales')")
-    public R<JxcViews.DocPage> salesDocs(JxcQuery q, @RequestParam(defaultValue = "1") long current,
+    public R<JxcViews.DocPage> salesDocs(JxcQuery q, SortParam sort, @RequestParam(defaultValue = "1") long current,
                                             @RequestParam(defaultValue = "20") long size) {
-        return R.ok(jxcService.docs(true, q, current, size));
+        return R.ok(jxcService.docs(true, q, sort, current, size));
     }
 
     @GetMapping("/sales/docs/export")
     @PreAuthorize("@ss.hasPerm('bi:jxc:sales')")
-    public R<JxcViews.DocExport> salesDocsExport(JxcQuery q) {
-        return R.ok(jxcService.exportDocs(true, q));
+    public R<JxcViews.DocExport> salesDocsExport(JxcQuery q, SortParam sort) {
+        return R.ok(jxcService.exportDocs(true, q, sort));
     }
 
     // ---------------------------------------------------------------- 进货报表
@@ -82,29 +84,29 @@ public class BiJxcController {
 
     @GetMapping("/purchase/detail")
     @PreAuthorize("@ss.hasPerm('bi:jxc:purchase')")
-    public R<JxcViews.DetailPage> purchaseDetail(JxcQuery q, @RequestParam(defaultValue = "1") long current,
+    public R<JxcViews.DetailPage> purchaseDetail(JxcQuery q, SortParam sort, @RequestParam(defaultValue = "1") long current,
                                                             @RequestParam(defaultValue = "20") long size) {
-        return R.ok(jxcService.detail(false, q, current, size));
+        return R.ok(jxcService.detail(false, q, sort, current, size));
     }
 
     @GetMapping("/purchase/export")
     @PreAuthorize("@ss.hasPerm('bi:jxc:purchase')")
-    public R<JxcViews.DetailExport> purchaseExport(JxcQuery q) {
-        return R.ok(jxcService.export(false, q));
+    public R<JxcViews.DetailExport> purchaseExport(JxcQuery q, SortParam sort) {
+        return R.ok(jxcService.export(false, q, sort));
     }
 
     /** 单据列表：汇总项下的出入库单 / 退货单，每张一行（docId 穿透到该单的明细用 /detail） */
     @GetMapping("/purchase/docs")
     @PreAuthorize("@ss.hasPerm('bi:jxc:purchase')")
-    public R<JxcViews.DocPage> purchaseDocs(JxcQuery q, @RequestParam(defaultValue = "1") long current,
+    public R<JxcViews.DocPage> purchaseDocs(JxcQuery q, SortParam sort, @RequestParam(defaultValue = "1") long current,
                                             @RequestParam(defaultValue = "20") long size) {
-        return R.ok(jxcService.docs(false, q, current, size));
+        return R.ok(jxcService.docs(false, q, sort, current, size));
     }
 
     @GetMapping("/purchase/docs/export")
     @PreAuthorize("@ss.hasPerm('bi:jxc:purchase')")
-    public R<JxcViews.DocExport> purchaseDocsExport(JxcQuery q) {
-        return R.ok(jxcService.exportDocs(false, q));
+    public R<JxcViews.DocExport> purchaseDocsExport(JxcQuery q, SortParam sort) {
+        return R.ok(jxcService.exportDocs(false, q, sort));
     }
 
     // ---------------------------------------------------------------- 经营状况、资产状况
@@ -126,37 +128,37 @@ public class BiJxcController {
 
     @GetMapping("/goods/top")
     @PreAuthorize("@ss.hasPerm('bi:jxc:goods')")
-    public R<PageResult<JxcViews.GoodsRow>> top(JxcQuery q, @RequestParam(defaultValue = "1") long current,
+    public R<PageResult<JxcViews.GoodsRow>> top(JxcQuery q, SortParam sort, @RequestParam(defaultValue = "1") long current,
                                                 @RequestParam(defaultValue = "20") long size) {
-        return R.ok(analysisService.top(q, current, size));
+        return R.ok(analysisService.top(q, sort, current, size));
     }
 
     @GetMapping("/goods/slow")
     @PreAuthorize("@ss.hasPerm('bi:jxc:goods')")
-    public R<PageResult<JxcViews.GoodsRow>> slow(JxcQuery q, @RequestParam(defaultValue = "1") long current,
+    public R<PageResult<JxcViews.GoodsRow>> slow(JxcQuery q, SortParam sort, @RequestParam(defaultValue = "1") long current,
                                                  @RequestParam(defaultValue = "20") long size) {
-        return R.ok(analysisService.slow(q, current, size));
+        return R.ok(analysisService.slow(q, sort, current, size));
     }
 
     @GetMapping("/goods/overstock")
     @PreAuthorize("@ss.hasPerm('bi:jxc:goods')")
-    public R<PageResult<JxcViews.GoodsRow>> overstock(JxcQuery q, @RequestParam(defaultValue = "1") long current,
+    public R<PageResult<JxcViews.GoodsRow>> overstock(JxcQuery q, SortParam sort, @RequestParam(defaultValue = "1") long current,
                                                       @RequestParam(defaultValue = "20") long size) {
-        return R.ok(analysisService.overstock(q, current, size));
+        return R.ok(analysisService.overstock(q, sort, current, size));
     }
 
     @GetMapping("/goods/shortage")
     @PreAuthorize("@ss.hasPerm('bi:jxc:goods')")
-    public R<PageResult<JxcViews.GoodsRow>> shortage(JxcQuery q, @RequestParam(defaultValue = "1") long current,
+    public R<PageResult<JxcViews.GoodsRow>> shortage(JxcQuery q, SortParam sort, @RequestParam(defaultValue = "1") long current,
                                                      @RequestParam(defaultValue = "20") long size) {
-        return R.ok(analysisService.shortage(q, current, size));
+        return R.ok(analysisService.shortage(q, sort, current, size));
     }
 
     @GetMapping("/goods/turnover")
     @PreAuthorize("@ss.hasPerm('bi:jxc:goods')")
-    public R<PageResult<JxcViews.GoodsRow>> turnover(JxcQuery q, @RequestParam(defaultValue = "1") long current,
+    public R<PageResult<JxcViews.GoodsRow>> turnover(JxcQuery q, SortParam sort, @RequestParam(defaultValue = "1") long current,
                                                      @RequestParam(defaultValue = "20") long size) {
-        return R.ok(analysisService.turnover(q, current, size));
+        return R.ok(analysisService.turnover(q, sort, current, size));
     }
 
     // ---------------------------------------------------------------- 积压分析
@@ -167,9 +169,9 @@ public class BiJxcController {
      */
     @GetMapping("/overstock")
     @PreAuthorize("@ss.hasPerm('bi:jxc:overstock')")
-    public R<JxcViews.OverstockPage> overstockAnalysis(OverstockQuery q, @RequestParam(defaultValue = "1") long current,
+    public R<JxcViews.OverstockPage> overstockAnalysis(OverstockQuery q, SortParam sort, @RequestParam(defaultValue = "1") long current,
                                                        @RequestParam(defaultValue = "20") long size) {
-        return R.ok(overstockService.page(q, current, size));
+        return R.ok(overstockService.page(q, sort, current, size));
     }
 
     // ---------------------------------------------------------------- 库存分析（issue #116）
@@ -177,25 +179,25 @@ public class BiJxcController {
     /** 周转分析：日期范围必填，计算维度为成本价时需要「查看成本金额」，零售价 / 批发价需要售价查看权限 */
     @GetMapping("/turnover")
     @PreAuthorize("@ss.hasPerm('bi:jxc:turnover')")
-    public R<JxcViews.TurnoverPage> turnover(StockAnalysisQuery q, @RequestParam(defaultValue = "1") long current,
+    public R<JxcViews.TurnoverPage> turnover(StockAnalysisQuery q, SortParam sort, @RequestParam(defaultValue = "1") long current,
                                              @RequestParam(defaultValue = "20") long size) {
-        return R.ok(stockAnalysisService.turnover(q, current, size));
+        return R.ok(stockAnalysisService.turnover(q, sort, current, size));
     }
 
     /** 滞销 / 畅销分析（mode = SLOW / HOT） */
     @GetMapping("/sales-rate")
     @PreAuthorize("@ss.hasPerm('bi:jxc:salesRate')")
-    public R<JxcViews.SalesRatePage> salesRate(StockAnalysisQuery q, @RequestParam(defaultValue = "1") long current,
+    public R<JxcViews.SalesRatePage> salesRate(StockAnalysisQuery q, SortParam sort, @RequestParam(defaultValue = "1") long current,
                                                @RequestParam(defaultValue = "20") long size) {
-        return R.ok(stockAnalysisService.salesRate(q, current, size));
+        return R.ok(stockAnalysisService.salesRate(q, sort, current, size));
     }
 
     /** 库存预警（tab = WAREHOUSE / HIGH / LOW），截至日期不传为今天 */
     @GetMapping("/stock-alert")
     @PreAuthorize("@ss.hasPerm('bi:jxc:stockAlert')")
-    public R<JxcViews.StockAlertPage> stockAlert(StockAnalysisQuery q, @RequestParam(defaultValue = "1") long current,
+    public R<JxcViews.StockAlertPage> stockAlert(StockAnalysisQuery q, SortParam sort, @RequestParam(defaultValue = "1") long current,
                                                  @RequestParam(defaultValue = "20") long size) {
-        return R.ok(stockAnalysisService.stockAlert(q, current, size));
+        return R.ok(stockAnalysisService.stockAlert(q, sort, current, size));
     }
 
     // ---------------------------------------------------------------- 客户 RFM

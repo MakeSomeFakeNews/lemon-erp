@@ -66,7 +66,20 @@
         LEFT JOIN scm_customer c ON #{kind} = 'AR' AND c.id = x.partner_id
         LEFT JOIN scm_supplier s ON #{kind} = 'AP' AND s.id = x.partner_id
         WHERE x.balance &lt;&gt; 0
-        ORDER BY x.balance DESC
+        ORDER BY
+        <!-- 列头排序（issue #122，sort 由 Service 按白名单校验） -->
+        <if test="sort != null">
+            <choose>
+                <when test="sort.field == 'partner'">COALESCE(c.code, s.code)</when>
+                <when test="sort.field == 'balance'">x.balance</when>
+                <when test="sort.field == 'notDue'">x.not_due</when>
+                <when test="sort.field == 'd30'">x.d30</when>
+                <when test="sort.field == 'd60'">x.d60</when>
+                <when test="sort.field == 'd90'">x.d90</when>
+                <when test="sort.field == 'over90'">x.over90</when>
+            </choose><if test="sort.desc"> DESC</if>,
+        </if>
+        x.balance DESC, x.partner_id
     </select>
 
     <!-- status 必须写在 settled_amount 之前：MySQL 按顺序赋值，后面的表达式会读到已更新的值（H2 读旧值），放在前面两者一致 -->

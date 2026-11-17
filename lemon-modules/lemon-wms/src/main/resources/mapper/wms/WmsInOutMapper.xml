@@ -43,7 +43,29 @@
                OR t.sales_out &lt;&gt; 0 OR t.production_out &lt;&gt; 0 OR t.purchase_return &lt;&gt; 0 OR t.other_out &lt;&gt; 0)
         <if test="q.category != null and q.category != ''">AND m.category IN (<include refid="com.lemon.erp.modules.wms.mapper.WmsMaterialCategoryMapper.subtreeCodes"><property name="code" value="q.category"/></include>)</if>
         <if test="q.keyword != null and q.keyword != ''">AND (m.code LIKE CONCAT('%', #{q.keyword}, '%') OR m.name LIKE CONCAT('%', #{q.keyword}, '%'))</if>
-        ORDER BY m.code
+        ORDER BY
+        <if test="sort != null">
+            <choose>
+                <when test="sort.field == 'material'">m.code</when>
+                <when test="sort.field == 'spec'">m.spec</when>
+                <when test="sort.field == 'category'">m.category</when>
+                <when test="sort.field == 'unit'">m.unit</when>
+                <when test="sort.field == 'openQty'">t.open_qty</when>
+                <when test="sort.field == 'purchaseIn'">t.purchase_in</when>
+                <when test="sort.field == 'productionIn'">t.production_in</when>
+                <when test="sort.field == 'salesReturn'">t.sales_return</when>
+                <when test="sort.field == 'otherIn'">t.other_in</when>
+                <when test="sort.field == 'salesOut'">t.sales_out</when>
+                <when test="sort.field == 'productionOut'">t.production_out</when>
+                <when test="sort.field == 'purchaseReturn'">t.purchase_return</when>
+                <when test="sort.field == 'otherOut'">t.other_out</when>
+                <when test="sort.field == 'closeQty'">
+                    t.open_qty + t.purchase_in + t.production_in + t.sales_return + t.other_in
+                        - t.sales_out - t.production_out - t.purchase_return - t.other_out
+                </when>
+            </choose><if test="sort.desc"> DESC</if>,
+        </if>
+        m.code
     </select>
 
 </mapper>

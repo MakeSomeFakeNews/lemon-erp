@@ -1,6 +1,9 @@
 package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.framework.data.Sort;
+import com.lemon.erp.framework.data.SortParam;
+import com.lemon.erp.framework.data.Sorts;
 import com.lemon.erp.framework.security.PermissionService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.result.PageResult;
@@ -116,11 +119,18 @@ public class FinPartnerLedgerService {
      * 口径与往来对账单一致：对账单截至今天的期末余额 = 净欠款 + 坏账核销（对账单不扣坏账）。
      * 应收勾选挂接应付时，另列关联供应商的应付净额（负数）并从净欠款中扣除
      */
-    public PageResult<PartnerSummaryRow> summary(long current, long size, PartnerSummaryRow.Query query) {
+    public PageResult<PartnerSummaryRow> summary(long current, long size, PartnerSummaryRow.Query query, SortParam sort) {
         FinBillService.checkKind(query.kind());
+        boolean withAp = billService.linkedAp(query.kind(), query.withAp());
+        Sort order = summarySorts(withAp).resolve(sort);
         Page<PartnerSummaryRow> page = Page.of(current, size);
-        ledgerMapper.selectSummary(page, query, query.kind().settleKind(), billService.linkedAp(query.kind(), query.withAp()));
+        ledgerMapper.selectSummary(page, query, query.kind().settleKind(), withAp, order);
         return PageResult.of(page);
+    }
+
+    /** 往来汇总可排序的列（issue #122）：挂接应付时另有关联应付 */
+    public static Sorts.Fields summarySorts(boolean withAp) {
+        return Sorts.fields("partner", "opening", "billBalance", "advanceBalance", "badDebt", "discount", "net").addIf(withAp, "linkedAp");
     }
 
     /** 往来汇总的合计行 */

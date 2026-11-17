@@ -77,15 +77,15 @@ import { toOptions } from '@/utils/dict'
 
 const { t } = useI18n()
 
-/** 收发存汇总：日期范围内各物料的期初、各类入库、各类出库和期末数量 */
+/** 收发存汇总：日期范围内各物料的期初、各类入库、各类出库和期末数量；列头排序为服务端排序（issue #122，物料按编码） */
 const dict = useDict('wms_material_category')
 
-const q = (title, key, extra = {}) => ({ title, key, dataIndex: key, width: 120, align: 'right', qty: true, ...extra })
+const q = (title, key, extra = {}) => ({ title, key, dataIndex: key, width: 120, align: 'right', qty: true, sortable: true, ...extra })
 const COLUMNS = [
-  { title: t('wms.common.material'), key: 'material', width: 200, fixed: 'left' },
-  { title: t('wms.inout.spec'), dataIndex: 'spec', width: 130, ellipsis: true },
-  { title: t('wms.inout.category'), key: 'category', width: 160, dict: 'wms_material_category' },
-  { title: t('common.field.unit'), dataIndex: 'unit', width: 60 },
+  { title: t('wms.common.material'), key: 'material', width: 200, fixed: 'left', sortable: true },
+  { title: t('wms.inout.spec'), dataIndex: 'spec', width: 130, ellipsis: true, sortable: true },
+  { title: t('wms.inout.category'), key: 'category', width: 160, dict: 'wms_material_category', sortable: true },
+  { title: t('common.field.unit'), dataIndex: 'unit', width: 60, sortable: true },
   q(t('wms.inout.openQty'), 'openQty', { bold: true }),
   q(t('wms.inout.purchaseIn'), 'purchaseIn'),
   q(t('wms.inout.productionIn'), 'productionIn'),
@@ -97,7 +97,6 @@ const COLUMNS = [
   q(t('wms.inout.otherOut'), 'otherOut'),
   q(t('wms.inout.closeQty'), 'closeQty', { bold: true, fixed: 'right' })
 ]
-const { checked, visibleColumns, scrollX } = useColumns(COLUMNS, 'wms-inout')
 const showSearch = ref(true)
 
 const emptyQuery = () => ({
@@ -107,9 +106,10 @@ const emptyQuery = () => ({
   category: undefined
 })
 const query = reactive(emptyQuery())
-const { list, loading, size, pagination, load, search, onTableChange, exportAll } = useTable(pageInOut, query, {
+const { list, loading, size, pagination, load, search, onTableChange, exportAll, sorter } = useTable(pageInOut, query, {
   params: ({ range, ...rest }) => ({ ...rest, beginDate: range?.[0], endDate: range?.[1] })
 })
+const { checked, visibleColumns, scrollX } = useColumns(COLUMNS, 'wms-inout', { sorter })
 
 function resetQuery() {
   Object.assign(query, emptyQuery())

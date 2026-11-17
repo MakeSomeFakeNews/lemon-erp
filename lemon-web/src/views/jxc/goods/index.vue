@@ -1,7 +1,7 @@
 <template>
   <div class="table-page">
     <a-card :bordered="false" class="page-card">
-      <a-tabs v-model:active-key="tab" class="tabs" @change="search">
+      <a-tabs v-model:active-key="tab" class="tabs" @change="changeTab">
         <a-tab-pane v-for="k in TABS" :key="k" :tab="$t(`jxc.goods.${k}`)" />
       </a-tabs>
       <div class="filters">
@@ -78,6 +78,7 @@ import JxcDetail from '@/components/bi/jxc/JxcDetail.vue'
 import { jxcGoods } from '@/api/bi/jxc'
 import { DICT_TYPES, dictLabel, marginText, rangePresets, thisMonth } from '@/components/bi/jxc/jxc'
 import { useDict } from '@/composables/useDict'
+import { useTableSort } from '@/composables/useTableSort'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { money, qty } from '@/utils/number'
@@ -101,31 +102,33 @@ const loading = ref(false)
 const exporting = ref(false)
 const pagination = reactive({ current: 1, pageSize: 20, total: 0, showSizeChanger: true, showTotal: (n) => t('common.table.total', { total: n }) })
 
-const material = { title: t('jxc.field.material'), key: 'material', width: 240, fixed: 'left', ellipsis: true }
-const category = { title: t('jxc.field.category'), key: 'category', width: 100 }
-const brand = { title: t('jxc.field.brand'), key: 'brand', width: 100 }
-const q = (key, label, extra = {}) => ({ title: t(label), key, width: 110, align: 'right', qty: true, ...extra })
-const m = (key, label) => ({ title: t(label), key, width: 120, align: 'right', money: true })
+// 列头排序（issue #122）：服务端排序，各标签页可排序的列由后端白名单校验；商品列按编码，类别、品牌按编码
+const sorter = useTableSort({ remote: true })
+const material = { title: t('jxc.field.material'), key: 'material', width: 240, fixed: 'left', ellipsis: true, sortable: true }
+const category = { title: t('jxc.field.category'), key: 'category', width: 100, sortable: true }
+const brand = { title: t('jxc.field.brand'), key: 'brand', width: 100, sortable: true }
+const q = (key, label, extra = {}) => ({ title: t(label), key, width: 110, align: 'right', qty: true, sortable: true, ...extra })
+const m = (key, label) => ({ title: t(label), key, width: 120, align: 'right', money: true, sortable: true })
+const n = (key, label, extra = {}) => ({ title: t(label), key, width: 100, align: 'right', sortable: true, ...extra })
 const COLUMNS = {
   top: [material, category, brand, q('salesQty', 'jxc.goods.salesQty', { unit: true }), m('salesAmount', 'jxc.goods.salesAmount'),
-    m('cost', 'jxc.field.cost'), m('profit', 'jxc.field.profit'), { title: t('jxc.field.margin'), key: 'margin', width: 90, align: 'right' },
+    m('cost', 'jxc.field.cost'), m('profit', 'jxc.field.profit'), n('margin', 'jxc.field.margin', { width: 90 }),
     q('stockQty', 'jxc.goods.stockQty')],
   slow: [material, category, brand, q('stockQty', 'jxc.goods.stockQty', { unit: true }), m('stockAmount', 'jxc.goods.stockAmount'),
     q('salesQty', 'jxc.goods.salesQty'), m('salesAmount', 'jxc.goods.salesAmount'),
-    { title: t('jxc.goods.lastSaleDate'), key: 'lastSaleDate', width: 110 }],
+    { title: t('jxc.goods.lastSaleDate'), key: 'lastSaleDate', width: 110, sortable: true }],
   overstock: [material, category, brand, q('stockQty', 'jxc.goods.stockQty', { unit: true }), m('stockAmount', 'jxc.goods.stockAmount'),
-    q('salesQty', 'jxc.goods.salesQty'), { title: t('jxc.goods.coverDays'), key: 'coverDays', width: 100, align: 'right', ratio: true }],
+    q('salesQty', 'jxc.goods.salesQty'), n('coverDays', 'jxc.goods.coverDays', { ratio: true })],
   shortage: [material, category, brand, q('availableQty', 'jxc.goods.availableQty', { unit: true }), q('safetyStock', 'jxc.goods.safetyStock'),
     q('soOpen', 'jxc.goods.soOpen'), q('gapQty', 'jxc.goods.gapQty'), q('poOpen', 'jxc.goods.poOpen'), q('stockQty', 'jxc.goods.stockQty')],
   turnover: [material, category, brand, q('openQty', 'jxc.goods.openQty', { unit: true }), q('closeQty', 'jxc.goods.closeQty'),
     q('salesQty', 'jxc.goods.salesQty'), m('cost', 'jxc.field.cost'),
-    { title: t('jxc.goods.turnoverTimes'), key: 'turnover', width: 100, align: 'right', ratio: true },
-    { title: t('jxc.goods.turnoverDays'), key: 'turnoverDays', width: 100, align: 'right', ratio: true }]
+    n('turnover', 'jxc.goods.turnoverTimes', { ratio: true }), n('turnoverDays', 'jxc.goods.turnoverDays', { ratio: true })]
 }
-const columns = computed(() => COLUMNS[tab.value])
+const columns = computed(() => sorter.columns(COLUMNS[tab.value]))
 
 function params() {
-  const p = { begin: range.value[0], end: range.value[1], ...query, keyword: query.keyword?.trim() }
+  const p = { begin: range.value[0], end: range.value[1], ...query, keyword: query.keyword?.trim(), ...sorter.params() }
   return Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined && v !== null && v !== ''))
 }
 
@@ -148,10 +151,17 @@ function search() {
   load()
 }
 
-function onChange(p) {
-  pagination.current = p.current
+/** 翻页、改每页条数、列头排序（排序变化时回到第一页） */
+function onChange(p, filters, sort) {
+  pagination.current = sorter.change(sort) ? 1 : p.current
   pagination.pageSize = p.pageSize
   load()
+}
+
+/** 各标签页的列不同：切换时取消排序 */
+function changeTab() {
+  sorter.reset()
+  search()
 }
 
 const detailRef = ref()
