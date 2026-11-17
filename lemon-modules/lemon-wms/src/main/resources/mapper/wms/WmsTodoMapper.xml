@@ -14,7 +14,10 @@
              WHERE m.status = 1 AND (sa.alert = 'HIGH' OR sa.high_count &gt; 0)) AS "aboveMax",
             (SELECT COUNT(*) FROM wms_batch b WHERE b.expiry_date IS NOT NULL AND b.expiry_date &lt;= #{in30} AND EXISTS (SELECT 1 FROM wms_stock s WHERE s.material_id = b.material_id AND s.batch_no = b.batch_no AND s.qty &gt; 0)) AS "batchExpiring",
             (SELECT COUNT(*) FROM wms_stock_hold WHERE status = 'PENDING') AS "holdPending",
-            (SELECT COUNT(*) FROM wms_stock_hold WHERE status = 'REJECTED') AS "holdRejected"
+            (SELECT COUNT(*) FROM wms_stock_hold WHERE status = 'REJECTED') AS "holdRejected",
+            (SELECT COUNT(*) FROM wms_stock_doc WHERE kind = 'TRANSFER' AND status IN ('TRANSIT', 'PARTIAL')) AS "transferToReceive",
+            (SELECT COUNT(*) FROM wms_stock_doc WHERE kind = 'TRANSFER' AND status IN ('TRANSIT', 'PARTIAL', 'EXCEPTION') AND expected_date &lt; #{today}) AS "transferOverdue",
+            (SELECT COUNT(*) FROM wms_stock_doc WHERE kind = 'TRANSFER' AND status = 'EXCEPTION') AS "transferDiff"
     </select>
 
 </mapper>

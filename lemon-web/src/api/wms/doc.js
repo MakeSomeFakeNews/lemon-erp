@@ -12,8 +12,17 @@ export const confirmDoc = (kind, id) => request.post(`/wms/${kind}/${id}/confirm
 export const deleteDoc = (kind, ids) => request.delete(`/wms/${kind}/${[].concat(ids).join(',')}`)
 /** 冲销已完成的单据，返回红字单据 ID */
 export const reverseDoc = (kind, id) => request.post(`/wms/${kind}/${id}/reverse`)
-/** 在途调拨单收货：调入仓库入库 */
-export const receiveTransfer = (id, receiveDate) => request.post(`/wms/transfer/${id}/receive`, { receiveDate })
+/** 在途调拨的验收单、差异、补发单和各明细未到的序列号：{ receipts, diffs, supplements, availableSerials } */
+export const getTransferTransit = (id) => request.get(`/wms/transfer/${id}/transit`)
+/**
+ * 在途调拨的调拨入库（验收）：{ receiveDate, logisticsNo, plateNo, remark, lines: [{ itemId, qty, serialNos, diffType, diffQty, diffSerialNos, diffRemark }] }，
+ * 不传 lines 时全部未到量验收入库；返回验收单 ID
+ */
+export const receiveTransfer = (id, data) => request.post(`/wms/transfer/${id}/receive`, data)
+/** 处理差异：{ action（TransferResolution）, qty?, serialNos?, bizDate?, remark? }，返回生成的单据 ID（报废出库单 / 调拨单草稿） */
+export const resolveTransferDiff = (diffId, data) => request.post(`/wms/transfer/diff/${diffId}/resolve`, data)
+/** 处理未到量：{ action（RETURN / LOSS）, bizDate?, remark? }，返回确认损耗生成的报废出库单 ID */
+export const closeTransfer = (id, data) => request.post(`/wms/transfer/${id}/close`, data)
 /**
  * 调拨价格快速计算：{ pricing（TransferPricing）, priceLevel?, factor?, materialIds: [id] } → { 物料ID: 调拨价 }（没有依据价的不返回）。
  * 需要「查看成本金额」权限；同价调拨按当前库存均价预览

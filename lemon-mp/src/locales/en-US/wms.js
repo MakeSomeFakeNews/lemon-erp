@@ -8,7 +8,8 @@ export default {
     pick: 'Pick',
     check: 'Count',
     report: 'Report',
-    quickSale: 'Quick Sale'
+    quickSale: 'Quick Sale',
+    transferReceive: 'Transfer Receipt'
   },
   common: {
     warehouse: 'Warehouse',
@@ -186,6 +187,35 @@ export default {
       LAST_PRICE: 'Last price',
       REF_COST: 'Reference cost'
     }
+  },
+  transfer: {
+    scanDoc: 'Scan or enter the transfer No.',
+    noDocs: 'No in-transit transfers to receive',
+    receivedOf: 'Received {received} / {total}',
+    changeDoc: 'Change',
+    logisticsNo: 'Tracking No.',
+    plateNo: 'Plate No.',
+    optional: 'Optional',
+    allArrived: 'All arrived',
+    clearAll: 'Clear',
+    scanTip: 'Scan a material barcode or serial number',
+    receiveQty: 'Received',
+    diffType: 'Difference',
+    noDiff: 'None',
+    diffQty: 'Difference Qty',
+    diffRemark: 'Difference note',
+    serialDiffOnWeb: 'Record differences of serialized materials on the computer',
+    exceeds: 'Received plus difference exceeds the outstanding quantity; choose "Over" for over-shipment',
+    thisTime: 'This receipt ',
+    diffN: ', difference {n}',
+    submit: 'Receive',
+    noRemaining: 'The transfer has no outstanding quantity',
+    notInDoc: '{code} is not on this transfer',
+    overQty: '{name} exceeds the outstanding quantity',
+    added: '{name} +{qty}, total {total}',
+    serialNotInTransit: 'Serial number {code} is not outstanding',
+    lineExceeds: '{name}: received plus difference exceeds the outstanding quantity',
+    success: 'Received'
   },
   receive: {
     scanOrder: 'Scan or enter PO No.',

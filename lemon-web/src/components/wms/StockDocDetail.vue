@@ -2,7 +2,7 @@
   <SubPage
     :open="open"
     :title="detail ? `${conf.label} ${detail.docNo}` : conf.label"
-    width="min(1100px, 100vw)"
+    width="min(1300px, 100vw)"
     destroy-on-close
     @close="emit('update:open', false)"
   >
@@ -30,6 +30,11 @@
           <a-descriptions-item v-if="kind === 'transfer'" :label="$t('wms.doc.transferMode')">
             {{ inTransit ? $t('wms.doc.inTransitMode') : $t('wms.doc.directTransfer') }}
           </a-descriptions-item>
+          <a-descriptions-item v-if="kind === 'transfer' && inTransit && detail.expectedDate" :label="$t('wms.transit.expectedDate')">
+            {{ detail.expectedDate }}
+            <a-tag v-if="overdue" color="red" :bordered="false" class="fee-tag">{{ $t('wms.transit.overdue') }}</a-tag>
+          </a-descriptions-item>
+          <a-descriptions-item v-if="detail.originNo" :label="$t('wms.transit.originDoc')">{{ detail.originNo }}</a-descriptions-item>
           <a-descriptions-item v-if="kind === 'transfer'" :label="$t('wms.transfer.pricing')">{{ pricingText }}</a-descriptions-item>
           <a-descriptions-item :label="$t('wms.common.bizDate')">{{ detail.bizDate }}</a-descriptions-item>
           <a-descriptions-item :label="$t('wms.common.totalQty')">
@@ -57,9 +62,9 @@
           <a-descriptions-item v-if="detail.confirmTime" :label="$t('wms.doc.confirmed')">
             {{ detail.confirmByName || '-' }} {{ detail.confirmTime }}
           </a-descriptions-item>
-          <a-descriptions-item v-if="detail.receiveTime" :label="$t('wms.doc.received')">
+          <a-descriptions-item v-if="detail.receiveTime" :label="$t('wms.transit.lastReceived')">
             {{ detail.receiveByName || '-' }} {{ detail.receiveTime }}
-            <template v-if="detail.receiveDate"> · {{ $t('wms.doc.receiveDate') }} {{ detail.receiveDate }}</template>
+            <template v-if="detail.receiveDate"> · {{ $t('wms.transit.receiveDate') }} {{ detail.receiveDate }}</template>
           </a-descriptions-item>
           <a-descriptions-item v-if="detail.remark" :label="$t('common.field.remark')">{{ detail.remark }}</a-descriptions-item>
         </a-descriptions>
@@ -78,7 +83,7 @@
           :columns="columns"
           :data-source="detail.items"
           :pagination="false"
-          :scroll="{ x: 900 }"
+          :scroll="{ x: showTransit ? 1500 : 900 }"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'material'">
@@ -103,8 +108,15 @@
             <template v-else-if="column.key === 'serialNos'">
               <SerialTags :value="record.serialNos" />
             </template>
+            <template v-else-if="column.transit">
+              <span :class="{ 'warn-text': column.warn && Number(record[column.key]) }">{{ Number(record[column.key]) ? formatQty(record[column.key]) : '-' }}</span>
+            </template>
+            <template v-else-if="column.key === 'progress'">
+              <a-progress :percent="progress(record)" size="small" :status="Number(record.diffQty) ? 'exception' : undefined" />
+            </template>
           </template>
         </a-table>
+        <TransferTransitPanel v-if="showTransit" ref="transitRef" :doc="detail" @changed="onTransitChanged" @open="(id) => emit('open', id)" />
       </template>
     </a-spin>
 
@@ -118,11 +130,15 @@
             <template #icon><CheckOutlined /></template>{{ $t(`wms.doc.confirmAction.${kind}`) }}
           </a-button>
         </template>
-        <ReceiveConfirm v-if="showReceive" :warehouse-name="detail.toWarehouseName" @confirm="receive">
-          <a-button type="primary" :loading="acting">
-            <template #icon><InboxOutlined /></template>{{ $t('wms.common.receive') }}
-          </a-button>
-        </ReceiveConfirm>
+        <a-button v-if="showSupplement" @click="supplement">
+          <template #icon><CopyOutlined /></template>{{ $t('wms.transit.supplement') }}
+        </a-button>
+        <a-button v-if="showClose" danger @click="resolveRef.openClose(detail, remainingTotal)">
+          <template #icon><ToolOutlined /></template>{{ $t('wms.transit.close') }}
+        </a-button>
+        <a-button v-if="showReceive" type="primary" @click="receiveRef.open(detail.id)">
+          <template #icon><InboxOutlined /></template>{{ $t('wms.transit.receive') }}
+        </a-button>
         <a-popconfirm
           v-if="showReverse"
           :title="$t('wms.doc.confirmReverse', { kind: conf.label, no: detail.docNo })"
@@ -136,6 +152,8 @@
         </a-popconfirm>
       </div>
     </template>
+    <TransferReceiveModal ref="receiveRef" @success="onTransitChanged" />
+    <TransferResolveModal ref="resolveRef" @done="onTransitChanged" />
   </SubPage>
 </template>
 
@@ -145,10 +163,12 @@ import SerialTags from '@/components/wms/SerialTags.vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Modal, message } from 'ant-design-vue'
-import { CheckOutlined, EditOutlined, InboxOutlined, PrinterOutlined, RollbackOutlined } from '@ant-design/icons-vue'
+import { CheckOutlined, CopyOutlined, EditOutlined, InboxOutlined, PrinterOutlined, RollbackOutlined, ToolOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
-import ReceiveConfirm from './ReceiveConfirm.vue'
-import { confirmDoc, getDoc, receiveTransfer, reverseDoc } from '@/api/wms/doc'
+import TransferReceiveModal from './TransferReceiveModal.vue'
+import TransferResolveModal from './TransferResolveModal.vue'
+import TransferTransitPanel from './TransferTransitPanel.vue'
+import { confirmDoc, getDoc, reverseDoc } from '@/api/wms/doc'
 import { useUserStore } from '@/store/user'
 import { DOC_KINDS, batchDates, canReverse, formatQty, locationText, negativeClass } from './wms'
 import { materialColumns, printDocs } from '@/utils/print'
@@ -160,6 +180,9 @@ import { useRouter } from 'vue-router'
 import { usePriceLevels } from './priceLevels'
 
 import { TransferPricing, WmsDocStatus } from '@/constants/enums'
+import dayjs from 'dayjs'
+
+const RECEIVING = [WmsDocStatus.TRANSIT, WmsDocStatus.PARTIAL, WmsDocStatus.EXCEPTION]
 /**
  * 出入库单详情；草稿可以编辑（触发 edit）、确认（更新库存后触发 changed）
  */
@@ -168,7 +191,7 @@ const props = defineProps({
   kind: { type: String, required: true },
   docId: Number
 })
-const emit = defineEmits(['update:open', 'edit', 'changed'])
+const emit = defineEmits(['update:open', 'edit', 'changed', 'supplement', 'open'])
 const { t } = useI18n()
 
 const userStore = useUserStore()
@@ -179,12 +202,26 @@ const dict = useDict('wms_in_type', 'wms_out_type', 'wms_in_category', 'wms_out_
 const canEdit = computed(() => userStore.hasPerm(`wms:${props.kind}:edit`))
 const canConfirm = computed(() => userStore.hasPerm(`wms:${props.kind}:confirm`))
 const inTransit = computed(() => detail.value?.inTransit === true || detail.value?.inTransit === 1)
-const showReceive = computed(
-  () => props.kind === 'transfer' && detail.value?.status === WmsDocStatus.TRANSIT && userStore.hasPerm('wms:transfer:receive')
-)
+/** 在途调拨已确认（在途、部分到货、验收异常、已完成）：显示验收进度和验收记录 */
+const showTransit = computed(() => props.kind === 'transfer' && inTransit.value && !!detail.value?.confirmTime && !detail.value?.redOf)
+const receiving = computed(() => RECEIVING.includes(detail.value?.status))
+const remainingTotal = computed(() => (detail.value?.items || []).reduce((s, i) => s + Number(i.remainingQty || 0), 0))
+const overdue = computed(() => receiving.value && !!detail.value?.expectedDate && dayjs(detail.value.expectedDate).isBefore(dayjs(), 'day'))
+const showReceive = computed(() => showTransit.value && receiving.value && remainingTotal.value > 0 && userStore.hasPerm('wms:transfer:receive'))
+const showClose = computed(() => showTransit.value && receiving.value && remainingTotal.value > 0 && userStore.hasPerm('wms:transfer:resolve'))
+/** 有退回、损耗或差异待处理（不含多发）的数量时可生成补发调拨单 */
+const backQty = (i) => Number(i.returnedQty || 0) + Number(i.lostQty || 0) + Number(i.diffQty || 0)
+const showSupplement = computed(() => showTransit.value && (detail.value?.items || []).some((i) => backQty(i) > 0) && userStore.hasPerm('wms:transfer:add'))
+const progress = (i) => Math.round(((Number(i.receivedQty || 0) + Number(i.returnedQty || 0) + Number(i.lostQty || 0)) / Number(i.qty)) * 100)
 const showReverse = computed(() => !!detail.value && canReverse(detail.value) && userStore.hasPerm(`wms:${props.kind}:reverse`))
 const showFooter = computed(
-  () => !!detail.value && ((detail.value.status === WmsDocStatus.DRAFT && (canEdit.value || canConfirm.value)) || showReceive.value || showReverse.value)
+  () =>
+    !!detail.value &&
+    ((detail.value.status === WmsDocStatus.DRAFT && (canEdit.value || canConfirm.value)) ||
+      showReceive.value ||
+      showClose.value ||
+      showSupplement.value ||
+      showReverse.value)
 )
 
 const hasCost = computed(() => (detail.value?.items || []).some((i) => i.costPrice != null))
@@ -208,7 +245,18 @@ const columns = computed(() =>
     { title: props.kind === 'transfer' ? t('wms.doc.fromLocation') : t('wms.common.location'), key: 'location', width: 120 },
     props.kind === 'transfer' ? { title: t('wms.doc.toLocation'), key: 'toLocation', width: 120 } : null,
     { title: t('wms.common.batch'), key: 'batchNo', width: 180 },
-    { title: t('common.field.quantity'), key: 'qty', width: 120, align: 'right' },
+    { title: showTransit.value ? t('wms.transit.shipped') : t('common.field.quantity'), key: 'qty', width: 120, align: 'right' },
+    // 在途调拨的进度：已验收、未到、差异待处理、退回、损耗
+    ...(showTransit.value
+      ? [
+          { title: t('wms.transit.received'), key: 'receivedQty', transit: true, width: 90, align: 'right' },
+          { title: t('wms.transit.remaining'), key: 'remainingQty', transit: true, width: 90, align: 'right' },
+          { title: t('wms.transit.diffPending'), key: 'diffQty', transit: true, warn: true, width: 90, align: 'right' },
+          { title: t('wms.transit.returned'), key: 'returnedQty', transit: true, width: 90, align: 'right' },
+          { title: t('wms.transit.lost'), key: 'lostQty', transit: true, width: 90, align: 'right' },
+          { title: t('wms.transit.progress'), key: 'progress', width: 140 }
+        ]
+      : []),
     // 成本价：入库填写或业务单据传入的入库成本（有权限时后端才返回）
     hasCost.value
       ? { title: props.kind === 'transfer' ? t('wms.transfer.costPrice') : t('wms.doc.costPrice'), key: 'costPrice', width: 110, align: 'right' }
@@ -321,16 +369,43 @@ function confirm() {
 }
 
 const acting = ref(false)
-async function receive(receiveDate) {
-  acting.value = true
-  try {
-    await receiveTransfer(props.docId, receiveDate)
-    message.success(t('wms.doc.receiveSuccess'))
-    await load()
-    emit('changed')
-  } finally {
-    acting.value = false
-  }
+const receiveRef = ref()
+const resolveRef = ref()
+const transitRef = ref()
+
+/** 验收、差异处理后：重新加载详情（验收记录随状态、更新时间刷新）并刷新列表 */
+async function onTransitChanged() {
+  await load()
+  transitRef.value?.reload()
+  emit('changed')
+}
+
+/** 生成补发调拨单：带出原单的仓库和退回、损耗、差异待处理的数量，关联原单（由列表页打开新增表单） */
+function supplement() {
+  const d = detail.value
+  emit('supplement', {
+    warehouseId: d.warehouseId,
+    toWarehouseId: d.toWarehouseId,
+    inTransit: true,
+    originId: d.id,
+    originNo: d.docNo,
+    remark: t('wms.transit.supplementRemark', { no: d.docNo }),
+    items: d.items
+      .filter((i) => backQty(i) > 0)
+      .map((i) => ({
+        materialId: i.materialId,
+        materialCode: i.materialCode,
+        materialName: i.materialName,
+        spec: i.spec,
+        unit: i.unit,
+        batchEnabled: i.batchEnabled,
+        serialEnabled: i.serialEnabled,
+        locationId: i.locationId,
+        toLocationId: i.toLocationId,
+        batchNo: i.batchNo,
+        qty: backQty(i)
+      }))
+  })
 }
 
 async function reverse() {
@@ -357,6 +432,9 @@ defineExpose({ reload: load })
 }
 .fee-tag {
   margin-left: 6px;
+}
+.warn-text {
+  color: var(--status-critical);
 }
 .sub-text {
   color: var(--app-text-3);

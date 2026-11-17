@@ -41,7 +41,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static com.lemon.erp.modules.wms.model.StockBizType.IN;
 import static com.lemon.erp.modules.wms.model.StockBizType.TRANSFER;
@@ -66,7 +65,6 @@ public class WmsStockDocService {
     private final WmsStockDocItemMapper itemMapper;
     private final DocNoService docNoService;
     private final StockService stockService;
-    private final StockCostService costService;
     private final BizPeriodGuard periodGuard;
     private final ApprovalSupport approvalSupport;
     private final StockDocValidator validator;
@@ -82,7 +80,7 @@ public class WmsStockDocService {
     @DataPermission(table = "wms_stock_doc", deptColumn = "dept_id", userColumn = "create_by")
     public PageResult<WmsStockDoc> page(StockBizType kind, long current, long size, DocQuery query) {
         Page<WmsStockDoc> page = Page.of(current, size);
-        docMapper.selectPageList(page, kind, query);
+        docMapper.selectPageList(page, kind, query, LocalDate.now());
         List<WmsStockDoc> docs = page.getRecords();
         if (!docs.isEmpty()) {
             Map<Long, String> headers = new java.util.HashMap<>();
@@ -156,7 +154,9 @@ public class WmsStockDocService {
         doc.setBizDate(req.bizDate());
         doc.setRemark(req.remark());
         doc.setSourceNo(sourceNo);
-        doc.setInTransit(kind == TRANSFER && Boolean.TRUE.equals(req.inTransit()) ? 1 : 0);
+        doc.setInTransit(transit(kind, req) ? 1 : 0);
+        doc.setExpectedDate(expectedDate(kind, req));
+        doc.setOriginId(originId(kind, req));
         doc.setReversed(0);
         if (!manual) {
             doc.setPartnerId(req.partnerId());
@@ -194,7 +194,9 @@ public class WmsStockDocService {
                 .set(WmsStockDoc::getToWarehouseId, kind == TRANSFER ? req.toWarehouseId() : null)
                 .set(WmsStockDoc::getBizDate, req.bizDate())
                 .set(WmsStockDoc::getRemark, req.remark())
-                .set(WmsStockDoc::getInTransit, kind == TRANSFER && Boolean.TRUE.equals(req.inTransit()) ? 1 : 0)
+                .set(WmsStockDoc::getInTransit, transit(kind, req) ? 1 : 0)
+                .set(WmsStockDoc::getExpectedDate, expectedDate(kind, req))
+                .set(WmsStockDoc::getOriginId, originId(kind, req))
                 .set(WmsStockDoc::getTotalQty, totalQty(items))
                 .set(WmsStockDoc::getTransferPricing, terms == null ? null : terms.pricing())
                 .set(WmsStockDoc::getPriceLevel, terms == null ? null : terms.priceLevel())
@@ -273,7 +275,7 @@ public class WmsStockDocService {
             periodGuard.checkStockOpen(doc.getBizDate(), kind.getLabelKey());
         }
         Long id = doc.getId();
-        boolean transit = kind == TRANSFER && Integer.valueOf(1).equals(doc.getInTransit());
+        boolean transit = doc.transit();
         StatusTransitions.change(docMapper, WmsStockDoc::getId, id, WmsStockDoc::getStatus,
                 from, transit ? DocStatus.TRANSIT : DocStatus.DONE, w -> w
                         .set(WmsStockDoc::getConfirmBy, SecurityUtils.getUserId())
@@ -307,39 +309,6 @@ public class WmsStockDocService {
                 .set(WmsStockDoc::getFeeBillId, billId)
                 .set(WmsStockDoc::getFeeIoId, ioId)
                 .eq(WmsStockDoc::getId, docId));
-    }
-
-    /**
-     * 在途调拨收货：调入仓库入库，单据变为已完成。调入按调出时的成本计价（调拨不改变均价，在途期间计价数量不变），
-     * 调出、调入流水金额相抵；调入流水的业务单价为确认时生成的调拨价。调拨费用已在确认（调出）时生成，收货不再处理
-     *
-     * @param receiveDate 收货日期，为空取当天；不能早于调拨单的业务日期，所在会计期间须未结账
-     */
-    @Transactional
-    public void receive(Long id, LocalDate receiveDate) {
-        WmsStockDoc doc = getAccessible(TRANSFER, id);
-        if (doc.getStatus() != DocStatus.TRANSIT) {
-            throw new BizException("wms.error.transferOrderNotTransit", doc.getDocNo());
-        }
-        LocalDate date = receiveDate == null ? LocalDate.now() : receiveDate;
-        if (date.isBefore(doc.getBizDate())) {
-            throw new BizException("wms.error.receiveDateBeforeTransferDate", date, doc.getBizDate());
-        }
-        periodGuard.checkOpen(date, "wms.label.transferReceipt");
-        StatusTransitions.change(docMapper, WmsStockDoc::getId, id, WmsStockDoc::getStatus,
-                DocStatus.TRANSIT, DocStatus.DONE, w -> w
-                        .set(WmsStockDoc::getReceiveBy, SecurityUtils.getUserId())
-                        .set(WmsStockDoc::getReceiveDate, date)
-                        .set(WmsStockDoc::getReceiveTime, LocalDateTime.now()),
-                "wms.error.transferOrderHasReceivedRefresh");
-        List<WmsStockDocItem> items = itemMapper.selectList(Wrappers.<WmsStockDocItem>lambdaQuery()
-                .eq(WmsStockDocItem::getDocId, id).orderByAsc(WmsStockDocItem::getId));
-        validator.checkReceiveWarehouse(doc);
-        List<StockChange> increases = StockDocRules.toChanges(TRANSFER, doc, items).stream().filter(StockChange::increase).toList();
-        Map<Long, BigDecimal> outCosts = costService.transferOutCosts(id,
-                increases.stream().map(StockChange::materialId).collect(Collectors.toSet()));
-        stockService.apply(TRANSFER, id, doc.getDocNo(), increases.stream()
-                .map(c -> c.withCost(outCosts.get(c.materialId()), c.bizPrice(), c.partnerId(), c.partnerName())).toList());
     }
 
     /**
@@ -403,6 +372,33 @@ public class WmsStockDocService {
             item.setRemark(r.remark());
             return item;
         }).toList();
+    }
+
+    private static boolean transit(StockBizType kind, StockDocRequest req) {
+        return kind == TRANSFER && Boolean.TRUE.equals(req.inTransit());
+    }
+
+    /** 预计到达日期：只用于在途调拨，不能早于业务日期 */
+    private static LocalDate expectedDate(StockBizType kind, StockDocRequest req) {
+        if (!transit(kind, req) || req.expectedDate() == null) {
+            return null;
+        }
+        if (req.expectedDate().isBefore(req.bizDate())) {
+            throw new BizException("wms.error.expectedDateBeforeBizDate", req.expectedDate(), req.bizDate());
+        }
+        return req.expectedDate();
+    }
+
+    /** 原调拨单（补发、多发补调）：须是已确认的在途调拨单，在数据权限范围内 */
+    private Long originId(StockBizType kind, StockDocRequest req) {
+        if (kind != TRANSFER || req.originId() == null) {
+            return null;
+        }
+        WmsStockDoc origin = getAccessible(TRANSFER, req.originId());
+        if (!origin.transit() || origin.getStatus() == DocStatus.DRAFT || origin.getStatus() == DocStatus.APPROVING) {
+            throw new BizException("wms.error.originNotTransitTransfer", origin.getDocNo());
+        }
+        return origin.getId();
     }
 
     private void saveItems(Long docId, List<WmsStockDocItem> items) {

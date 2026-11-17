@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsTransferReceiptItemMapper">
+
+    <select id="selectByDocId" resultType="com.lemon.erp.modules.wms.entity.WmsTransferReceiptItem">
+        SELECT ri.id, ri.receipt_id, ri.doc_id, ri.item_id, ri.material_id, ri.qty, ri.serial_nos,
+               m.code AS material_code, m.name AS material_name, m.spec, m.unit, i.batch_no, tl.code AS to_location_code
+        FROM wms_transfer_receipt_item ri
+        JOIN wms_stock_doc_item i ON i.id = ri.item_id
+        JOIN wms_material m ON m.id = ri.material_id
+        LEFT JOIN wms_location tl ON tl.id = i.to_location_id
+        WHERE ri.doc_id = #{docId}
+        ORDER BY ri.receipt_id, ri.id
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO wms_transfer_receipt_item (receipt_id, doc_id, item_id, material_id, qty, serial_nos, create_time, update_time) VALUES
+        <foreach collection="list" item="i" separator=",">
+            (#{i.receiptId}, #{i.docId}, #{i.itemId}, #{i.materialId}, #{i.qty}, #{i.serialNos}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+</mapper>

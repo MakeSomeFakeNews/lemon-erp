@@ -211,7 +211,7 @@
     </select>
 
     <select id="transitCount" resultType="int">
-        SELECT COUNT(*) FROM wms_stock_doc WHERE status = 'TRANSIT'
+        SELECT COUNT(*) FROM wms_stock_doc WHERE status IN ('TRANSIT', 'PARTIAL', 'EXCEPTION')
     </select>
 
     <select id="recentStockDocs" resultType="com.lemon.erp.modules.bi.dto.BiScreen$RecentStockDoc">
@@ -221,7 +221,7 @@
         FROM wms_stock_doc d
         LEFT JOIN wms_warehouse w ON w.id = d.warehouse_id
         LEFT JOIN sys_dict_data dd ON dd.dict_type = CASE WHEN d.kind = 'IN' THEN 'wms_in_type' ELSE 'wms_out_type' END AND dd.dict_value = d.biz_type AND dd.tenant_id = 1
-        WHERE d.status IN ('DONE', 'TRANSIT') AND d.confirm_time IS NOT NULL
+        WHERE d.status IN ('DONE', 'TRANSIT', 'PARTIAL', 'EXCEPTION') AND d.confirm_time IS NOT NULL
         ORDER BY d.confirm_time DESC, d.id DESC
         LIMIT #{limit}
     </select>

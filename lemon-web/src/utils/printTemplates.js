@@ -135,6 +135,16 @@ export const PRINT_TYPES = [
   stock('wms.in', n.wmsIn, n.inboundWarehouse, false, n.inType, n.inCategory),
   stock('wms.out', n.wmsOut, n.outboundWarehouse, false, n.outType, n.outCategory),
   stock('wms.transfer', n.transfer, n.outWarehouse, true),
+  // 在途调拨的调拨验收单（issue #124）：每次验收一张，明细为本次验收入库的数量，差异另列
+  {
+    key: 'wms.transferReceipt',
+    module: n.warehouse,
+    name: n.transferReceipt,
+    fields: [n.transferDocNo, n.outWarehouse, n.inWarehouse, n.receiveDate, n.logisticsNo, n.plateNo, n.receivedQty, n.diffQty],
+    columns: [...MATERIAL_COLUMNS, n.batch, n.inLocation, num(n.receivedQty), n.serialNo],
+    signs: [n.receiver, n.deliverer, n.reviewer],
+    note: true
+  },
   {
     key: 'fin.voucher',
     module: n.modFin,

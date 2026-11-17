@@ -295,7 +295,8 @@ export default {
   1322: 'Delete Transfer Order', // 调拨单删除
   1323: 'Confirm Transfer', // 调拨确认
   1324: 'Reverse Transfer', // 调拨冲销
-  1325: 'Receive Transfer', // 调拨收货
+  1325: 'Receive Transfer', // 调拨验收入库
+  1326: 'Resolve Transfer Differences', // 调拨差异处理
   1330: 'Add Stock Count', // 盘点单新增
   1331: 'Edit Stock Count', // 盘点单修改
   1332: 'Delete Stock Count', // 盘点单删除

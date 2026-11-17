@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.wms.mapper.WmsTransferDiffMapper">
+
+    <select id="selectByDocId" resultType="com.lemon.erp.modules.wms.entity.WmsTransferDiff">
+        SELECT f.id, f.doc_id, f.item_id, f.receipt_id, r.receipt_no, f.material_id, f.diff_type, f.qty, f.serial_nos, f.remark,
+               f.resolution, f.resolve_date, f.resolve_by, ru.nickname AS resolve_by_name, f.resolve_time, f.resolve_remark,
+               f.ref_doc_id, rd.doc_no AS ref_doc_no, rd.kind AS ref_doc_kind, f.create_by, cu.nickname AS create_by_name,
+               f.create_time, f.update_time,
+               m.code AS material_code, m.name AS material_name, m.spec, m.unit, m.serial_enabled, i.batch_no
+        FROM wms_transfer_diff f
+        JOIN wms_stock_doc_item i ON i.id = f.item_id
+        JOIN wms_material m ON m.id = f.material_id
+        LEFT JOIN wms_transfer_receipt r ON r.id = f.receipt_id
+        LEFT JOIN wms_stock_doc rd ON rd.id = f.ref_doc_id
+        LEFT JOIN sys_user cu ON cu.id = f.create_by
+        LEFT JOIN sys_user ru ON ru.id = f.resolve_by
+        WHERE f.doc_id = #{docId}
+        ORDER BY f.id
+    </select>
+
+</mapper>

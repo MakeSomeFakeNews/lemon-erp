@@ -1,6 +1,6 @@
 <template>
   <!-- 调拨汇总：已调出的调拨单（含红字冲销）按 调出仓库 → 调入仓库 汇总，用于分店 / 仓库之间的考核（调拨价是内部结算价，不影响存货成本） -->
-  <a-modal v-model:open="visible" :title="$t('wms.transfer.summary')" width="min(1000px, 100vw)" :footer="null" destroy-on-close>
+  <a-modal v-model:open="visible" :title="$t('wms.transfer.summary')" width="min(1200px, 100vw)" :footer="null" destroy-on-close>
     <a-space wrap class="toolbar">
       <a-range-picker v-model:value="range" value-format="YYYY-MM-DD" />
       <WarehouseSelect v-model:value="warehouseId" :placeholder="$t('common.placeholder.all')" allow-clear style="width: 180px" />
@@ -8,12 +8,12 @@
     </a-space>
     <div class="sub-text tip">{{ $t('wms.transfer.summaryTip') }}</div>
     <div class="table-wrap">
-      <a-table row-key="key" size="small" :columns="columns" :data-source="rows" :loading="loading" :pagination="false" :scroll="{ x: 900 }">
+      <a-table row-key="key" size="small" :columns="columns" :data-source="rows" :loading="loading" :pagination="false" :scroll="{ x: 1110 }">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'route'">
             {{ record.warehouseName }} <ArrowRightOutlined class="arrow" /> {{ record.toWarehouseName }}
           </template>
-          <template v-else-if="column.key === 'totalQty'">{{ formatQty(record.totalQty) }}</template>
+          <template v-else-if="column.qty">{{ Number(record[column.key]) ? formatQty(record[column.key]) : '-' }}</template>
           <template v-else-if="column.money">
             <span :class="negativeClass(record[column.key])">{{ money(record[column.key]) }}</span>
           </template>
@@ -22,8 +22,8 @@
           <a-table-summary-row v-if="rows.length">
             <a-table-summary-cell :index="0">{{ $t('wms.transfer.total') }}</a-table-summary-cell>
             <a-table-summary-cell :index="1" align="right">{{ sumBy(rows, 'docCount', (n) => n) }}</a-table-summary-cell>
-            <a-table-summary-cell :index="2" align="right">{{ formatQty(sumBy(rows, 'totalQty', (n) => n)) }}</a-table-summary-cell>
-            <a-table-summary-cell v-for="(k, i) in MONEY_KEYS" :key="k" :index="3 + i" align="right">{{ money(sumBy(rows, k)) }}</a-table-summary-cell>
+            <a-table-summary-cell v-for="(k, i) in QTY_KEYS" :key="k" :index="2 + i" align="right">{{ formatQty(sumBy(rows, k, round4)) }}</a-table-summary-cell>
+            <a-table-summary-cell v-for="(k, i) in MONEY_KEYS" :key="k" :index="2 + QTY_KEYS.length + i" align="right">{{ money(sumBy(rows, k)) }}</a-table-summary-cell>
           </a-table-summary-row>
         </template>
       </a-table>
@@ -38,9 +38,10 @@ import { ArrowRightOutlined } from '@ant-design/icons-vue'
 import WarehouseSelect from './WarehouseSelect.vue'
 import { transferSummary } from '@/api/wms/doc'
 import { formatQty, negativeClass } from './wms'
-import { money, sumBy } from '@/utils/number'
+import { money, round4, sumBy } from '@/utils/number'
 
 const { t } = useI18n()
+const QTY_KEYS = ['totalQty', 'transitQty', 'backQty']
 const MONEY_KEYS = ['costAmount', 'transferAmount', 'diffAmount', 'fee']
 
 const visible = ref(false)
@@ -52,7 +53,10 @@ const loading = ref(false)
 const columns = computed(() => [
   { title: t('wms.doc.fromTo'), key: 'route', width: 240 },
   { title: t('wms.transfer.docCount'), dataIndex: 'docCount', width: 80, align: 'right' },
-  { title: t('wms.common.totalQty'), key: 'totalQty', width: 110, align: 'right' },
+  { title: t('wms.transfer.outQty'), key: 'totalQty', qty: true, width: 110, align: 'right' },
+  // 在途调拨：尚未验收的在途数量、退回调出仓和确认损耗的数量（不算调出）
+  { title: t('wms.transfer.transitQty'), key: 'transitQty', qty: true, width: 100, align: 'right' },
+  { title: t('wms.transfer.backQty'), key: 'backQty', qty: true, width: 110, align: 'right' },
   { title: t('wms.transfer.costAmount'), key: 'costAmount', money: true, width: 130, align: 'right' },
   { title: t('wms.transfer.transferAmount'), key: 'transferAmount', money: true, width: 130, align: 'right' },
   { title: t('wms.transfer.diffAmount'), key: 'diffAmount', money: true, width: 120, align: 'right' },

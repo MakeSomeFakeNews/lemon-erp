@@ -26,6 +26,7 @@ public class WmsDocNos {
                 doc(StockBizType.OUT.getPrefix(), StockBizType.OUT.getLabelKey()),
                 doc(StockBizType.TRANSFER.getPrefix(), StockBizType.TRANSFER.getLabelKey()),
                 doc(StockBizType.CHECK.getPrefix(), StockBizType.CHECK.getLabelKey()),
+                doc(WmsTransferTransitService.RECEIPT_NO, "wms.label.transferReceiptOrder"),
                 doc(WmsAssemblyService.DOC_NO, "wms.label.assemblyOrder"),
                 master(MATERIAL, "wms.label.materialCode"));
     }

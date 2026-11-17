@@ -30,6 +30,16 @@ export const availableSerials = (params) => get('/wms/stock/serials', params)
 export const addDoc = (kind, data) => post(`/wms/${kind}`, data)
 export const confirmDoc = (kind, id) => post(`/wms/${kind}/${id}/confirm`)
 
+/**
+ * 调拨单（在途调拨验收）：pageTransfer({ current, size, docNo, transitState: PENDING 未完结 }) 每行带 receivedQty；
+ * getTransfer 明细带 remainingQty 未到数量；getTransferTransit 返回 availableSerials（明细 ID → 未到的序列号）
+ */
+export const pageTransfer = (params) => get('/wms/transfer', params)
+export const getTransfer = (id) => get(`/wms/transfer/${id}`)
+export const getTransferTransit = (id) => get(`/wms/transfer/${id}/transit`)
+/** 调拨入库（验收）：{ receiveDate, logisticsNo, plateNo, lines: [{ itemId, qty, serialNos, diffType, diffQty, diffRemark }] } */
+export const receiveTransfer = (id, data) => post(`/wms/transfer/${id}/receive`, data)
+
 /** 盘点单 */
 export const pageCheck = (params) => get('/wms/check', params)
 export const getCheck = (id) => get(`/wms/check/${id}`)

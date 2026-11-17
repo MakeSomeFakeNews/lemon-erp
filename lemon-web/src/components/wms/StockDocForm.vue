@@ -58,6 +58,14 @@
             <a-switch v-model:checked="form.inTransit" :checked-children="$t('wms.doc.inTransit')" :un-checked-children="$t('wms.doc.directTransfer')" />
           </a-form-item>
         </a-col>
+        <a-col v-if="kind === 'transfer' && form.inTransit" :xs="24" :sm="12" :lg="6">
+          <a-form-item :label="$t('wms.transit.expectedDate')" name="expectedDate" :extra="$t('wms.transit.expectedDateTip')">
+            <a-date-picker v-model:value="form.expectedDate" value-format="YYYY-MM-DD" class="full" :placeholder="$t('wms.common.optional')" />
+          </a-form-item>
+        </a-col>
+        <a-col v-if="form.originId" :span="24">
+          <a-alert type="info" show-icon class="origin-tip" :message="$t('wms.transit.supplementOf', { no: form.originNo || form.originId })" />
+        </a-col>
         <a-col :span="24">
           <a-form-item :label="$t('common.field.remark')" name="remark">
             <a-input v-model:value="form.remark" :maxlength="255" :placeholder="$t('wms.common.optional')" />
@@ -250,6 +258,9 @@ const emptyForm = () => ({
   toWarehouseId: undefined,
   bizDate: today(),
   inTransit: false,
+  expectedDate: undefined,
+  originId: undefined,
+  originNo: undefined,
   remark: '',
   ...transferForm(),
   items: []
@@ -283,7 +294,9 @@ const drawer = useFormDrawer({
     warehouseId: f.warehouseId,
     toWarehouseId: f.toWarehouseId,
     bizDate: f.bizDate,
-    ...(props.kind === 'transfer' ? { inTransit: !!f.inTransit, ...transferPayload(f) } : {}),
+    ...(props.kind === 'transfer'
+      ? { inTransit: !!f.inTransit, expectedDate: f.inTransit ? f.expectedDate || null : null, originId: f.originId || null, ...transferPayload(f) }
+      : {}),
     remark: f.remark,
     items: f.items.map((i) => ({
       ...pickItem(i, props.kind === 'in' && f.bizType !== StockInType.CONSIGN_IN),
@@ -442,6 +455,9 @@ defineExpose({ openCreate: drawer.openCreate, openEdit: drawer.openEdit })
 <style scoped>
 .full {
   width: 100%;
+}
+.origin-tip {
+  margin-bottom: 16px;
 }
 .items-head {
   display: flex;

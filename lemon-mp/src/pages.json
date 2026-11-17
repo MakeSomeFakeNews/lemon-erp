@@ -75,6 +75,7 @@
         { "path": "lookup/trades", "style": { "navigationBarTitleText": "交易历史", "enablePullDownRefresh": true } },
         { "path": "lookup/reference", "style": { "navigationBarTitleText": "价格参考" } },
         { "path": "receive/index", "style": { "navigationBarTitleText": "扫码收货" } },
+        { "path": "transfer/index", "style": { "navigationBarTitleText": "调拨验收" } },
         { "path": "putaway/index", "style": { "navigationBarTitleText": "上架" } },
         { "path": "pick/index", "style": { "navigationBarTitleText": "拣货" } },
         { "path": "check/index", "style": { "navigationBarTitleText": "盘点" } },

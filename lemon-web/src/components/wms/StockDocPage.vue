@@ -14,6 +14,9 @@
         <a-form-item :label="$t('common.field.status')" name="status">
           <a-select v-model:value="query.status" :placeholder="$t('common.placeholder.all')" allow-clear :options="toOptions(dict.wms_doc_status)" />
         </a-form-item>
+        <a-form-item v-if="kind === 'transfer'" :label="$t('wms.transit.state')" name="transitState">
+          <a-select v-model:value="query.transitState" :placeholder="$t('common.placeholder.all')" allow-clear :options="transitStateOptions" />
+        </a-form-item>
         <a-form-item :label="$t('wms.common.warehouse')" name="warehouseId">
           <WarehouseSelect v-model:value="query.warehouseId" :placeholder="$t('common.placeholder.all')" />
         </a-form-item>
@@ -100,6 +103,11 @@
           </template>
           <template v-else-if="column.key === 'status'">
             <DictTag type="wms_doc_status" :value="record.status" />
+            <!-- 在途调拨：验收进度、超过预计到达日期 -->
+            <div v-if="record.receivedQty != null && record.status !== WmsDocStatus.DONE" class="sub-text">
+              {{ $t('wms.transit.receivedOf', { received: formatQty(record.receivedQty), total: formatQty(record.totalQty) }) }}
+            </div>
+            <div v-if="isOverdue(record)" class="sub-text overdue">{{ $t('wms.transit.overdueOn', { date: record.expectedDate }) }}</div>
           </template>
           <template v-else-if="column.key === 'confirm'">
             <template v-if="record.confirmTime">
@@ -109,13 +117,7 @@
             <span v-else>-</span>
           </template>
           <template v-else-if="column.key === 'action'">
-            <TableActions :actions="rowActions(record)">
-              <template #receive="{ action, text }">
-                <ReceiveConfirm :warehouse-name="record.toWarehouseName" @confirm="(date) => receive(record, date)">
-                  <TableActionButton :action="action" :text="text" />
-                </ReceiveConfirm>
-              </template>
-            </TableActions>
+            <TableActions :actions="rowActions(record)" />
           </template>
         </template>
       </a-table>
@@ -123,7 +125,17 @@
 
     <StockDocForm ref="form" :kind="kind" @success="onSaved" />
     <TransferSummaryModal v-if="kind === 'transfer'" ref="summaryRef" />
-    <StockDocDetail ref="detailRef" v-model:open="detailOpen" :kind="kind" :doc-id="detailId" @edit="onEditFromDetail" @changed="load" />
+    <StockDocDetail
+      ref="detailRef"
+      v-model:open="detailOpen"
+      :kind="kind"
+      :doc-id="detailId"
+      @edit="onEditFromDetail"
+      @changed="load"
+      @supplement="(prefill) => form.openCreate({ ...prefill, items: prefill.items.map(toRow) })"
+      @open="(id) => openDetail({ id })"
+    />
+    <TransferReceiveModal v-if="kind === 'transfer'" ref="receiveRef" @success="load" />
   </div>
 </template>
 
@@ -142,27 +154,28 @@ import {
 import DictTag from '@/components/DictTag.vue'
 import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
-import ReceiveConfirm from './ReceiveConfirm.vue'
+import TransferReceiveModal from './TransferReceiveModal.vue'
 import StockDocDetail from './StockDocDetail.vue'
 import StockDocForm from './StockDocForm.vue'
 import TransferSummaryModal from './TransferSummaryModal.vue'
 import WarehouseSelect from './WarehouseSelect.vue'
 import WarehouseNames from './WarehouseNames.vue'
-import { confirmDoc, deleteDoc, pageDoc, receiveTransfer, reverseDoc } from '@/api/wms/doc'
+import { confirmDoc, deleteDoc, pageDoc, reverseDoc } from '@/api/wms/doc'
 import { useColumns } from '@/composables/useColumns'
 import TableActions from '@/components/common/TableActions.vue'
-import TableActionButton from '@/components/common/TableActionButton.vue'
 import { actionColumn } from '@/components/common/tableActions'
 import { useDict } from '@/composables/useDict'
 import { useTable } from '@/composables/useTable'
 import { toOptions } from '@/utils/dict'
-import { DOC_KINDS, canReverse, formatQty, negativeClass, warehouseText } from './wms'
+import { DOC_KINDS, canReverse, formatQty, negativeClass, toRow, warehouseText } from './wms'
+import dayjs from 'dayjs'
+import { useRoute } from 'vue-router'
 import { useAction } from '@/composables/useAction'
 import { useRouteOpen } from '@/composables/useRouteOpen'
 import { useUserStore } from '@/store/user'
 import { money } from '@/utils/number'
 
-import { WmsDocStatus } from '@/constants/enums'
+import { TransitState, WmsDocStatus } from '@/constants/enums'
 /**
  * 入库单 / 出库单 / 调拨单列表页，三个页面共用
  */
@@ -220,7 +233,7 @@ const columns = [
       }
     : null,
   props.kind === 'transfer' ? { title: t('wms.transfer.fee'), key: 'fee', width: 100, align: 'right', exportValue: (r) => r.fee } : null,
-  { title: t('common.field.status'), key: 'status', width: 100, dict: 'wms_doc_status' },
+  { title: t('common.field.status'), key: 'status', width: props.kind === 'transfer' ? 170 : 100, dict: 'wms_doc_status' },
   { title: t('wms.common.createBy'), dataIndex: 'createByName', width: 110 },
   {
     title: t('wms.doc.confirmed'),
@@ -236,8 +249,26 @@ const columns = [
 const { checked, visibleColumns, scrollX } = useColumns(columns, `wms-${props.kind}`)
 const showSearch = ref(true)
 
-const emptyQuery = () => ({ docNo: undefined, bizType: undefined, ioCategory: undefined, status: undefined, warehouseId: undefined, range: undefined })
+const emptyQuery = () => ({
+  docNo: undefined,
+  bizType: undefined,
+  ioCategory: undefined,
+  status: undefined,
+  transitState: undefined,
+  warehouseId: undefined,
+  range: undefined
+})
 const query = reactive(emptyQuery())
+// 首页待办跳转：?status=EXCEPTION（差异待处理）、?transitState=PENDING / OVERDUE（待验收、超期）
+const route = useRoute()
+if (route.query.status) query.status = String(route.query.status)
+if (props.kind === 'transfer' && route.query.transitState) query.transitState = String(route.query.transitState)
+const transitStateOptions = [
+  { value: TransitState.PENDING, label: t('wms.transit.states.PENDING') },
+  { value: TransitState.OVERDUE, label: t('wms.transit.states.OVERDUE') }
+]
+const RECEIVING = [WmsDocStatus.TRANSIT, WmsDocStatus.PARTIAL, WmsDocStatus.EXCEPTION]
+const isOverdue = (r) => RECEIVING.includes(r.status) && r.expectedDate && dayjs(r.expectedDate).isBefore(dayjs(), 'day')
 const { list, loading, size, pagination, selectedKeys, rowSelection, load, search, onTableChange, exportAll } = useTable(
   (params) => pageDoc(props.kind, params),
   query,
@@ -295,11 +326,11 @@ const rowActions = (record) => {
     },
     {
       key: 'receive',
-      slot: 'receive',
-      label: t('wms.common.receive'),
+      label: t('wms.transit.receive'),
       icon: InboxOutlined,
-      show: props.kind === 'transfer' && record.status === WmsDocStatus.TRANSIT,
-      perm: 'wms:transfer:receive'
+      show: props.kind === 'transfer' && RECEIVING.includes(record.status) && Number(record.remainingQty) > 0,
+      perm: 'wms:transfer:receive',
+      onClick: () => receiveRef.value.open(record.id)
     },
     {
       type: 'reverse',
@@ -320,7 +351,7 @@ async function confirm(record) {
 
 const isTrue = (v) => v === true || v === 1
 
-const receive = useAction((record, date) => receiveTransfer(record.id, date), { successKey: 'wms.doc.receiveSuccess', reload: () => load() })
+const receiveRef = ref()
 
 const reverse = useAction((record) => reverseDoc(props.kind, record.id), { successKey: 'wms.doc.reverseSuccess', reload: () => load() })
 
@@ -342,6 +373,9 @@ async function remove(ids) {
 .sub-text {
   color: var(--app-text-3);
   font-size: 12px;
+}
+.overdue {
+  color: var(--status-critical);
 }
 .arrow {
   color: var(--app-text-3);

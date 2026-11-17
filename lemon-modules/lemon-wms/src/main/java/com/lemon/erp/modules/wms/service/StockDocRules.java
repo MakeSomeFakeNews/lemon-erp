@@ -150,7 +150,7 @@ public final class StockDocRules {
 
     /**
      * 冲销条件：只能冲销已完成的手工单据，红字单据不能再冲销。
-     * 业务单据生成的出入库须在业务单据中办理退货；在途调拨须先收货
+     * 业务单据生成的出入库须在业务单据中办理退货；在途调拨须验收、差异处理完毕
      */
     public static void checkReversible(WmsStockDoc doc) {
         if (doc.getSourceNo() != null) {
@@ -160,10 +160,20 @@ public final class StockDocRules {
             throw new BizException("wms.error.redDocumentCannotReversed");
         }
         if (doc.getStatus() != DocStatus.DONE) {
-            if (doc.getStatus() == DocStatus.TRANSIT) {
+            if (doc.getStatus().isReceiving()) {
                 throw new BizException("wms.error.receiveTransitTransferBeforeReversing");
             }
             throw new BizException("wms.error.onlyCompletedDocumentsReversed");
+        }
+    }
+
+    /**
+     * 在途调拨的冲销：只有全部验收入库（没有退回调出仓、确认损耗）的才能冲销，否则按原单反向会与实际的调出、调入不一致
+     * （退回、损耗已经把在途数量回到了调出仓库）
+     */
+    public static void checkTransitReversible(WmsStockDoc doc, List<WmsStockDocItem> items) {
+        if (doc.transit() && items.stream().anyMatch(i -> i.getReceivedQty() == null || i.getReceivedQty().compareTo(i.getQty()) != 0)) {
+            throw new BizException("wms.error.transitTransferPartlyReturnedCannotReverse", doc.getDocNo());
         }
     }
 

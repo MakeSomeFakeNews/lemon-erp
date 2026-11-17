@@ -179,7 +179,16 @@ export default {
     otherDeduction: '其他扣款',
     netPay: '实发工资',
     deliveryNote: '发货单',
-    total: '合计'
+    total: '合计',
+    transferReceipt: '调拨验收单',
+    transferDocNo: '调拨单号',
+    receiveDate: '验收日期',
+    logisticsNo: '物流单号',
+    plateNo: '车牌号',
+    receivedQty: '验收数量',
+    diffQty: '差异数量',
+    receiver: '验收人',
+    deliverer: '送货人'
   },
   paper: {
     size: '{name}（{size}）',

@@ -57,12 +57,19 @@ public class WmsStockDoc extends BaseEntity {
     /** 来源单号：由采购入库、销售出库、工单领料等业务单据自动生成时填写 */
     private String sourceNo;
 
-    /** 在途调拨 1：确认时只调出，调入仓库收货后才入库 */
+    /** 在途调拨 1：确认时只调出，调入仓库分批验收入库，差异处理完毕（数量守恒）后完成 */
     private Integer inTransit;
 
+    /** 预计到达日期（在途调拨，可不填），超过仍未完结时提醒 */
+    private LocalDate expectedDate;
+
+    /** 原调拨单：补发、多发补调的调拨单关联在途调拨原单 */
+    private Long originId;
+
+    /** 最近一次验收人 */
     private Long receiveBy;
 
-    /** 调入收货日期（在途调拨收货的业务日期），调入流水按此日期统计 */
+    /** 最近一次验收日期（在途调拨）；各次验收的流水按各自的验收日期统计 */
     private LocalDate receiveDate;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -157,9 +164,26 @@ public class WmsStockDoc extends BaseEntity {
     @TableField(exist = false)
     private String redOfNo;
 
+    /** 原调拨单号（补发、多发补调） */
+    @TableField(exist = false)
+    private String originNo;
+
+    /** 在途调拨列表：已验收入库数量合计 */
+    @TableField(exist = false)
+    private BigDecimal receivedQty;
+
+    /** 在途调拨列表：未到数量合计 */
+    @TableField(exist = false)
+    private BigDecimal remainingQty;
+
     /** 明细，仅详情返回 */
     @TableField(exist = false)
     private List<WmsStockDocItem> items;
+
+    /** 在途调拨（确认时只调出） */
+    public boolean transit() {
+        return kind == StockBizType.TRANSFER && Integer.valueOf(1).equals(inTransit);
+    }
 
     /** 解析后的入库 / 出库类型，调拨或无效取值为 null */
     public StockDocType docType() {
