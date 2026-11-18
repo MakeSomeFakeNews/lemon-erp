@@ -14,6 +14,7 @@ import com.lemon.erp.modules.fin.mapper.FinVoucherEntryMapper;
 import com.lemon.erp.modules.fin.model.AuxItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -82,12 +83,12 @@ public class FinReportService {
 
     // ---------------------------------------------------------------- 明细账
 
-    /** 辅助核算余额：按辅助核算项目 + 科目统计本期发生额和期末余额 */
-    public List<AuxBalanceRow> auxBalance(AuxItem dimension, int begin, int end, Long accountId) {
+    /** 辅助核算余额：按辅助核算项目 + 科目统计本期发生额和期末余额，keyword 按项目名称 / 编码模糊匹配 */
+    public List<AuxBalanceRow> auxBalance(AuxItem dimension, int begin, int end, Long accountId, String keyword) {
         if (dimension == null) {
             throw new BizException("fin.error.selectAuxiliaryAccountingType");
         }
-        return entryMapper.selectAuxBalance(dimension, begin, end, accountId);
+        return entryMapper.selectAuxBalance(dimension, begin, end, accountId, StringUtils.hasText(keyword) ? keyword.trim() : null);
     }
 
     public List<LedgerRow> ledger(Long accountId, int begin, int end) {

@@ -121,7 +121,10 @@
             <when test="dimension.name() == 'PROJECT'">LEFT JOIN pm_project x ON x.id = t.aux_id</when>
             <otherwise>LEFT JOIN wms_material x ON x.id = t.aux_id</otherwise>
         </choose>
-        WHERE t.debit &lt;&gt; 0 OR t.credit &lt;&gt; 0 OR t.balance &lt;&gt; 0
+        WHERE (t.debit &lt;&gt; 0 OR t.credit &lt;&gt; 0 OR t.balance &lt;&gt; 0)
+        <if test="keyword != null and keyword != ''">
+            AND (x.name LIKE CONCAT('%', #{keyword}, '%')<if test="dimension.name() != 'DEPT'"> OR x.code LIKE CONCAT('%', #{keyword}, '%')</if>)
+        </if>
         ORDER BY <choose><when test="dimension.name() == 'DEPT'">x.name</when><otherwise>x.code</otherwise></choose>, a.code
     </select>
 

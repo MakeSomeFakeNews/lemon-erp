@@ -1522,7 +1522,11 @@ export default {
     summary: 'Summary',
     debit: 'Debit',
     credit: 'Credit',
-    balance: 'Balance'
+    balance: 'Balance',
+    expandAll: 'Expand All',
+    collapseAll: 'Collapse All',
+    treeTip: 'Double-click a row or click +/- to expand or collapse sub-accounts',
+    auxKeyword: 'Name / code'
   },
   budget: {
     year: 'Year',

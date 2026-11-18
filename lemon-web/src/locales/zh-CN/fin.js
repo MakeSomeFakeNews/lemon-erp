@@ -1522,7 +1522,11 @@ export default {
     summary: '摘要',
     debit: '借方',
     credit: '贷方',
-    balance: '余额'
+    balance: '余额',
+    expandAll: '全部展开',
+    collapseAll: '全部折叠',
+    treeTip: '双击行或点击左侧 +/- 展开、折叠下级科目',
+    auxKeyword: '辅助名称 / 编码'
   },
   budget: {
     year: '年度',
