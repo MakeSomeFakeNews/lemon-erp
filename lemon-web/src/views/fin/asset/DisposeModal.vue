@@ -15,7 +15,7 @@
         </a-col>
         <a-col :span="12">
           <a-form-item :label="$t('fin.asset.settleAccount')" :extra="form.income || form.expense ? '' : $t('fin.asset.settleAccountExtra')">
-            <AccountSelect v-model:value="form.settleAccountId" :roles="['CASH', 'BANK']" :placeholder="$t('fin.asset.settleAccountPh')" />
+            <CashAccountSelect v-model:value="form.settleAccountId" :placeholder="$t('fin.asset.settleAccountPh')" />
           </a-form-item>
         </a-col>
         <a-col :span="12">
@@ -40,7 +40,7 @@
 import { computed, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
-import AccountSelect from '@/components/fin/AccountSelect.vue'
+import CashAccountSelect from '@/components/fin/CashAccountSelect.vue'
 import { disposeAsset } from '@/api/fin'
 import { today } from '@/components/wms/wms'
 import { formatMoney } from '@/components/fin/fin'

@@ -27,6 +27,8 @@ public final class BankViews {
         private String summary;
         private BigDecimal amount;
         private Integer matched;
+        /** 期初未达账（企业已记银行未记）的 ID：余额调节表、勾对时与凭证分录一起列出，entryId 为空 */
+        private Long openingItemId;
     }
 
     /**
@@ -36,8 +38,8 @@ public final class BankViews {
      * @param bankOut  银行已付、企业未付
      * @param bookIn   企业已收、银行未收
      * @param bookOut  企业已付、银行未付
-     * @param bankOnly 未勾对的银行流水
-     * @param bookOnly 未勾对的凭证分录
+     * @param bankOnly 未勾对的银行流水，含未勾对的期初未达账（银行已记企业未记，opening 为 true）
+     * @param bookOnly 未勾对的凭证分录，含未勾对的期初未达账（企业已记银行未记，openingItemId 不为空）
      */
     public record Reconciliation(LocalDate asOf, BigDecimal bookBalance, BigDecimal bankBalance, BigDecimal bankIn, BigDecimal bankOut,
                                  BigDecimal bookIn, BigDecimal bookOut, BigDecimal adjustedBook, BigDecimal adjustedBank,

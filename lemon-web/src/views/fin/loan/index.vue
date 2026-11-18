@@ -106,7 +106,7 @@
       </p>
       <a-form layout="vertical">
         <a-form-item :label="payMode === 'pay' ? $t('fin.loan.payAccount') : $t('fin.loan.receiveAccount')" required>
-          <AccountSelect v-model:value="payForm.accountId" :roles="['CASH', 'BANK']" :placeholder="$t('fin.loan.accountPlaceholder')" />
+          <CashAccountSelect v-model:value="payForm.accountId" :placeholder="$t('fin.loan.accountPlaceholder')" />
         </a-form-item>
         <a-row :gutter="16">
           <a-col v-if="payMode === 'repay'" :span="12">
@@ -165,7 +165,7 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import TableActions from '@/components/common/TableActions.vue'
 import { actionColumn } from '@/components/common/tableActions'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
-import AccountSelect from '@/components/fin/AccountSelect.vue'
+import CashAccountSelect from '@/components/fin/CashAccountSelect.vue'
 import DeptSelect from '@/components/fin/DeptSelect.vue'
 import { addLoan, deleteLoan, getLoan, pageLoan, payLoan, repayLoan, submitLoan } from '@/api/fin'
 import { useColumns } from '@/composables/useColumns'

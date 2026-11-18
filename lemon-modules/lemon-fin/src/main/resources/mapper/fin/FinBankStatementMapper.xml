@@ -3,10 +3,11 @@
 <mapper namespace="com.lemon.erp.modules.fin.mapper.FinBankStatementMapper">
 
     <select id="selectStatements" resultType="com.lemon.erp.modules.fin.entity.FinBankStatement">
-        SELECT s.*, v.voucher_no, v.voucher_date
+        SELECT s.*, v.voucher_no, v.voucher_date, oi.id AS opening_item_id
         FROM fin_bank_statement s
         LEFT JOIN fin_voucher_entry e ON e.id = s.entry_id
         LEFT JOIN fin_voucher v ON v.id = e.voucher_id
+        LEFT JOIN fin_bank_opening_item oi ON oi.statement_id = s.id
         WHERE s.account_id = #{accountId}
         <if test="begin != null">AND s.txn_date &gt;= #{begin}</if>
         <if test="end != null">AND s.txn_date &lt;= #{end}</if>
@@ -16,7 +17,8 @@
     <select id="selectEntries" resultType="com.lemon.erp.modules.fin.dto.BankViews$BankEntry">
         SELECT e.id AS "entryId", v.id AS "voucherId", v.voucher_no AS "voucherNo", v.voucher_date AS "voucherDate",
                e.summary AS "summary", e.debit - e.credit AS "amount",
-               CASE WHEN EXISTS (SELECT 1 FROM fin_bank_statement s WHERE s.entry_id = e.id) THEN 1 ELSE 0 END AS "matched"
+               CASE WHEN EXISTS (SELECT 1 FROM fin_bank_statement s WHERE s.entry_id = e.id)
+                      OR EXISTS (SELECT 1 FROM fin_bank_opening_item oi WHERE oi.entry_id = e.id) THEN 1 ELSE 0 END AS "matched"
         FROM fin_voucher_entry e
         JOIN fin_voucher v ON v.id = e.voucher_id
         WHERE e.account_id = #{accountId}
@@ -25,14 +27,18 @@
         ORDER BY v.voucher_date, v.id, e.seq
     </select>
 
+    <!-- from 为资金账户的启用日期：只取启用日期起的凭证（期初另加日记账期初）；为空时含科目期初 -->
     <select id="sumBookBalance" resultType="java.math.BigDecimal">
         SELECT COALESCE(SUM(t.amount), 0) FROM (
             SELECT e.debit - e.credit AS amount
             FROM fin_voucher_entry e
             JOIN fin_voucher v ON v.id = e.voucher_id
             WHERE e.account_id = #{accountId} AND v.voucher_date &lt;= #{asOf}
-            UNION ALL
-            SELECT o.debit - o.credit FROM fin_account_opening o WHERE o.account_id = #{accountId}
+            <if test="from != null">AND v.voucher_date &gt;= #{from}</if>
+            <if test="from == null">
+                UNION ALL
+                SELECT o.debit - o.credit FROM fin_account_opening o WHERE o.account_id = #{accountId}
+            </if>
         ) t
     </select>
 

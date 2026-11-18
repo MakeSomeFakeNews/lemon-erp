@@ -109,7 +109,7 @@ public class FinLoanService {
         FinLoan l = requireStatus(id, LoanStatus.APPROVED);
         LocalDate d = date == null ? LocalDate.now() : date;
         periodGuard.checkOpen(d, "fin.label.loanPayment");
-        accountService.requireCashAccount(accountId);
+        accountService.requireCashAccount(accountId, d);
         transit(id, LoanStatus.APPROVED, LoanStatus.PAID);
         String summary = "员工借款 " + l.getLoanNo() // i18n-ignore
                 + " " + l.getUserName() + (l.getPurpose() == null ? "" : " " + l.getPurpose());
@@ -126,7 +126,7 @@ public class FinLoanService {
         FinLoan l = requireStatus(id, LoanStatus.PAID);
         LocalDate d = date == null ? LocalDate.now() : date;
         periodGuard.checkOpen(d, "fin.label.loanRepayment");
-        accountService.requireCashAccount(accountId);
+        accountService.requireCashAccount(accountId, d);
         if (amount == null || amount.signum() <= 0) {
             throw new BizException("fin.error.repaymentAmountMustGreater");
         }

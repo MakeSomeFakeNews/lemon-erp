@@ -5,6 +5,7 @@ import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.fin.dto.BankStatementImport;
 import com.lemon.erp.modules.fin.dto.BankViews;
+import com.lemon.erp.modules.fin.entity.FinBankOpeningItem;
 import com.lemon.erp.modules.fin.entity.FinBankStatement;
 import com.lemon.erp.modules.fin.service.FinBankService;
 import jakarta.validation.Valid;
@@ -48,6 +49,28 @@ public class FinBankController {
                                                     @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate begin,
                                                     @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
         return R.ok(bankService.entries(accountId, begin, end));
+    }
+
+    /** 账户的期初未达账（含勾对情况） */
+    @GetMapping("/bank/opening-items")
+    @PreAuthorize("@ss.hasPerm('fin:bank:list')")
+    public R<List<FinBankOpeningItem>> openingItems(@RequestParam Long accountId) {
+        return R.ok(bankService.openingItems(accountId));
+    }
+
+    /** 勾对期初未达账：银行已记企业未记的 targetId 为凭证分录，企业已记银行未记的为对账单流水 */
+    @PostMapping("/bank/opening-item/{id}/match/{targetId}")
+    @PreAuthorize("@ss.hasPerm('fin:bank:edit')")
+    public R<Void> matchOpening(@PathVariable Long id, @PathVariable Long targetId) {
+        bankService.matchOpening(id, targetId);
+        return R.ok();
+    }
+
+    @PostMapping("/bank/opening-item/{id}/unmatch")
+    @PreAuthorize("@ss.hasPerm('fin:bank:edit')")
+    public R<Void> unmatchOpening(@PathVariable Long id) {
+        bankService.unmatchOpening(id);
+        return R.ok();
     }
 
     @PostMapping("/bank/statement/import")

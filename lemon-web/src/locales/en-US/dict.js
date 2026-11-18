@@ -1157,6 +1157,19 @@ export default {
     'FROM': 'Paid by Source Account', // 转出账户支付
     'TO': 'Paid by Receiving Account', // 转入账户支付
   },
+  // 资金账户类型
+  fin_cash_account_type: {
+    'CASH': 'Cash', // 现金
+    'BANK': 'Bank', // 银行
+    'WECHAT': 'WeChat', // 微信
+    'ALIPAY': 'Alipay', // 支付宝
+    'OTHER': 'Other', // 其他
+  },
+  // 期初未达账类型
+  fin_bank_opening_side: {
+    'BOOK': 'Recorded in Books Only', // 企业已记银行未记
+    'BANK': 'Recorded by Bank Only', // 银行已记企业未记
+  },
   // 销售渠道
   scm_channel: {
     'DIRECT': 'Direct', // 直销

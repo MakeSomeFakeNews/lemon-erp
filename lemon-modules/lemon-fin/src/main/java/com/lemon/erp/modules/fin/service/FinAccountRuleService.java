@@ -7,6 +7,7 @@ import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.entity.FinAccountRule;
 import com.lemon.erp.modules.fin.mapper.FinAccountRuleMapper;
+import com.lemon.erp.modules.fin.model.AccountCategory;
 import com.lemon.erp.modules.fin.model.AccountRole;
 import com.lemon.erp.modules.wms.service.WmsMaterialCategoryService;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,9 @@ import java.util.stream.Collectors;
 public class FinAccountRuleService {
 
     private static final String NO_DIM = "";
+
+    /** 指定科目：资金账户的入账科目只能在这些科目之下 */
+    private static final List<AccountRole> FUND_SCOPES = List.of(AccountRole.CASH, AccountRole.BANK, AccountRole.OTHER_FUNDS);
 
     private final FinAccountRuleMapper ruleMapper;
     private final FinAccountService accountService;
@@ -140,6 +144,7 @@ public class FinAccountRuleService {
             if (account.getStatus() != EnableStatus.ENABLED) {
                 throw new BizException("fin.error.accountDisabled2", account.getCode(), account.getName());
             }
+            checkFundScope(role, account);
         } else if (!ids.isEmpty()) {
             accountService.requireLeaves(ids);
         }
@@ -148,6 +153,24 @@ public class FinAccountRuleService {
             insert(role, NO_DIM, accountId);
         }
         byDim.forEach((dim, id) -> insert(role, dim, id));
+    }
+
+    /**
+     * 指定科目（现金、银行、其他货币资金科目）：须是资产类科目，三者不能互相包含（同一科目不能既是现金科目又是银行科目）
+     */
+    private void checkFundScope(AccountRole role, FinAccount account) {
+        if (!FUND_SCOPES.contains(role)) {
+            return;
+        }
+        if (account.getCategory() != AccountCategory.ASSET) {
+            throw new BizException("fin.error.fundScopeMustAsset", Messages.get(role.labelKey()), account.getCode(), account.getName());
+        }
+        for (AccountRole other : FUND_SCOPES) {
+            String code = accountService.roleCode(other);
+            if (other != role && (code.startsWith(account.getCode()) || account.getCode().startsWith(code))) {
+                throw new BizException("fin.error.fundScopeOverlap", Messages.get(role.labelKey()), account.getCode(), Messages.get(other.labelKey()), code);
+            }
+        }
     }
 
     private void insert(AccountRole role, String dim, Long accountId) {

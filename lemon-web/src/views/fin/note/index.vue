@@ -153,7 +153,7 @@
           <a-date-picker v-model:value="settle.actionDate" value-format="YYYY-MM-DD" class="full" />
         </a-form-item>
         <a-form-item v-if="action !== 'dishonor'" :label="action === 'pay' ? $t('fin.note.payAccount') : $t('fin.note.inAccount')" required>
-          <AccountSelect v-model:value="settle.accountId" :roles="['CASH', 'BANK']" :placeholder="$t('fin.note.bankDeposit')" />
+          <CashAccountSelect v-model:value="settle.accountId" :placeholder="$t('fin.note.bankDeposit')" />
         </a-form-item>
         <template v-if="action === 'discount'">
           <a-row :gutter="12">
@@ -246,7 +246,7 @@ import SubPage from '@/components/SubPage.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import TableActions from '@/components/common/TableActions.vue'
 import { actionColumn } from '@/components/common/tableActions'
-import AccountSelect from '@/components/fin/AccountSelect.vue'
+import CashAccountSelect from '@/components/fin/CashAccountSelect.vue'
 import BillSettleTable from '@/components/fin/BillSettleTable.vue'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'

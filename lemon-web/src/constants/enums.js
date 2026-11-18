@@ -32,6 +32,7 @@ export const AccountDirection = Object.freeze({
 export const AccountRole = Object.freeze({
   CASH: 'CASH', // 库存现金
   BANK: 'BANK', // 银行存款
+  OTHER_FUNDS: 'OTHER_FUNDS', // 其他货币资金
   RECEIVABLE: 'RECEIVABLE',
   PAYABLE: 'PAYABLE',
   ADVANCE_RECEIVED: 'ADVANCE_RECEIVED',
@@ -308,6 +309,12 @@ export const AwardTarget = Object.freeze({
   NONE: 'NONE', // 只定标
 })
 
+/** com.lemon.erp.modules.fin.model.BankOpeningSide（字典 fin_bank_opening_side） */
+export const BankOpeningSide = Object.freeze({
+  BOOK: 'BOOK', // 企业已记账、银行未记账
+  BANK: 'BANK', // 银行已记账、企业未记账
+})
+
 /** com.lemon.erp.modules.bi.model.BiAlertMetric */
 export const BiAlertMetric = Object.freeze({
   AR_OVERDUE: 'AR_OVERDUE',
@@ -448,6 +455,15 @@ export const CaptchaMode = Object.freeze({
 export const CaptchaType = Object.freeze({
   MATH: 'MATH',
   CHAR: 'CHAR',
+})
+
+/** com.lemon.erp.modules.fin.model.CashAccountType（字典 fin_cash_account_type） */
+export const CashAccountType = Object.freeze({
+  CASH: 'CASH',
+  BANK: 'BANK',
+  WECHAT: 'WECHAT',
+  ALIPAY: 'ALIPAY',
+  OTHER: 'OTHER',
 })
 
 /** com.lemon.erp.modules.hr.model.ChangeType（字典 hr_change_type） */

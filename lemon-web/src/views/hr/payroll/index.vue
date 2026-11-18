@@ -185,7 +185,7 @@
           <a-date-picker v-model:value="payForm.payDate" value-format="YYYY-MM-DD" class="full" />
         </a-form-item>
         <a-form-item :label="$t('hr.payroll.account')" name="accountId" :rules="[{ required: true, message: $t('hr.payroll.rule.account') }]">
-          <AccountSelect v-model:value="payForm.accountId" :roles="['CASH', 'BANK']" />
+          <CashAccountSelect v-model:value="payForm.accountId" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -203,7 +203,7 @@ import { message } from 'ant-design-vue'
 import { PlusOutlined, PrinterOutlined } from '@ant-design/icons-vue'
 import dayjs from 'dayjs'
 import DictTag from '@/components/DictTag.vue'
-import AccountSelect from '@/components/fin/AccountSelect.vue'
+import CashAccountSelect from '@/components/fin/CashAccountSelect.vue'
 import PeriodPicker from '@/components/fin/PeriodPicker.vue'
 import { periodText } from '@/components/hr/hr'
 import { formatMoney } from '@/components/scm/scm'

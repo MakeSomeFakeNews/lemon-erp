@@ -137,7 +137,7 @@ public class FinSettlementService {
         if (SettleMethods.NOTE.equals(req.method())) {
             throw new BizException("fin.error.noteSettleMethodNotManual");
         }
-        accountService.requireCashAccount(req.accountId());
+        accountService.requireCashAccount(req.accountId(), req.settleDate());
         FinSettlement s = save(null, req);
         if (confirmOnSave(req)) {
             doConfirm(s);
@@ -178,7 +178,7 @@ public class FinSettlementService {
         if (SettleMethods.NOTE.equals(old.getMethod()) || SettleMethods.NOTE.equals(req.method())) {
             throw new BizException("fin.error.noteSettleMethodNotManual");
         }
-        accountService.requireCashAccount(req.accountId());
+        accountService.requireCashAccount(req.accountId(), req.settleDate());
         periodGuard.checkOpen(old.getSettleDate(), "fin.label.receiptPayment");
         FinSettlement s = save(old, req);
         if (confirmOnSave(req)) {

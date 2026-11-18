@@ -5,14 +5,17 @@ import java.util.Map;
 /**
  * 自动凭证科目：业务单据生成凭证时各用途使用的科目。
  * 默认取 init.sql 预置科目的编码，可在「凭证科目设置」中改为其他末级科目；带维度的用途可以再按物料分类 / 职位类别 / 收发类别分别指定。
- * 科目范围用途（{@link #scope()}，如库存现金、银行存款）设置的是一个科目及其全部下级，可以是上级科目，用于识别结算科目、现金流量等
+ * 科目范围用途（{@link #scope()}，库存现金、银行存款、其他货币资金，即「指定科目」）设置的是一个科目及其全部下级，可以是上级科目，
+ * 用于限定资金账户的入账科目、识别货币资金（现金流量表、资金计划）等
  */
 public enum AccountRole {
 
-    /** 库存现金：其下级末级科目可作为收付款的结算账户，现金流量表、资金计划按此识别现金 */
+    /** 库存现金（现金科目）：其下级末级科目可作为现金账户的入账科目，现金流量表、资金计划按此识别现金 */
     CASH("fin.label.cashCashEquivalents", "fin.label.cashOnHand", "1001", true),
-    /** 银行存款：其下级末级科目可作为结算账户、银行对账的账户 */
+    /** 银行存款（银行科目）：其下级末级科目可作为银行账户的入账科目 */
     BANK("fin.label.cashCashEquivalents", "fin.label.bankDeposits", "1002", true),
+    /** 其他货币资金（微信、支付宝、存出投资款等）：其下级末级科目可作为资金账户的入账科目，现金流量表、资金计划按此识别货币资金 */
+    OTHER_FUNDS("fin.label.cashCashEquivalents", "fin.label.otherMonetaryFunds", "1012", true),
 
     RECEIVABLE("fin.label.receivablesPayables", "fin.label.accountsReceivable", "1122"),
     PAYABLE("fin.label.receivablesPayables", "fin.label.accountsPayable", "2202"),

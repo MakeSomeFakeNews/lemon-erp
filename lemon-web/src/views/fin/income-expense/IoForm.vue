@@ -20,7 +20,7 @@
         </a-col>
         <a-col :xs="12" :sm="6">
           <a-form-item :label="$t('fin.io.account')" name="accountId">
-            <AccountSelect v-model:value="form.accountId" :roles="['CASH', 'BANK']" />
+            <CashAccountSelect v-model:value="form.accountId" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12">
@@ -89,7 +89,7 @@ import { useI18n } from 'vue-i18n'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import LineItemsTable from '@/components/common/LineItemsTable.vue'
-import AccountSelect from '@/components/fin/AccountSelect.vue'
+import CashAccountSelect from '@/components/fin/CashAccountSelect.vue'
 import DeptSelect from '@/components/fin/DeptSelect.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import { addIo, getIo, listIoCategory, updateIo } from '@/api/fin'

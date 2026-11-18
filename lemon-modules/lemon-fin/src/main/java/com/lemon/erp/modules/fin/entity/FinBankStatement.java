@@ -42,4 +42,12 @@ public class FinBankStatement extends BaseEntity {
     private String voucherNo;
     @TableField(exist = false)
     private LocalDate voucherDate;
+
+    /** 勾对此流水的期初未达账（企业已记银行未记） */
+    @TableField(exist = false)
+    private Long openingItemId;
+
+    /** 余额调节表中：此行是期初未达账（银行已记企业未记），id 为未达账的 ID */
+    @TableField(exist = false)
+    private Boolean opening;
 }

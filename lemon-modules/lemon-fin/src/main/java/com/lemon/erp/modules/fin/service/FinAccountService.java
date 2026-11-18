@@ -8,6 +8,7 @@ import com.lemon.erp.modules.fin.entity.FinAccount;
 import com.lemon.erp.modules.fin.entity.FinAccountRule;
 import com.lemon.erp.modules.fin.entity.FinAsset;
 import com.lemon.erp.modules.fin.entity.FinBudget;
+import com.lemon.erp.modules.fin.entity.FinCashAccount;
 import com.lemon.erp.modules.fin.entity.FinIoCategory;
 import com.lemon.erp.modules.fin.entity.FinIoDoc;
 import com.lemon.erp.modules.fin.entity.FinSettlement;
@@ -16,6 +17,7 @@ import com.lemon.erp.modules.fin.mapper.FinAccountMapper;
 import com.lemon.erp.modules.fin.mapper.FinAccountRuleMapper;
 import com.lemon.erp.modules.fin.mapper.FinAssetMapper;
 import com.lemon.erp.modules.fin.mapper.FinBudgetMapper;
+import com.lemon.erp.modules.fin.mapper.FinCashAccountMapper;
 import com.lemon.erp.modules.fin.mapper.FinIoCategoryMapper;
 import com.lemon.erp.modules.fin.mapper.FinIoDocMapper;
 import com.lemon.erp.modules.fin.mapper.FinSettlementMapper;
@@ -28,6 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -58,6 +61,7 @@ public class FinAccountService {
     private final FinAccountRuleMapper ruleMapper;
     private final FinIoCategoryMapper ioCategoryMapper;
     private final FinIoDocMapper ioDocMapper;
+    private final FinCashAccountMapper cashAccountMapper;
 
     /** 科目树，按编码排序 */
     public List<FinAccount> tree(String keyword) {
@@ -118,6 +122,10 @@ public class FinAccountService {
     @Transactional
     public void update(Long id, AccountRequest req) {
         FinAccount old = get(id);
+        FinCashAccount bound = boundCashAccount(id);
+        if (bound != null && req.auxItems() != null && !req.auxItems().isEmpty()) {
+            throw new BizException("fin.error.accountBoundCashAccountAux", old.getName(), bound.getName());
+        }
         if (used(id) || hasChildren(id)) {
             if (!old.getCode().equals(req.code()) || (req.direction() != null && old.getDirection() != req.direction())) {
                 throw new BizException("fin.error.accountUseHasSubAccountsOnly");
@@ -144,7 +152,11 @@ public class FinAccountService {
     }
 
     public void changeStatus(Long id, EnableStatus status) {
-        get(id);
+        FinAccount account = get(id);
+        FinCashAccount bound = boundCashAccount(id);
+        if (status == EnableStatus.DISABLED && bound != null && bound.getStatus() == EnableStatus.ENABLED) {
+            throw new BizException("fin.error.accountBoundCashAccountDisable", account.getName(), bound.getName());
+        }
         accountMapper.update(Wrappers.<FinAccount>lambdaUpdate().set(FinAccount::getStatus, status).eq(FinAccount::getId, id));
     }
 
@@ -199,13 +211,40 @@ public class FinAccountService {
         return map;
     }
 
-    /** 结算科目：库存现金、银行存款及其下级的末级科目（收付款、发放工资） */
+    /**
+     * 结算账户（收付款、报销借款付款、账户调拨、发放工资等）：单据中保存的是资金账户的入账科目，
+     * 须是指定的现金 / 银行 / 其他货币资金科目下的末级科目，并且建立了启用的资金账户
+     */
     public FinAccount requireCashAccount(Long accountId) {
+        return requireCashAccount(accountId, null);
+    }
+
+    /**
+     * 同 {@link #requireCashAccount(Long)}，并校验业务日期不早于资金账户的启用日期（启用日期之前的收支已包含在日记账期初中）
+     *
+     * @param date 业务日期，为空不校验
+     */
+    public FinAccount requireCashAccount(Long accountId, LocalDate date) {
         FinAccount account = requireLeaves(List.of(accountId)).get(accountId);
         if (!inScope(account.getCode(), cashCodes())) {
             throw new BizException("fin.error.settlementAccountMustCashBankDeposit");
         }
+        FinCashAccount cash = boundCashAccount(accountId);
+        if (cash == null) {
+            throw new BizException("fin.error.cashAccountNotSetUp", account.getCode(), account.getName());
+        }
+        if (cash.getStatus() != EnableStatus.ENABLED) {
+            throw new BizException("fin.error.cashAccountDisabled", cash.getName());
+        }
+        if (date != null && cash.getEnableDate() != null && date.isBefore(cash.getEnableDate())) {
+            throw new BizException("fin.error.cashAccountBeforeEnableDate", cash.getName(), cash.getEnableDate().toString());
+        }
         return account;
+    }
+
+    /** 科目绑定的资金账户，没有为 null */
+    public FinCashAccount boundCashAccount(Long accountId) {
+        return cashAccountMapper.selectOne(Wrappers.<FinCashAccount>lambdaQuery().eq(FinCashAccount::getAccountId, accountId));
     }
 
     /**
@@ -219,9 +258,9 @@ public class FinAccountService {
         return account == null ? role.defaultCode() : account.getCode();
     }
 
-    /** 货币资金科目（库存现金、银行存款）的编码，其下级科目都是货币资金 */
+    /** 货币资金科目（指定的库存现金、银行存款、其他货币资金科目）的编码，其下级科目都是货币资金 */
     public List<String> cashCodes() {
-        return List.of(roleCode(AccountRole.CASH), roleCode(AccountRole.BANK));
+        return List.of(roleCode(AccountRole.CASH), roleCode(AccountRole.BANK), roleCode(AccountRole.OTHER_FUNDS));
     }
 
     /** 科目范围用途当前使用的科目编码，供前端限定结算账户等可选科目 */
@@ -289,7 +328,7 @@ public class FinAccountService {
         return accountMapper.exists(Wrappers.<FinAccount>lambdaQuery().eq(FinAccount::getParentId, id));
     }
 
-    /** 被凭证分录、收付款、固定资产、凭证科目设置（科目范围用途除外）、收支类别、其他收支单使用（这些地方只能用末级科目） */
+    /** 被凭证分录、收付款、固定资产、凭证科目设置（科目范围用途除外）、收支类别、其他收支单使用，或是资金账户的入账科目（这些地方只能用末级科目） */
     private boolean usedInBooks(Long id) {
         return entryMapper.exists(Wrappers.<FinVoucherEntry>lambdaQuery().eq(FinVoucherEntry::getAccountId, id))
                 || ruleMapper.exists(Wrappers.<FinAccountRule>lambdaQuery().eq(FinAccountRule::getAccountId, id)
@@ -297,7 +336,8 @@ public class FinAccountService {
                 || settlementMapper.exists(Wrappers.<FinSettlement>lambdaQuery().eq(FinSettlement::getAccountId, id))
                 || assetMapper.exists(Wrappers.<FinAsset>lambdaQuery().eq(FinAsset::getExpenseAccountId, id))
                 || ioCategoryMapper.exists(Wrappers.<FinIoCategory>lambdaQuery().eq(FinIoCategory::getAccountId, id))
-                || ioDocMapper.exists(Wrappers.<FinIoDoc>lambdaQuery().eq(FinIoDoc::getAccountId, id));
+                || ioDocMapper.exists(Wrappers.<FinIoDoc>lambdaQuery().eq(FinIoDoc::getAccountId, id))
+                || cashAccountMapper.exists(Wrappers.<FinCashAccount>lambdaQuery().eq(FinCashAccount::getAccountId, id));
     }
 
     /** 已使用：账簿中使用、编制了预算，或在凭证科目设置中被科目范围用途使用 */

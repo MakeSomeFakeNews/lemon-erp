@@ -100,7 +100,7 @@ import { getTrade } from '@/api/scm/trade'
 import { batchDates, formatQty, locationText } from '@/components/wms/wms'
 import { ORDER_KINDS, TRADE_KINDS, formatMoney, grossAmount, grossPrice } from './scm'
 import DictTag from '@/components/DictTag.vue'
-import { accountOptions } from '@/api/fin'
+import { cashAccountOptions } from '@/api/fin'
 import { cached } from '@/utils/cache'
 import { useDict } from '@/composables/useDict'
 import { findDict } from '@/utils/dict'
@@ -163,12 +163,9 @@ const advanceTotal = computed(() => {
   if (!d || !Number(d.freight) || props.kind === 'purchaseIn' || d.freightBearer === FreightBearer.COMPANY) return null
   return round2(Number(d.totalAmount) + Number(d.freight))
 })
-/** 现付的付款账户名称（会计科目，登录即可读取） */
+/** 现付的付款账户名称（资金账户，按入账科目对应，登录即可读取） */
 const accounts = ref([])
-const accountName = computed(() => {
-  const a = accounts.value.find((x) => x.id === detail.value?.freightAccountId)
-  return a ? `${a.code} ${a.name}` : ''
-})
+const accountName = computed(() => accounts.value.find((x) => x.accountId === detail.value?.freightAccountId)?.name || '')
 /** 打开现付运费生成的费用支出单 */
 function openIo() {
   emit('update:open', false)
@@ -224,7 +221,7 @@ watch(
     try {
       detail.value = await getTrade(props.kind, props.docId)
       if (detail.value.freightAccountId && !accounts.value.length) {
-        accounts.value = await cached('accounts-leaf', accountOptions)
+        accounts.value = await cached('cash-accounts', cashAccountOptions)
       }
     } finally {
       loading.value = false

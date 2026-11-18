@@ -78,7 +78,7 @@ public class FinAdvanceService {
     public Long create(AdvanceRequest req) {
         boolean receipt = req.kind() == SettleKind.RECEIPT;
         periodGuard.checkOpen(req.advanceDate(), receipt ? "fin.label.advanceReceipt" : "fin.label.advancePayment");
-        accountService.requireCashAccount(req.accountId());
+        accountService.requireCashAccount(req.accountId(), req.advanceDate());
         String partner = billService.partnerName(req.kind(), req.partnerId());
         String currency = req.currency() == null || req.currency().isBlank() ? FinConstants.BASE_CURRENCY : req.currency().trim();
         boolean foreign = ForeignAmounts.isForeign(currency);

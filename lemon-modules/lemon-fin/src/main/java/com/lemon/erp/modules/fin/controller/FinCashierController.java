@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 出纳管理：现金 / 银行日记账、资金日报
+ * 出纳管理：资金账户的日记账、资金日报、核对总账
  */
 @RestController
 @RequestMapping("/fin/cashier")
@@ -42,6 +42,14 @@ public class FinCashierController {
                                        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
                                        @RequestParam(defaultValue = "false") boolean posted) {
         return R.ok(cashierService.daily(begin, end, posted));
+    }
+
+    /** 核对总账：各资金账户的日记账与总账科目余额比对 */
+    @GetMapping("/check")
+    @PreAuthorize("@ss.hasPerm('fin:cashier:list')")
+    public R<List<CashierViews.CheckRow>> check(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate begin,
+                                                @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
+        return R.ok(cashierService.check(begin, end));
     }
 
     @GetMapping("/unvouchered")
