@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinCashAccountMapper">
+
+    <!-- 科目已被使用：凭证分录、各单据的结算账户、银行对账单（col 为科目 ID 的列或参数） -->
+    <sql id="subjectUsedCond">
+        EXISTS (SELECT 1 FROM fin_voucher_entry e WHERE e.account_id = ${col})
+        OR EXISTS (SELECT 1 FROM fin_settlement d WHERE d.account_id = ${col})
+        OR EXISTS (SELECT 1 FROM fin_io_doc d WHERE d.account_id = ${col})
+        OR EXISTS (SELECT 1 FROM fin_advance d WHERE d.account_id = ${col})
+        OR EXISTS (SELECT 1 FROM fin_expense_claim d WHERE d.pay_account_id = ${col})
+        OR EXISTS (SELECT 1 FROM fin_loan d WHERE d.pay_account_id = ${col})
+        OR EXISTS (SELECT 1 FROM fin_loan_repay d WHERE d.account_id = ${col})
+        OR EXISTS (SELECT 1 FROM fin_note_log d WHERE d.account_id = ${col})
+        OR EXISTS (SELECT 1 FROM fin_fund_transfer d WHERE d.from_account_id = ${col})
+        OR EXISTS (SELECT 1 FROM fin_fund_transfer d WHERE d.to_account_id = ${col})
+        OR EXISTS (SELECT 1 FROM fin_bank_statement d WHERE d.account_id = ${col})
+        OR EXISTS (SELECT 1 FROM scm_trade_doc d WHERE d.freight_account_id = ${col})
+        OR EXISTS (SELECT 1 FROM wms_stock_doc d WHERE d.fee_account_id = ${col})
+    </sql>
+
+    <select id="selectViewList" resultType="com.lemon.erp.modules.fin.entity.FinCashAccount">
+        SELECT c.*, a.code AS account_code, a.name AS account_name,
+               CASE WHEN <include refid="subjectUsedCond"><property name="col" value="c.account_id"/></include> THEN 1 ELSE 0 END AS used,
+               (SELECT COUNT(*) FROM fin_bank_opening_item i WHERE i.cash_account_id = c.id) AS opening_item_count
+        FROM fin_cash_account c
+        LEFT JOIN fin_account a ON a.id = c.account_id
+        <where>
+            <if test="id != null">AND c.id = #{id}</if>
+        </where>
+        ORDER BY c.sort, a.code, c.id
+    </select>
+
+    <select id="subjectUsed" resultType="boolean">
+        SELECT CASE WHEN <include refid="subjectUsedCond"><property name="col" value="#{accountId}"/></include> THEN 1 ELSE 0 END
+    </select>
+
+</mapper>

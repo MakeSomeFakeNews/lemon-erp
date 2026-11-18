@@ -163,7 +163,7 @@
       <p v-if="payTarget">{{ $t('fin.claim.payLine', { name: payTarget.userName }) }} <b>¥{{ formatMoney(payTarget.amount) }}</b></p>
       <a-form layout="vertical">
         <a-form-item :label="$t('fin.claim.payAccount')" :required="!payTarget?.loanId" :extra="payTarget?.loanId ? $t('fin.claim.payAccountExtra') : ''">
-          <AccountSelect v-model:value="payForm.accountId" :roles="['CASH', 'BANK']" :placeholder="$t('fin.claim.payAccountPh')" />
+          <CashAccountSelect v-model:value="payForm.accountId" :placeholder="$t('fin.claim.payAccountPh')" />
         </a-form-item>
         <a-form-item :label="$t('fin.claim.payDate')" required>
           <a-date-picker v-model:value="payForm.date" value-format="YYYY-MM-DD" :allow-clear="false" class="full" />
@@ -214,6 +214,7 @@ import SearchForm from '@/components/SearchForm.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import AccountSelect from '@/components/fin/AccountSelect.vue'
+import CashAccountSelect from '@/components/fin/CashAccountSelect.vue'
 import DeptSelect from '@/components/fin/DeptSelect.vue'
 import TableActions from '@/components/common/TableActions.vue'
 import { actionColumn } from '@/components/common/tableActions'

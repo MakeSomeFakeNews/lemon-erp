@@ -239,6 +239,10 @@ export default {
   3912: 'Delete Income / Expense Document', // 收支单删除
   3913: 'Confirm Income / Expense Document', // 收支单确认
   3914: 'Maintain Income / Expense Categories', // 收支类别维护
+  393: 'Cash Accounts', // 资金账户
+  3930: 'Add Cash Account', // 资金账户新增
+  3931: 'Edit Cash Account', // 资金账户修改
+  3932: 'Delete Cash Account', // 资金账户删除
   392: 'Purchase Rebates', // 采购返利
   3920: 'Maintain Purchase Rebate Agreements', // 采购返利协议维护
   3921: 'Settle Purchase Rebates', // 采购返利结算

@@ -171,7 +171,7 @@
               </a-col>
               <a-col v-if="!form.supplierId" :xs="24" :sm="14">
                 <a-form-item :label="$t('fin.asset.payAccount')" name="payAccountId" :extra="$t('fin.asset.payAccountExtra')">
-                  <AccountSelect v-model:value="form.payAccountId" :roles="['CASH', 'BANK']" :placeholder="$t('fin.asset.settleAccountPh')" allow-clear />
+                  <CashAccountSelect v-model:value="form.payAccountId" :placeholder="$t('fin.asset.settleAccountPh')" allow-clear />
                 </a-form-item>
               </a-col>
               <a-col v-if="form.supplierId || form.payAccountId" :span="24">
@@ -273,6 +273,7 @@ import DictTag from '@/components/DictTag.vue'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
 import FormDrawer from '@/components/FormDrawer.vue'
 import AccountSelect from '@/components/fin/AccountSelect.vue'
+import CashAccountSelect from '@/components/fin/CashAccountSelect.vue'
 import DeptSelect from '@/components/fin/DeptSelect.vue'
 import PeriodPicker from '@/components/fin/PeriodPicker.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'

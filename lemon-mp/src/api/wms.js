@@ -92,9 +92,8 @@ export const previewPromotion = (data) => post('/scm/promotion/preview', data, {
  */
 /** 承运商选项（物流公司，还没有标记时为全部供应商）：{ marked, options: [{ id, code, name }] }（登录即可访问） */
 export const carrierOptions = (keyword, current = 1) => get('/scm/supplier/carrier-options', { keyword, current, size: OPTION_PAGE_SIZE })
-/** 运费现付的付款账户：现金、银行末级科目 [{ id, label }]（科目范围按「凭证科目设置」，登录即可访问） */
+/** 运费现付的付款账户：启用的资金账户 [{ id: 入账科目 ID（单据中保存的值）, label: 账户名称 }]（登录即可访问） */
 export async function cashAccounts() {
-  const [accounts, scopes] = await Promise.all([get('/fin/account/options'), get('/fin/account/scopes')])
-  const prefixes = [scopes?.CASH, scopes?.BANK].filter(Boolean)
-  return (accounts || []).filter((a) => prefixes.some((p) => a.code.startsWith(p))).map((a) => ({ id: a.id, label: `${a.code} ${a.name}` }))
+  const accounts = await get('/fin/cash-account/options')
+  return (accounts || []).filter((a) => a.usable).map((a) => ({ id: a.accountId, label: a.name }))
 }

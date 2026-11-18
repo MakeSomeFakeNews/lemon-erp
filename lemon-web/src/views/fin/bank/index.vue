@@ -3,7 +3,7 @@
     <a-card :bordered="false" class="page-card">
       <div class="toolbar">
         <a-space wrap>
-          <AccountSelect v-model:value="accountId" :roles="['BANK']" :placeholder="$t('fin.bank.selectAccount')" class="account" />
+          <CashAccountSelect v-model:value="accountId" all bank :placeholder="$t('fin.bank.selectAccount')" class="account" />
           <a-range-picker v-model:value="range" value-format="YYYY-MM-DD" :allow-clear="false" />
           <a-button :disabled="!accountId" @click="load"><template #icon><ReloadOutlined /></template>{{ $t('common.action.query') }}</a-button>
           <a-checkbox v-model:checked="onlyOpen">{{ $t('fin.bank.onlyOpen') }}</a-checkbox>
@@ -18,7 +18,7 @@
           <a-button v-perm="'fin:bank:edit'" type="primary" :disabled="!canMatch" @click="manualMatch">
             <template #icon><LinkOutlined /></template>{{ $t('fin.bank.manualMatch') }}
           </a-button>
-          <a-button :disabled="!accountId" @click="openReconcile">
+          <a-button :disabled="!accountId" @click="reconcileRef.open(range?.[1])">
             <template #icon><FileTextOutlined /></template>{{ $t('fin.bank.reconcile') }}
           </a-button>
         </a-space>
@@ -35,25 +35,25 @@
             <span class="section-title">{{ $t('fin.bank.statements') }}</span>
             <a-space>
               <span class="sub-text">
-                {{ $t('fin.bank.countText', { total: statements.length, open: statements.filter((s) => !s.entryId).length }) }}
+                {{ $t('fin.bank.countText', { total: stmtRows.length, open: stmtRows.filter((s) => !s.matched).length }) }}
                 {{ $t('fin.bank.net') }} <span :class="{ neg: stmtTotal < 0 }">{{ formatMoney(stmtTotal) }}</span>
               </span>
-              <span v-if="stmtKeys.length" v-perm="'fin:bank:edit'">
-                <a-popconfirm :title="$t('fin.bank.confirmDelete', { n: stmtKeys.length })" @confirm="removeStatements">
-                  <a-button size="small" danger>{{ $t('fin.bank.deleteN', { n: stmtKeys.length }) }}</a-button>
+              <span v-if="deletable.length" v-perm="'fin:bank:edit'">
+                <a-popconfirm :title="$t('fin.bank.confirmDelete', { n: deletable.length })" @confirm="removeStatements">
+                  <a-button size="small" danger>{{ $t('fin.bank.deleteN', { n: deletable.length }) }}</a-button>
                 </a-popconfirm>
               </span>
             </a-space>
           </div>
           <a-table
-            row-key="id"
+            row-key="key"
             size="small"
             :columns="stmtColumns"
             :data-source="shownStatements"
             :loading="loading"
             :pagination="false"
             :row-selection="{ selectedRowKeys: stmtKeys, onChange: (k) => (stmtKeys = k) }"
-            :row-class-name="(r) => (r.entryId ? 'matched-row' : '')"
+            :row-class-name="(r) => (r.matched ? 'matched-row' : '')"
             :scroll="{ x: 640, y: 520 }"
             :locale="{ emptyText: accountId ? $t('fin.bank.emptyStatements') : $t('fin.bank.selectAccountFirst') }"
           >
@@ -62,15 +62,15 @@
                 <span :class="['num', { neg: Number(record.amount) < 0 }]">{{ formatMoney(record.amount) }}</span>
               </template>
               <template v-else-if="column.key === 'summary'">
-                {{ record.summary || '-' }}
+                <a-tag v-if="record.opening" :bordered="false" color="orange">{{ $t('fin.bank.opening') }}</a-tag>{{ record.summary || '-' }}
                 <div v-if="record.refNo" class="sub-text">{{ record.refNo }}</div>
               </template>
               <template v-else-if="column.key === 'match'">
-                <template v-if="record.entryId">
+                <template v-if="record.matched">
                   <a-tag color="green" :bordered="false">{{ $t('fin.bank.matched') }}</a-tag>
-                  <div class="sub-text">{{ record.voucherNo }} {{ record.voucherDate }}</div>
+                  <div class="sub-text">{{ record.openingItemId ? $t('fin.bank.matchedOpening') : `${record.voucherNo || ''} ${record.voucherDate || ''}` }}</div>
                   <span v-perm="'fin:bank:edit'">
-                    <a-popconfirm :title="$t('fin.bank.confirmUnmatch')" @confirm="unmatch(record.id)">
+                    <a-popconfirm :title="$t('fin.bank.confirmUnmatch')" @confirm="unmatchStatement(record)">
                       <a class="small-link">{{ $t('fin.bank.unmatch') }}</a>
                     </a-popconfirm>
                   </span>
@@ -86,12 +86,12 @@
           <div class="side-head">
             <span class="section-title">{{ $t('fin.bank.bookEntries') }}</span>
             <span class="sub-text">
-              {{ $t('fin.bank.countText', { total: entries.length, open: entries.filter((e) => !e.matched).length }) }}
+              {{ $t('fin.bank.countText', { total: entryRows.length, open: entryRows.filter((e) => !e.matched).length }) }}
               {{ $t('fin.bank.net') }} <span :class="{ neg: entryTotal < 0 }">{{ formatMoney(entryTotal) }}</span>
             </span>
           </div>
           <a-table
-            row-key="entryId"
+            row-key="key"
             size="small"
             :columns="entryColumns"
             :data-source="shownEntries"
@@ -104,7 +104,8 @@
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'voucher'">
-                <a @click="openVoucher(record.voucherId)">{{ record.voucherNo }}</a>
+                <a-tag v-if="record.opening" :bordered="false" color="orange">{{ $t('fin.bank.opening') }}</a-tag>
+                <a v-else @click="openVoucher(record.voucherId)">{{ record.voucherNo }}</a>
                 <div class="sub-text">{{ record.voucherDate }}</div>
               </template>
               <template v-else-if="column.key === 'amount'">
@@ -127,89 +128,7 @@
       :importer="importRows"
       @success="load"
     />
-
-    <!-- 余额调节表 -->
-    <a-modal v-model:open="reconcileOpen" :title="$t('fin.bank.reconcileTitle')" width="min(900px, 100vw)" :footer="null">
-      <div class="filters">
-        <span>{{ $t('fin.bank.asOf') }}</span>
-        <a-date-picker v-model:value="asOf" value-format="YYYY-MM-DD" :allow-clear="false" />
-        <span>{{ $t('fin.bank.bankBalance') }}</span>
-        <a-input-number v-model:value="bankBalance" :precision="2" :placeholder="$t('fin.bank.bankBalancePh')" class="balance" />
-        <a-button type="primary" :loading="reconciling" @click="loadReconcile">{{ $t('fin.bank.calculate') }}</a-button>
-      </div>
-      <a-spin :spinning="reconciling">
-        <template v-if="rec">
-          <div class="report-title">{{ $t('fin.bank.reconcileTitle') }}</div>
-          <div class="report-sub">
-            {{ $t('fin.bank.reportSub', { account: accountName, date: rec.asOf }) }}
-            <a-tag :color="rec.balanced ? 'green' : 'red'" :bordered="false" class="check">
-              {{ rec.balanced ? $t('fin.bank.balanced') : $t('fin.bank.unbalanced') }}
-            </a-tag>
-          </div>
-          <table class="rec-table">
-            <thead>
-              <tr>
-                <th>{{ $t('fin.bank.book') }}</th>
-                <th class="num">{{ $t('common.field.amount') }}</th>
-                <th>{{ $t('fin.bank.statementTitle') }}</th>
-                <th class="num">{{ $t('common.field.amount') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>{{ $t('fin.bank.bookBalance') }}</td>
-                <td class="num">{{ formatMoney(rec.bookBalance) }}</td>
-                <td>{{ $t('fin.bank.bankBalance') }}</td>
-                <td class="num">{{ formatMoney(rec.bankBalance) }}</td>
-              </tr>
-              <tr>
-                <td>{{ $t('fin.bank.bankIn') }}</td>
-                <td class="num">{{ formatMoney(rec.bankIn) }}</td>
-                <td>{{ $t('fin.bank.bookIn') }}</td>
-                <td class="num">{{ formatMoney(rec.bookIn) }}</td>
-              </tr>
-              <tr>
-                <td>{{ $t('fin.bank.bankOut') }}</td>
-                <td class="num">{{ formatMoney(rec.bankOut) }}</td>
-                <td>{{ $t('fin.bank.bookOut') }}</td>
-                <td class="num">{{ formatMoney(rec.bookOut) }}</td>
-              </tr>
-            </tbody>
-            <tfoot>
-              <tr>
-                <td>{{ $t('fin.bank.adjusted') }}</td>
-                <td :class="['num', { neg: !rec.balanced }]">{{ formatMoney(rec.adjustedBook) }}</td>
-                <td>{{ $t('fin.bank.adjusted') }}</td>
-                <td :class="['num', { neg: !rec.balanced }]">{{ formatMoney(rec.adjustedBank) }}</td>
-              </tr>
-            </tfoot>
-          </table>
-          <a-row :gutter="12" class="rec-detail">
-            <a-col :xs="24" :md="12">
-              <div class="section-title">{{ $t('fin.bank.bankOnly', { n: rec.bankOnly.length }) }}</div>
-              <a-table row-key="id" size="small" :columns="bankOnlyColumns" :data-source="rec.bankOnly" :pagination="false" :scroll="{ y: 240 }">
-                <template #bodyCell="{ column, record }">
-                  <template v-if="column.key === 'amount'">
-                    <span :class="['num', { neg: Number(record.amount) < 0 }]">{{ formatMoney(record.amount) }}</span>
-                  </template>
-                </template>
-              </a-table>
-            </a-col>
-            <a-col :xs="24" :md="12">
-              <div class="section-title">{{ $t('fin.bank.bookOnly', { n: rec.bookOnly.length }) }}</div>
-              <a-table row-key="entryId" size="small" :columns="bookOnlyColumns" :data-source="rec.bookOnly" :pagination="false" :scroll="{ y: 240 }">
-                <template #bodyCell="{ column, record }">
-                  <template v-if="column.key === 'amount'">
-                    <span :class="['num', { neg: Number(record.amount) < 0 }]">{{ formatMoney(record.amount) }}</span>
-                  </template>
-                </template>
-              </a-table>
-            </a-col>
-          </a-row>
-        </template>
-      </a-spin>
-    </a-modal>
-
+    <ReconcileModal ref="reconcileRef" :account-id="accountId" :account-name="accountName" />
     <VoucherDetail v-model:open="voucherOpen" :voucher-id="voucherId" />
   </div>
 </template>
@@ -221,24 +140,32 @@ import { message } from 'ant-design-vue'
 import { useI18n } from 'vue-i18n'
 import { FileTextOutlined, LinkOutlined, ReloadOutlined, ThunderboltOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import ImportModal from '@/components/ImportModal.vue'
-import AccountSelect from '@/components/fin/AccountSelect.vue'
+import CashAccountSelect from '@/components/fin/CashAccountSelect.vue'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
+import ReconcileModal from './ReconcileModal.vue'
 import {
-  accountOptions,
   autoMatchBank,
   bankEntries,
-  bankReconcile,
+  bankOpeningItems,
   bankStatements,
+  cashAccountOptions,
   deleteBankStatements,
   importBankStatements,
   matchBank,
-  unmatchBank
+  matchBankOpening,
+  unmatchBank,
+  unmatchBankOpening
 } from '@/api/fin'
 import { today } from '@/components/wms/wms'
 import { cached, formatMoney } from '@/components/fin/fin'
 import { round2 } from '@/utils/number'
 import { useAction } from '@/composables/useAction'
+import { BankOpeningSide } from '@/constants/enums'
 
+/**
+ * 银行对账：银行类资金账户的对账单流水（左）与凭证分录（右）勾对，生成余额调节表。
+ * 账户有期初未达账时一并列出（标「期初」）：银行已记企业未记的列在流水一侧，与凭证分录勾对；企业已记银行未记的列在分录一侧，与流水勾对
+ */
 const { t } = useI18n()
 const accountId = ref()
 const range = ref([dayjs().startOf('month').format('YYYY-MM-DD'), today()])
@@ -246,27 +173,48 @@ const onlyOpen = ref(false)
 const loading = ref(false)
 const statements = ref([])
 const entries = ref([])
+const openingItems = ref([])
 const stmtKeys = ref([])
 const entryKeys = ref([])
+const reconcileRef = ref()
 
 const params = () => ({ accountId: accountId.value, begin: range.value?.[0], end: range.value?.[1] })
-const shownStatements = computed(() => (onlyOpen.value ? statements.value.filter((s) => !s.entryId) : statements.value))
-const shownEntries = computed(() => (onlyOpen.value ? entries.value.filter((e) => !e.matched) : entries.value))
-const stmtTotal = computed(() => round2(statements.value.reduce((s, r) => s + Number(r.amount), 0)))
-const entryTotal = computed(() => round2(entries.value.reduce((s, r) => s + Number(r.amount), 0)))
+/** 流水一侧：对账单流水 + 银行已记企业未记的期初未达账 */
+const stmtRows = computed(() => [
+  ...openingItems.value
+    .filter((i) => i.side === BankOpeningSide.BANK)
+    .map((i) => ({ ...i, key: `o${i.id}`, itemId: i.id, opening: true, matched: !!i.entryId })),
+  ...statements.value.map((s) => ({ ...s, key: `s${s.id}`, matched: !!(s.entryId || s.openingItemId) }))
+])
+/** 分录一侧：凭证分录 + 企业已记银行未记的期初未达账 */
+const entryRows = computed(() => [
+  ...openingItems.value
+    .filter((i) => i.side === BankOpeningSide.BOOK)
+    .map((i) => ({ key: `o${i.id}`, itemId: i.id, opening: true, voucherDate: i.txnDate, summary: i.summary, amount: i.amount, matched: i.statementId ? 1 : 0 })),
+  ...entries.value.map((e) => ({ ...e, key: `e${e.entryId}` }))
+])
+const shownStatements = computed(() => (onlyOpen.value ? stmtRows.value.filter((s) => !s.matched) : stmtRows.value))
+const shownEntries = computed(() => (onlyOpen.value ? entryRows.value.filter((e) => !e.matched) : entryRows.value))
+const stmtTotal = computed(() => round2(stmtRows.value.reduce((s, r) => s + Number(r.amount), 0)))
+const entryTotal = computed(() => round2(entryRows.value.reduce((s, r) => s + Number(r.amount), 0)))
+/** 可删除的是导入的流水（期初未达账在「资金账户」中维护） */
+const deletable = computed(() => stmtRows.value.filter((s) => !s.opening && stmtKeys.value.includes(s.key)).map((s) => s.id))
 
 const accountName = ref('')
 async function refreshAccountName() {
-  const list = await cached('accounts-leaf', accountOptions)
-  const a = list.find((x) => x.id === accountId.value)
-  accountName.value = a ? `${a.code} ${a.name}` : ''
+  const list = await cached('cash-accounts', cashAccountOptions)
+  accountName.value = list.find((x) => x.accountId === accountId.value)?.name || ''
 }
 
 async function load() {
   if (!accountId.value) return
   loading.value = true
   try {
-    ;[statements.value, entries.value] = await Promise.all([bankStatements(params()), bankEntries(params())])
+    ;[statements.value, entries.value, openingItems.value] = await Promise.all([
+      bankStatements(params()),
+      bankEntries(params()),
+      bankOpeningItems(accountId.value)
+    ])
     stmtKeys.value = []
     entryKeys.value = []
   } finally {
@@ -276,7 +224,7 @@ async function load() {
 watch(accountId, () => {
   statements.value = []
   entries.value = []
-  rec.value = undefined
+  openingItems.value = []
   refreshAccountName()
   load()
 })
@@ -297,25 +245,35 @@ const entryColumns = [
 
 // ---------------------------------------------------------------- 勾对
 const selectedStatement = computed(() => {
-  const rows = statements.value.filter((s) => stmtKeys.value.includes(s.id))
-  return rows.length === 1 && !rows[0].entryId ? rows[0] : null
+  const rows = stmtRows.value.filter((s) => stmtKeys.value.includes(s.key))
+  return rows.length === 1 && !rows[0].matched ? rows[0] : null
 })
-const selectedEntry = computed(() => entries.value.find((e) => entryKeys.value.includes(e.entryId) && !e.matched))
+const selectedEntry = computed(() => entryRows.value.find((e) => entryKeys.value.includes(e.key) && !e.matched))
 const canMatch = computed(() => !!selectedStatement.value && !!selectedEntry.value)
 
 async function manualMatch() {
   const s = selectedStatement.value
   const e = selectedEntry.value
+  if (s.opening && e.opening) {
+    message.warning(t('fin.bank.openingBothSides'))
+    return
+  }
   if (Math.abs(Number(s.amount) - Number(e.amount)) >= 0.005) {
     message.warning(t('fin.bank.amountMismatch', { bank: formatMoney(s.amount), book: formatMoney(e.amount) }))
     return
   }
-  await matchBank(s.id, e.entryId)
+  if (s.opening) await matchBankOpening(s.itemId, e.entryId)
+  else if (e.opening) await matchBankOpening(e.itemId, s.id)
+  else await matchBank(s.id, e.entryId)
   message.success(t('fin.bank.matched'))
   load()
 }
 
-const unmatch = useAction(unmatchBank, { successKey: 'fin.bank.unmatchedMsg', reload: () => load() })
+/** 取消勾对：期初未达账或被期初未达账勾对的流水取消未达账的勾对，否则取消流水的勾对 */
+const unmatchStatement = useAction(
+  (r) => (r.opening ? unmatchBankOpening(r.itemId) : r.openingItemId ? unmatchBankOpening(r.openingItemId) : unmatchBank(r.id)),
+  { successKey: 'fin.bank.unmatchedMsg', reload: () => load() }
+)
 
 const matching = ref(false)
 async function autoMatch() {
@@ -329,7 +287,7 @@ async function autoMatch() {
   }
 }
 
-const removeStatements = useAction(() => deleteBankStatements(stmtKeys.value), { successKey: 'common.msg.deleteSuccess', reload: () => load() })
+const removeStatements = useAction(() => deleteBankStatements(deletable.value), { successKey: 'common.msg.deleteSuccess', reload: () => load() })
 
 // ---------------------------------------------------------------- 导入
 const importOpen = ref(false)
@@ -358,36 +316,6 @@ async function importRows({ rows }) {
   const imported = await importBankStatements({ accountId: accountId.value, rows: data })
   if (imported < rows.length) message.info(t('fin.bank.skipped', { n: rows.length - imported }))
   return { total: rows.length, imported, errors: [] }
-}
-
-// ---------------------------------------------------------------- 余额调节表
-const reconcileOpen = ref(false)
-const reconciling = ref(false)
-const asOf = ref(today())
-const bankBalance = ref()
-const rec = ref()
-const bankOnlyColumns = [
-  { title: t('common.field.date'), dataIndex: 'txnDate', width: 100 },
-  { title: t('common.field.amount'), key: 'amount', width: 110, align: 'right' },
-  { title: t('fin.bank.summary'), dataIndex: 'summary', ellipsis: true }
-]
-const bookOnlyColumns = [
-  { title: t('fin.bank.voucher'), dataIndex: 'voucherNo', width: 100 },
-  { title: t('common.field.amount'), key: 'amount', width: 110, align: 'right' },
-  { title: t('fin.bank.summary'), dataIndex: 'summary', ellipsis: true }
-]
-function openReconcile() {
-  asOf.value = range.value?.[1] || today()
-  reconcileOpen.value = true
-  loadReconcile()
-}
-async function loadReconcile() {
-  reconciling.value = true
-  try {
-    rec.value = await bankReconcile({ accountId: accountId.value, asOf: asOf.value, bankBalance: bankBalance.value ?? undefined })
-  } finally {
-    reconciling.value = false
-  }
 }
 
 const voucherOpen = ref(false)
@@ -442,55 +370,5 @@ function openVoucher(id) {
 }
 :deep(.matched-row) td {
   color: var(--app-text-3);
-}
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.balance {
-  width: 200px;
-}
-.report-title {
-  text-align: center;
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: 2px;
-}
-.report-sub {
-  text-align: center;
-  color: var(--app-text-3);
-  margin: 6px 0 12px;
-}
-.check {
-  margin-left: 8px;
-}
-.rec-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.rec-table th,
-.rec-table td {
-  border: 1px solid var(--app-border, #d9d9d9);
-  padding: 8px 10px;
-}
-.rec-table th {
-  background: var(--app-bg-2, #fafafa);
-  font-weight: 500;
-  text-align: left;
-}
-.rec-table th.num {
-  text-align: right;
-}
-.rec-table tfoot td {
-  font-weight: 600;
-}
-.rec-detail {
-  margin-top: 16px;
-}
-.rec-detail .section-title {
-  margin: 8px 0;
 }
 </style>

@@ -125,6 +125,8 @@ DROP TABLE IF EXISTS fin_invoice_item;
 DROP TABLE IF EXISTS fin_advance;
 DROP TABLE IF EXISTS fin_advance_apply;
 DROP TABLE IF EXISTS fin_bank_statement;
+DROP TABLE IF EXISTS fin_cash_account;
+DROP TABLE IF EXISTS fin_bank_opening_item;
 DROP TABLE IF EXISTS fin_expense_claim;
 DROP TABLE IF EXISTS fin_expense_claim_item;
 DROP TABLE IF EXISTS fin_loan;
@@ -3892,6 +3894,47 @@ CREATE TABLE fin_bank_statement (
     KEY idx_bank_statement_entry (entry_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '银行对账单';
 
+CREATE TABLE fin_cash_account (
+    id                BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id         BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    name              VARCHAR(64)    NOT NULL COMMENT '账户名称，如 招行基本户、微信零钱（单据的账户下拉显示）',
+    type              VARCHAR(16)    NOT NULL COMMENT '账户类型(字典 fin_cash_account_type) CASH现金 BANK银行 WECHAT微信 ALIPAY支付宝 OTHER其他',
+    account_id        BIGINT         NOT NULL COMMENT '入账科目：指定的现金 / 银行 / 其他货币资金科目下的末级科目，不启用辅助核算；单据中保存的是该科目 ID',
+    bank_name         VARCHAR(64)             DEFAULT NULL COMMENT '开户行',
+    bank_account_no   VARCHAR(64)             DEFAULT NULL COMMENT '账号',
+    enable_date       DATE                    DEFAULT NULL COMMENT '启用日期：日记账从该日起按日记账期初计算；为空表示从建账开始（期初取科目期初余额）',
+    journal_opening   DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '日记账期初余额（启用日期前一天的余额）',
+    statement_opening DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '银行对账单期初余额（非现金账户）',
+    status            TINYINT        NOT NULL DEFAULT 1 COMMENT '状态 1启用 0停用：停用的不出现在单据的账户下拉中；停用后才能修改类型、入账科目、启用日期和期初',
+    sort              INT            NOT NULL DEFAULT 0 COMMENT '排序',
+    remark            VARCHAR(255)            DEFAULT NULL COMMENT '备注',
+    create_time       DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time       DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_cash_account_subject (account_id, tenant_id),
+    UNIQUE KEY uk_cash_account_name (name, tenant_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '资金账户（出纳账户）：一个入账科目对应一个账户';
+
+CREATE TABLE fin_bank_opening_item (
+    id              BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id       BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
+    cash_account_id BIGINT         NOT NULL COMMENT '资金账户（非现金）',
+    side            VARCHAR(8)     NOT NULL COMMENT '未达账类型(字典 fin_bank_opening_side) BOOK企业已记银行未记 BANK银行已记企业未记',
+    txn_date        DATE           NOT NULL COMMENT '日期（早于账户的启用日期）',
+    amount          DECIMAL(18, 2) NOT NULL COMMENT '金额：收入为正、支出为负',
+    summary         VARCHAR(255)            DEFAULT NULL COMMENT '摘要',
+    ref_no          VARCHAR(64)             DEFAULT NULL COMMENT '流水号 / 票据号',
+    entry_id        BIGINT                  DEFAULT NULL COMMENT '银行已记企业未记：企业入账后勾对的凭证分录',
+    statement_id    BIGINT                  DEFAULT NULL COMMENT '企业已记银行未记：银行入账后勾对的对账单流水',
+    create_by       BIGINT                  DEFAULT NULL COMMENT '录入人',
+    create_time     DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time     DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_bank_opening_account (cash_account_id),
+    KEY idx_bank_opening_entry (entry_id),
+    KEY idx_bank_opening_statement (statement_id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '银行类资金账户的期初未达账';
+
 CREATE TABLE fin_expense_claim (
     id               BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
     tenant_id        BIGINT NOT NULL DEFAULT 1 COMMENT '租户ID',
@@ -6079,6 +6122,9 @@ INSERT INTO fin_account (id, code, name, parent_id, category, direction, status,
 (2,  '1002',   '银行存款',               0,  'ASSET',     'DEBIT',  1, NOW(), NOW()),
 (3,  '100201', '工商银行',               2,  'ASSET',     'DEBIT',  1, NOW(), NOW()),
 (4,  '100202', '招商银行',               2,  'ASSET',     'DEBIT',  1, NOW(), NOW()),
+(14, '1012',   '其他货币资金',           0,  'ASSET',     'DEBIT',  1, NOW(), NOW()),
+(15, '101201', '微信',                   14, 'ASSET',     'DEBIT',  1, NOW(), NOW()),
+(16, '101202', '支付宝',                 14, 'ASSET',     'DEBIT',  1, NOW(), NOW()),
 (5,  '1122',   '应收账款',               0,  'ASSET',     'DEBIT',  1, NOW(), NOW()),
 (6,  '1123',   '预付账款',               0,  'ASSET',     'DEBIT',  1, NOW(), NOW()),
 (7,  '1221',   '其他应收款',             0,  'ASSET',     'DEBIT',  1, NOW(), NOW()),
@@ -8122,3 +8168,35 @@ SELECT g.role_id, g.menu_id FROM (
 ) g
 WHERE EXISTS (SELECT 1 FROM sys_role r WHERE r.id = g.role_id)
   AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = g.role_id AND x.menu_id = g.menu_id);
+
+-- 资金账户（issue #136）：出纳账户绑定入账科目（指定的现金 / 银行 / 其他货币资金科目下的末级科目），单据的账户下拉只列出启用的资金账户；
+-- 预置库存现金、工商银行、招商银行、微信、支付宝五个账户（启用日期为空，期初取科目期初余额）。菜单「资金账户」（资金与费用），
+-- 出纳、会计可维护，总经理、普通用户只读；账户类型、期初未达账类型为系统字典
+INSERT INTO fin_cash_account (name, type, account_id, status, sort, create_time, update_time)
+SELECT g.name, g.type, a.id, 1, g.sort, NOW(), NOW()
+FROM (
+    SELECT '库存现金' AS name, 'CASH' AS type, '1001' AS code, 0 AS sort
+    UNION ALL SELECT '工商银行', 'BANK', '100201', 0
+    UNION ALL SELECT '招商银行', 'BANK', '100202', 0
+    UNION ALL SELECT '微信', 'WECHAT', '101201', 0
+    UNION ALL SELECT '支付宝', 'ALIPAY', '101202', 0
+) g
+JOIN fin_account a ON a.code = g.code AND a.tenant_id = 1;
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(393, 933, '资金账户', 'C', 'cash-account', 'fin/cash-account/index', 'fin:cashAccount:list', 'CreditCardOutlined', 0, 1, 1, NOW(), NOW()),
+(3930, 393, '资金账户新增', 'F', NULL, NULL, 'fin:cashAccount:add', NULL, 1, 1, 1, NOW(), NOW()),
+(3931, 393, '资金账户修改', 'F', NULL, NULL, 'fin:cashAccount:edit', NULL, 2, 1, 1, NOW(), NOW()),
+(3932, 393, '资金账户删除', 'F', NULL, NULL, 'fin:cashAccount:remove', NULL, 3, 1, 1, NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id) VALUES
+(2, 393), (3, 393), (9, 393), (9, 3930), (9, 3931), (9, 3932), (10, 393), (10, 3930), (10, 3931), (10, 3932);
+INSERT INTO sys_dict_type (id, name, type, kind, status, remark, create_time, update_time) VALUES
+(216, '资金账户类型', 'fin_cash_account_type', 'SYSTEM', 1, '资金账户的类型：现金账户的入账科目在现金科目下，其他在银行科目或其他货币资金科目下', NOW(), NOW()),
+(217, '期初未达账类型', 'fin_bank_opening_side', 'SYSTEM', 1, '银行类资金账户启用时的期初未达账：企业已记银行未记、银行已记企业未记', NOW(), NOW());
+INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, builtin, create_time, update_time) VALUES
+('fin_cash_account_type', '现金', 'CASH', 'gold', 1, 1, 1, NOW(), NOW()),
+('fin_cash_account_type', '银行', 'BANK', 'blue', 2, 1, 1, NOW(), NOW()),
+('fin_cash_account_type', '微信', 'WECHAT', 'green', 3, 1, 1, NOW(), NOW()),
+('fin_cash_account_type', '支付宝', 'ALIPAY', 'cyan', 4, 1, 1, NOW(), NOW()),
+('fin_cash_account_type', '其他', 'OTHER', 'default', 5, 1, 1, NOW(), NOW()),
+('fin_bank_opening_side', '企业已记银行未记', 'BOOK', 'orange', 1, 1, 1, NOW(), NOW()),
+('fin_bank_opening_side', '银行已记企业未记', 'BANK', 'purple', 2, 1, 1, NOW(), NOW());

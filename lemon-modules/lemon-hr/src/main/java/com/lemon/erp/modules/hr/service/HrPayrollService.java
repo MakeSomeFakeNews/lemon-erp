@@ -327,7 +327,7 @@ public class HrPayrollService {
         if (req.payDate().isBefore(FinConstants.firstDay(p.getPeriod()))) {
             throw new BizException("hr.error.paymentDateCannotEarlierPayrollMonth");
         }
-        Long bank = accountService.requireCashAccount(req.accountId()).getId();
+        Long bank = accountService.requireCashAccount(req.accountId(), req.payDate()).getId();
         String summary = "发放 " + p.getPeriod() / 100 + " 年 " + p.getPeriod() % 100 + " 月工资";  // i18n-ignore 凭证摘要存库
         BigDecimal otherDeduct = itemMapper.sumOtherDeduct(id);
         BigDecimal withheld = p.getPersonalTotal().add(p.getCompanyTotal()).add(otherDeduct);

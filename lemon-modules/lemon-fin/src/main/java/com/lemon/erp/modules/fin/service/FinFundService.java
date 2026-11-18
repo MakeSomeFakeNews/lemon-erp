@@ -84,8 +84,8 @@ public class FinFundService {
         if (req.fromAccountId().equals(req.toAccountId())) {
             throw new BizException("fin.error.sourceTargetAccountsCannotSame");
         }
-        accountService.requireCashAccount(req.fromAccountId());
-        accountService.requireCashAccount(req.toAccountId());
+        accountService.requireCashAccount(req.fromAccountId(), req.transferDate());
+        accountService.requireCashAccount(req.toAccountId(), req.transferDate());
         periodGuard.checkOpen(req.transferDate(), "fin.label.fundTransfer");
         BigDecimal fee = Decimals.nz(req.fee());
         FeeBearer bearer = req.feeBearer() == null ? FeeBearer.FROM : req.feeBearer();

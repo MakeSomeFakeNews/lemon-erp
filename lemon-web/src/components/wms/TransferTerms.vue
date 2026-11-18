@@ -28,7 +28,7 @@
       </a-col>
       <a-col v-if="cash" :xs="24" :sm="12" :lg="6">
         <a-form-item :label="$t('wms.transfer.feeAccount')" name="feeAccountId" :rules="[{ required: true, message: $t('wms.transfer.selectAccount') }]">
-          <AccountSelect v-model:value="form.feeAccountId" :roles="['CASH', 'BANK']" :placeholder="$t('wms.transfer.selectAccount')" />
+          <CashAccountSelect v-model:value="form.feeAccountId" :placeholder="$t('wms.transfer.selectAccount')" />
         </a-form-item>
       </a-col>
       <a-col :xs="24" :sm="12" :lg="6">
@@ -51,7 +51,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
-import AccountSelect from '@/components/fin/AccountSelect.vue'
+import CashAccountSelect from '@/components/fin/CashAccountSelect.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import { usePriceLevels } from './priceLevels'
 import { transferPrices } from '@/api/wms/doc'

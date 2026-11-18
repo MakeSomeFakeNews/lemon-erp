@@ -67,12 +67,12 @@
           </a-col>
           <a-col :xs="24" :sm="12">
             <a-form-item :label="$t('fin.transfer.from')" name="fromAccountId">
-              <AccountSelect v-model:value="form.fromAccountId" :roles="['CASH', 'BANK']" />
+              <CashAccountSelect v-model:value="form.fromAccountId" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
             <a-form-item :label="$t('fin.transfer.to')" name="toAccountId">
-              <AccountSelect v-model:value="form.toAccountId" :roles="['CASH', 'BANK']" />
+              <CashAccountSelect v-model:value="form.toAccountId" />
             </a-form-item>
           </a-col>
           <a-col :xs="24" :sm="12">
@@ -144,7 +144,7 @@ import TableToolbar from '@/components/TableToolbar.vue'
 import TableActions from '@/components/common/TableActions.vue'
 import { actionColumn } from '@/components/common/tableActions'
 import IdentityUserSelect from '@/components/common/IdentityUserSelect.vue'
-import AccountSelect from '@/components/fin/AccountSelect.vue'
+import CashAccountSelect from '@/components/fin/CashAccountSelect.vue'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
 import { addFundTransfer, deleteFundTransfer, getFundTransfer, pageFundTransfer } from '@/api/fin'
 import { formatMoney } from '@/components/fin/fin'

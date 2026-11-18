@@ -8,7 +8,7 @@ export const accountTree = (params) => request.get('/fin/account', { params })
 export const allAccounts = () => request.get('/fin/account/all')
 /** 启用的末级科目 */
 export const accountOptions = () => request.get('/fin/account/options')
-/** 科目范围用途（库存现金 CASH、银行存款 BANK）当前使用的科目编码：{ CASH: '1001', BANK: '1002' }，按凭证科目设置 */
+/** 指定科目（科目范围用途：库存现金 CASH、银行存款 BANK、其他货币资金 OTHER_FUNDS）当前使用的科目编码：{ CASH: '1001', BANK: '1002', OTHER_FUNDS: '1012' } */
 export const accountScopes = () => request.get('/fin/account/scopes')
 export const addAccount = (data) => request.post('/fin/account', data)
 export const updateAccount = (id, data) => request.put(`/fin/account/${id}`, data)
@@ -202,6 +202,11 @@ export const matchBank = (id, entryId) => request.post(`/fin/bank/statement/${id
 export const unmatchBank = (id) => request.post(`/fin/bank/statement/${id}/unmatch`)
 export const deleteBankStatements = (id) => request.delete(`/fin/bank/statement/${ids(id)}`)
 export const bankReconcile = (params) => request.get('/fin/bank/reconcile', { params })
+/** 账户（入账科目）的期初未达账 */
+export const bankOpeningItems = (accountId) => request.get('/fin/bank/opening-items', { params: { accountId } })
+/** 勾对期初未达账：银行已记企业未记的 targetId 为凭证分录，企业已记银行未记的为对账单流水 */
+export const matchBankOpening = (id, targetId) => request.post(`/fin/bank/opening-item/${id}/match/${targetId}`)
+export const unmatchBankOpening = (id) => request.post(`/fin/bank/opening-item/${id}/unmatch`)
 
 /** 费用报销 */
 export const pageClaim = (params) => request.get('/fin/claim', { params })
@@ -298,6 +303,24 @@ export const cashJournal = (params) => request.get('/fin/cashier/journal', { par
 export const cashDaily = (params) => request.get('/fin/cashier/daily', { params })
 /** 未生成凭证的收付款 → { RECEIPT: { count, amount }, PAYMENT: {...} } */
 export const cashUnvouchered = () => request.get('/fin/cashier/unvouchered')
+/** 核对总账 { begin, end } → [{ name, accountCode, journalOpen/Debit/Credit/Close, ledgerOpen/Debit/Credit/Close, difference, unposted, openingDifference, unvoucheredCount, unvoucheredAmount, matched }] */
+export const cashCheck = (params) => request.get('/fin/cashier/check', { params })
+
+/** 资金账户 */
+export const listCashAccount = () => request.get('/fin/cash-account')
+/** 单据的账户下拉（登录即可访问）：[{ id, name, type, accountId（入账科目，单据中保存的值）, accountCode, accountName, status, usable }] */
+export const cashAccountOptions = () => request.get('/fin/cash-account/options')
+export const addCashAccount = (data) => request.post('/fin/cash-account', data)
+export const updateCashAccount = (id, data) => request.put(`/fin/cash-account/${id}`, data)
+export const changeCashAccountStatus = (id, status) => request.put(`/fin/cash-account/${id}/status`, { status })
+export const deleteCashAccount = (id) => request.delete(`/fin/cash-account/${ids(id)}`)
+/** 期初平衡检查 → { journalOpening, statementOpening, bankIn, bankOut, bookIn, bookOut, adjustedBook, adjustedBank, balanced, ledgerBalance } */
+export const cashAccountOpeningCheck = (id) => request.get(`/fin/cash-account/${id}/opening-check`)
+/** 科目在日期之前的账面余额（参考日记账期初） */
+export const cashAccountLedgerBalance = (accountId, date) => request.get('/fin/cash-account/ledger-balance', { params: { accountId, date } })
+export const cashAccountOpeningItems = (id) => request.get(`/fin/cash-account/${id}/opening-items`)
+export const addCashAccountOpeningItem = (id, data) => request.post(`/fin/cash-account/${id}/opening-items`, data)
+export const deleteCashAccountOpeningItem = (itemId) => request.delete(`/fin/cash-account/opening-items/${itemId}`)
 
 /** 销售提成：规则 */
 export const commissionRules = () => request.get('/fin/commission/rule')

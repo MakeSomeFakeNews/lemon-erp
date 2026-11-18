@@ -20,7 +20,7 @@
         </a-col>
         <a-col :xs="24" :sm="12">
           <a-form-item :label="$t('fin.settlementPage.account')" name="accountId" :rules="[{ required: true, message: $t('fin.settlementPage.accountRequired') }]">
-            <AccountSelect v-model:value="form.accountId" :roles="['CASH', 'BANK']" :placeholder="$t('fin.settlementPage.accountPlaceholder')" />
+            <CashAccountSelect v-model:value="form.accountId" :placeholder="$t('fin.settlementPage.accountPlaceholder')" />
           </a-form-item>
         </a-col>
         <a-col :xs="24" :sm="12">
@@ -144,7 +144,7 @@ import { message } from 'ant-design-vue'
 import SubPage from '@/components/SubPage.vue'
 import DictTag from '@/components/DictTag.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
-import AccountSelect from './AccountSelect.vue'
+import CashAccountSelect from '@/components/fin/CashAccountSelect.vue'
 import SettlementAdvances from './SettlementAdvances.vue'
 import SourceDocLink from '@/components/common/SourceDocLink.vue'
 import { addSettlement, getSettlement, settlementAdvances, unsettledBills, updateSettlement } from '@/api/fin'

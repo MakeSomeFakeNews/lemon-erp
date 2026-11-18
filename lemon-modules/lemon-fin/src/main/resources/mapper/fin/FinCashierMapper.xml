@@ -9,16 +9,27 @@
         </choose>
     </sql>
 
+    <!-- 资金账户的入账科目，有启用日期的只取启用日期当天及以后的凭证 -->
+    <sql id="scopeFilter">
+        AND (<foreach collection="scopes" item="s" separator=" OR ">(e.account_id = #{s.accountId}<if test="s.from != null"> AND v.voucher_date &gt;= #{s.from}</if>)</foreach>)
+    </sql>
+
+    <!-- 没有启用日期的账户计入科目期初余额 -->
+    <sql id="openingUnion">
+        <if test="openingIds != null and !openingIds.isEmpty()">
+            UNION ALL
+            SELECT o.account_id, o.debit - o.credit FROM fin_account_opening o
+            WHERE o.account_id IN <foreach collection="openingIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+    </sql>
+
     <select id="sumBefore" resultType="java.math.BigDecimal">
         SELECT COALESCE(SUM(t.amount), 0) FROM (
-            SELECT e.debit - e.credit AS amount
+            SELECT e.account_id, e.debit - e.credit AS amount
             FROM fin_voucher_entry e
             JOIN fin_voucher v ON v.id = e.voucher_id
-            WHERE v.voucher_date &lt; #{date} <include refid="statusFilter"/>
-              AND e.account_id IN <foreach collection="accountIds" item="id" open="(" separator="," close=")">#{id}</foreach>
-            UNION ALL
-            SELECT o.debit - o.credit FROM fin_account_opening o
-            WHERE o.account_id IN <foreach collection="accountIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+            WHERE v.voucher_date &lt; #{date} <include refid="statusFilter"/> <include refid="scopeFilter"/>
+            <include refid="openingUnion"/>
         ) t
     </select>
 
@@ -29,8 +40,7 @@
         FROM fin_voucher_entry e
         JOIN fin_voucher v ON v.id = e.voucher_id
         JOIN fin_account a ON a.id = e.account_id
-        WHERE v.voucher_date &gt;= #{begin} AND v.voucher_date &lt;= #{end} <include refid="statusFilter"/>
-          AND e.account_id IN <foreach collection="accountIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        WHERE v.voucher_date &gt;= #{begin} AND v.voucher_date &lt;= #{end} <include refid="statusFilter"/> <include refid="scopeFilter"/>
         ORDER BY v.voucher_date, v.period, v.voucher_seq, e.seq
     </select>
 
@@ -48,8 +58,7 @@
                SUM(CASE WHEN e.credit &lt;&gt; 0 THEN 1 ELSE 0 END) AS "outCount"
         FROM fin_voucher_entry e
         JOIN fin_voucher v ON v.id = e.voucher_id
-        WHERE v.voucher_date &gt;= #{begin} AND v.voucher_date &lt;= #{end} <include refid="statusFilter"/>
-          AND e.account_id IN <foreach collection="accountIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        WHERE v.voucher_date &gt;= #{begin} AND v.voucher_date &lt;= #{end} <include refid="statusFilter"/> <include refid="scopeFilter"/>
         GROUP BY e.account_id
     </select>
 
@@ -58,11 +67,8 @@
             SELECT e.account_id, e.debit - e.credit AS amount
             FROM fin_voucher_entry e
             JOIN fin_voucher v ON v.id = e.voucher_id
-            WHERE v.voucher_date &lt; #{date} <include refid="statusFilter"/>
-              AND e.account_id IN <foreach collection="accountIds" item="id" open="(" separator="," close=")">#{id}</foreach>
-            UNION ALL
-            SELECT o.account_id, o.debit - o.credit FROM fin_account_opening o
-            WHERE o.account_id IN <foreach collection="accountIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+            WHERE v.voucher_date &lt; #{date} <include refid="statusFilter"/> <include refid="scopeFilter"/>
+            <include refid="openingUnion"/>
         ) t
         GROUP BY t.account_id
     </select>
@@ -72,6 +78,14 @@
         FROM fin_settlement
         WHERE voucher_id IS NULL AND status = 'APPROVED'
         GROUP BY kind
+    </select>
+
+    <select id="sumUnvoucheredByAccount" resultType="com.lemon.erp.modules.fin.dto.CashierViews$AccountTotal">
+        SELECT account_id AS "accountId", COUNT(*) AS "inCount",
+               COALESCE(SUM(CASE WHEN kind = 'RECEIPT' THEN amount ELSE -amount END), 0) AS "balance"
+        FROM fin_settlement
+        WHERE voucher_id IS NULL AND status = 'APPROVED' AND settle_date &lt;= #{end}
+        GROUP BY account_id
     </select>
 
 </mapper>

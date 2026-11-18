@@ -93,7 +93,7 @@
           </a-col>
           <a-col :span="12">
             <a-form-item :label="$t('fin.advance.settleAccount')" name="accountId" :rules="[{ required: true, message: $t('common.rule.requiredSelect', { name: $t('fin.advance.settleAccount') }) }]">
-              <AccountSelect v-model:value="form.accountId" :roles="['CASH', 'BANK']" :placeholder="$t('fin.advance.settleAccountPh')" />
+              <CashAccountSelect v-model:value="form.accountId" :placeholder="$t('fin.advance.settleAccountPh')" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -198,7 +198,7 @@ import { useI18n } from 'vue-i18n'
 import { InteractionOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import DictTag from '@/components/DictTag.vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
-import AccountSelect from '@/components/fin/AccountSelect.vue'
+import CashAccountSelect from '@/components/fin/CashAccountSelect.vue'
 import TableActions from '@/components/common/TableActions.vue'
 import { actionColumn } from '@/components/common/tableActions'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'

@@ -157,7 +157,7 @@ public class FinClaimService {
         BigDecimal offset = c.getLoanId() == null ? BigDecimal.ZERO : loanService.outstanding(c.getLoanId()).min(c.getAmount());
         BigDecimal cash = c.getAmount().subtract(offset);
         if (cash.signum() > 0) {
-            accountService.requireCashAccount(accountId);
+            accountService.requireCashAccount(accountId, d);
         }
         transit(id, ExpenseClaimStatus.APPROVED, ExpenseClaimStatus.PAID);
         String summary = "报销 " + c.getClaimNo() + " " + c.getUserName() + (c.getRemark() == null ? "" : " " + c.getRemark()); // i18n-ignore

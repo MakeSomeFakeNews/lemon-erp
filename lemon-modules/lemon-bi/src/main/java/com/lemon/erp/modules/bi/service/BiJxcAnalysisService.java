@@ -13,6 +13,7 @@ import com.lemon.erp.modules.bi.dto.JxcViews;
 import com.lemon.erp.modules.bi.mapper.BiJxcMapper;
 import com.lemon.erp.modules.bi.model.GoodsRankBy;
 import com.lemon.erp.modules.fin.dto.CashierViews;
+import com.lemon.erp.modules.fin.model.CashAccountType;
 import com.lemon.erp.modules.fin.service.FinCashierService;
 import com.lemon.erp.modules.scm.dto.RfmSettings;
 import com.lemon.erp.modules.scm.model.RfmSegment;
@@ -46,9 +47,6 @@ public class BiJxcAnalysisService {
     static final int DEFAULT_OVERSTOCK_DAYS = 90;
     /** 周转天数的计算精度 */
     private static final int RATIO_SCALE = 2;
-    /** 资金账户中库存现金科目的编码前缀，其余为银行存款等 */
-    private static final String CASH_CODE = "1001";
-
     private final BiJxcMapper jxcMapper;
     private final FinCashierService cashierService;
     private final ScmRfmService rfmService;
@@ -80,7 +78,9 @@ public class BiJxcAnalysisService {
         CashierViews.Daily daily = cashierService.daily(date, date, false);
         List<JxcViews.FundRow> funds = daily.rows().stream()
                 .map(r -> new JxcViews.FundRow(r.accountId(), r.code(), r.name(), Decimals.money(r.close()))).toList();
-        BigDecimal cash = Decimals.sum(funds.stream().filter(f -> f.code().startsWith(CASH_CODE)).toList(), JxcViews.FundRow::balance);
+        // 现金：类型为现金的资金账户，其余为银行存款、微信、支付宝等
+        BigDecimal cash = Decimals.money(daily.rows().stream().filter(r -> r.type() == CashAccountType.CASH)
+                .map(CashierViews.DailyRow::close).reduce(BigDecimal.ZERO, BigDecimal::add));
         BigDecimal bank = Decimals.sum(funds, JxcViews.FundRow::balance).subtract(cash);
 
         List<JxcViews.InventoryRow> inventory = jxcMapper.selectInventory(date);

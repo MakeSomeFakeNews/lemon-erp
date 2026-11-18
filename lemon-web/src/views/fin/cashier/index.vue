@@ -6,13 +6,13 @@
         <template #rightExtra>
           <a-space>
             <a-range-picker v-model:value="range" :allow-clear="false" value-format="YYYY-MM-DD" />
-            <a-checkbox v-model:checked="posted">{{ $t('fin.cashier.postedOnly') }}</a-checkbox>
+            <a-checkbox v-if="tab !== 'check'" v-model:checked="posted">{{ $t('fin.cashier.postedOnly') }}</a-checkbox>
           </a-space>
         </template>
 
         <a-tab-pane key="journal" :tab="$t('fin.cashier.journal')">
           <div class="filters">
-            <AccountSelect v-model:value="accountId" all :roles="CASH_ROLES" allow-clear :placeholder="$t('fin.cashier.allAccounts')" class="account" />
+            <CashAccountSelect v-model:value="accountId" all allow-clear :placeholder="$t('fin.cashier.allAccounts')" class="account" />
             <a-button type="primary" @click="loadJournal">{{ $t('common.action.query') }}</a-button>
             <span class="sub-text">{{ $t('fin.cashier.journalTip') }}</span>
           </div>
@@ -41,7 +41,10 @@
                 </template>
               </template>
               <template v-else-if="column.key === 'account'">
-                <span v-if="record.accountCode">{{ record.accountCode }} {{ record.accountName }}</span>
+                <template v-if="record.accountCode">
+                  {{ record.accountName }}
+                  <div class="sub-text">{{ record.accountCode }}</div>
+                </template>
               </template>
               <template v-else-if="['debit', 'credit'].includes(column.key)">
                 <span class="num">{{ moneyOrBlank(record[column.key]) }}</span>
@@ -70,7 +73,8 @@
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'account'">
-                <a @click="openJournal(record.accountId)">{{ record.code }}</a> {{ record.name }}
+                <a @click="openJournal(record.accountId)">{{ record.name }}</a>
+                <span class="sub-text ml">{{ record.code }}</span>
               </template>
               <template v-else-if="['open', 'debit', 'credit', 'close'].includes(column.key)">
                 <span :class="['num', { neg: Number(record[column.key]) < 0 }]">{{ formatMoney(record[column.key]) }}</span>
@@ -91,6 +95,39 @@
             </template>
           </a-table>
         </a-tab-pane>
+
+        <a-tab-pane key="check" :tab="$t('fin.cashier.check')">
+          <div class="filters">
+            <a-button type="primary" @click="loadCheck">{{ $t('common.action.query') }}</a-button>
+            <span class="sub-text">{{ $t('fin.cashier.checkTip') }}</span>
+          </div>
+          <a-table
+            row-key="cashAccountId"
+            size="small"
+            bordered
+            :columns="checkColumns"
+            :data-source="checkRows"
+            :loading="checkLoading"
+            :pagination="false"
+            :scroll="{ x: 1600, y: '100%' }"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'account'">
+                <a @click="openJournal(record.accountId)">{{ record.name }}</a>
+                <div class="sub-text">{{ record.accountCode }} {{ record.accountName }}</div>
+              </template>
+              <template v-else-if="column.key === 'matched'">
+                <a-tag :color="record.matched ? 'green' : 'red'" :bordered="false">{{ record.matched ? $t('fin.cashier.matched') : $t('fin.cashier.unmatched') }}</a-tag>
+              </template>
+              <template v-else-if="column.key === 'unvouchered'">
+                <span v-if="record.unvoucheredCount">{{ $t('fin.cashier.unvoucheredCell', { n: record.unvoucheredCount, amount: formatMoney(record.unvoucheredAmount) }) }}</span>
+              </template>
+              <template v-else-if="column.money">
+                <span :class="['num', { neg: Number(record[column.key]) < 0 }]">{{ formatMoney(record[column.key]) }}</span>
+              </template>
+            </template>
+          </a-table>
+        </a-tab-pane>
       </a-tabs>
     </a-card>
     <VoucherDetail v-model:open="voucherOpen" :voucher-id="voucherId" />
@@ -102,18 +139,16 @@ import { computed, onMounted, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { useI18n } from 'vue-i18n'
 import DictTag from '@/components/DictTag.vue'
-import AccountSelect from '@/components/fin/AccountSelect.vue'
+import CashAccountSelect from '@/components/fin/CashAccountSelect.vue'
 import VoucherDetail from '@/components/fin/VoucherDetail.vue'
-import { cashDaily, cashJournal, cashUnvouchered } from '@/api/fin'
+import { cashCheck, cashDaily, cashJournal, cashUnvouchered } from '@/api/fin'
 import { formatMoney, moneyOrBlank } from '@/components/fin/fin'
 import { useDict } from '@/composables/useDict'
 
 import { LedgerRowType, VoucherStatus } from '@/constants/enums'
-/** 出纳管理：现金 / 银行日记账（逐笔收支、对方科目、每日小计）与资金日报（各账户期初、收入、支出、余额） */
+/** 出纳管理：资金账户的日记账（逐笔收支、对方科目、每日小计）、资金日报（各账户期初、收入、支出、余额）和核对总账（日记账与总账科目余额比对） */
 const { t } = useI18n()
 useDict('fin_voucher_status', 'fin_voucher_source')
-/** 货币资金科目（库存现金、银行存款，按凭证科目设置） */
-const CASH_ROLES = ['CASH', 'BANK']
 const tab = ref('daily')
 const range = ref([dayjs().startOf('month').format('YYYY-MM-DD'), dayjs().format('YYYY-MM-DD')])
 const posted = ref(false)
@@ -170,8 +205,48 @@ async function loadDaily() {
   }
 }
 
-watch([range, posted], () => (tab.value === 'daily' ? loadDaily() : loadJournal()))
-watch(tab, (v) => (v === 'daily' ? loadDaily() : loadJournal()))
+// ---------------------------------------------------------------- 核对总账
+const moneyColumn = (key, title) => ({ title, key, width: 120, align: 'right', money: true })
+const checkColumns = [
+  { title: t('fin.cashier.account'), key: 'account', width: 200, fixed: 'left' },
+  {
+    title: t('fin.cashier.journalSide'),
+    children: [
+      moneyColumn('journalOpen', t('fin.cashier.openBalance')),
+      moneyColumn('journalDebit', t('fin.cashier.income')),
+      moneyColumn('journalCredit', t('fin.cashier.expense')),
+      moneyColumn('journalClose', t('fin.cashier.closeBalance'))
+    ]
+  },
+  {
+    title: t('fin.cashier.ledgerSide'),
+    children: [
+      moneyColumn('ledgerOpen', t('fin.cashier.openBalance')),
+      moneyColumn('ledgerDebit', t('fin.cashier.debit')),
+      moneyColumn('ledgerCredit', t('fin.cashier.credit')),
+      moneyColumn('ledgerClose', t('fin.cashier.closeBalance'))
+    ]
+  },
+  moneyColumn('difference', t('fin.cashier.difference')),
+  moneyColumn('unposted', t('fin.cashier.unposted')),
+  moneyColumn('openingDifference', t('fin.cashier.openingDifference')),
+  { title: t('fin.cashier.unvoucheredCol'), key: 'unvouchered', width: 150 },
+  { title: t('fin.cashier.checkResult'), key: 'matched', width: 90, fixed: 'right' }
+]
+const checkRows = ref([])
+const checkLoading = ref(false)
+async function loadCheck() {
+  checkLoading.value = true
+  try {
+    checkRows.value = await cashCheck({ begin: range.value[0], end: range.value[1] })
+  } finally {
+    checkLoading.value = false
+  }
+}
+
+const loaders = { daily: () => loadDaily(), journal: () => loadJournal(), check: () => loadCheck() }
+watch([range, posted], () => loaders[tab.value]())
+watch(tab, (v) => loaders[v]())
 
 // ---------------------------------------------------------------- 未生成凭证的收付款
 const unvouchered = ref({})

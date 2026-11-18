@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinBankOpeningItemMapper">
+
+    <select id="selectByCashAccount" resultType="com.lemon.erp.modules.fin.entity.FinBankOpeningItem">
+        SELECT i.*, v.voucher_no, v.voucher_date, s.txn_date AS statement_date
+        FROM fin_bank_opening_item i
+        LEFT JOIN fin_voucher_entry e ON e.id = i.entry_id
+        LEFT JOIN fin_voucher v ON v.id = e.voucher_id
+        LEFT JOIN fin_bank_statement s ON s.id = i.statement_id
+        WHERE i.cash_account_id = #{cashAccountId}
+        ORDER BY i.txn_date, i.id
+    </select>
+
+</mapper>

@@ -120,7 +120,7 @@ public class FinIoService {
     @Transactional
     public Long createGenerated(IoCategoryCode code, LocalDate date, Long accountId, Long supplierId, Long deptId, BigDecimal amount,
                                 BillSource sourceType, Long sourceId, String sourceNo, String remark) {
-        accountService.requireCashAccount(accountId);
+        accountService.requireCashAccount(accountId, date);
         periodGuard.checkOpen(date, "fin.label.incomeExpenseDoc");
         FinIoCategory category = categoryService.getBuiltin(code);
         FinIoDoc d = new FinIoDoc();
@@ -198,7 +198,7 @@ public class FinIoService {
             throw new BizException("fin.error.ioDocAlreadyConfirmed", d.getDocNo());
         }
         periodGuard.checkOpen(d.getDocDate(), "fin.label.incomeExpenseDoc");
-        accountService.requireCashAccount(d.getAccountId());
+        accountService.requireCashAccount(d.getAccountId(), d.getDocDate());
         Long voucherId = voucherService.createGenerated(d.getDocDate(), VoucherSource.INCOME_EXPENSE, d.getDocNo(), lines(d));
         StatusTransitions.change(docMapper, FinIoDoc::getId, id, FinIoDoc::getStatus, IoStatus.DRAFT, IoStatus.CONFIRMED,
                 w -> w.set(FinIoDoc::getVoucherId, voucherId).set(FinIoDoc::getConfirmBy, SecurityUtils.getUserIdOrNull())
@@ -293,7 +293,7 @@ public class FinIoService {
 
     /** 校验并转换明细：类别须启用且与单据方向一致 */
     private List<FinIoDocItem> validate(IoRequests.Save req) {
-        accountService.requireCashAccount(req.accountId());
+        accountService.requireCashAccount(req.accountId(), req.docDate());
         periodGuard.checkOpen(req.docDate(), "fin.label.incomeExpenseDoc");
         if (SettleMethods.NOTE.equals(req.settleMethod())) {
             throw new BizException("fin.error.ioNoteSettleMethod");

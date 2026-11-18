@@ -25,7 +25,7 @@
       </a-col>
       <a-col v-if="settled && form.freightSettle === FreightSettle.CASH" :xs="24" :sm="8" :lg="5">
         <a-form-item :label="$t('scm.freight.account')" name="freightAccountId" :rules="requiredRule($t('scm.freight.selectAccount'))">
-          <AccountSelect v-model:value="form.freightAccountId" :roles="['CASH', 'BANK']" :placeholder="$t('scm.freight.selectAccount')" />
+          <CashAccountSelect v-model:value="form.freightAccountId" :placeholder="$t('scm.freight.selectAccount')" />
         </a-form-item>
       </a-col>
       <a-col v-if="showCarrier" :xs="24" :sm="8" :lg="5">
@@ -47,7 +47,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import AccountSelect from '@/components/fin/AccountSelect.vue'
+import CashAccountSelect from '@/components/fin/CashAccountSelect.vue'
 import PartnerSelect from './PartnerSelect.vue'
 import { FREIGHT_BEARERS, freightSettled } from './scm'
 import { FreightBearer, FreightSettle, PurchaseFreightCost } from '@/constants/enums'

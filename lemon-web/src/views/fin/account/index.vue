@@ -6,9 +6,12 @@
           <a-input-search v-model:value="keyword" :placeholder="$t('fin.account.keywordPh')" allow-clear class="search" @search="load" />
           <a-button @click="toggleExpand">{{ expandedKeys.length ? $t('fin.account.collapseAll') : $t('fin.account.expandAll') }}</a-button>
         </a-space>
-        <a-button v-perm="'fin:account:add'" type="primary" @click="openForm()">
-          <template #icon><PlusOutlined /></template>{{ $t('fin.account.addTop') }}
-        </a-button>
+        <a-space wrap>
+          <a-button v-perm="'fin:accountRule:edit'" @click="designateRef.open()">{{ $t('fin.account.designate') }}</a-button>
+          <a-button v-perm="'fin:account:add'" type="primary" @click="openForm()">
+            <template #icon><PlusOutlined /></template>{{ $t('fin.account.addTop') }}
+          </a-button>
+        </a-space>
       </div>
       <a-table
         v-model:expanded-row-keys="expandedKeys"
@@ -24,6 +27,7 @@
           <template v-if="column.key === 'name'">
             {{ record.name }}
             <a-tag v-if="!record.children" :bordered="false" class="leaf-tag">{{ $t('fin.account.leaf') }}</a-tag>
+            <a-tag v-if="designated[record.code]" color="gold" :bordered="false" class="leaf-tag">{{ designated[record.code] }}</a-tag>
           </template>
           <template v-else-if="column.key === 'category'">
             <DictTag type="fin_account_category" :value="record.category" />
@@ -86,6 +90,7 @@
         </a-form-item>
       </a-form>
     </a-modal>
+    <DesignateModal ref="designateRef" @saved="load" />
   </div>
 </template>
 
@@ -98,12 +103,13 @@ import DictTag from '@/components/DictTag.vue'
 import StatusSwitch from '@/components/StatusSwitch.vue'
 import TableActions from '@/components/common/TableActions.vue'
 import { actionColumn } from '@/components/common/tableActions'
-import { accountTree, addAccount, changeAccountStatus, deleteAccount, updateAccount } from '@/api/fin'
+import { accountScopes, accountTree, addAccount, changeAccountStatus, deleteAccount, updateAccount } from '@/api/fin'
 import { useDict } from '@/composables/useDict'
 import { useUserStore } from '@/store/user'
 import { toOptions } from '@/utils/dict'
 import { AUX_ITEMS, auxItemsOf } from '@/components/fin/fin'
 import { useAction } from '@/composables/useAction'
+import DesignateModal from './DesignateModal.vue'
 
 import { AccountDirection } from '@/constants/enums'
 const { t } = useI18n()
@@ -135,6 +141,15 @@ const rowActions = (record) => [
   }
 ]
 
+/** 指定科目（现金、银行、其他货币资金科目）：编码 → 标签 */
+const designateRef = ref()
+const designated = ref({})
+const SCOPE_LABELS = { CASH: 'fin.account.cashSubject', BANK: 'fin.account.bankSubject', OTHER_FUNDS: 'fin.account.otherFundsSubject' }
+async function loadScopes() {
+  const scopes = await accountScopes()
+  designated.value = Object.fromEntries(Object.entries(scopes).filter(([role]) => SCOPE_LABELS[role]).map(([role, code]) => [code, t(SCOPE_LABELS[role])]))
+}
+
 const keyword = ref('')
 const list = ref([])
 const loading = ref(false)
@@ -145,7 +160,7 @@ const allParentKeys = (nodes) => nodes.flatMap((n) => (n.children ? [n.id, ...al
 async function load() {
   loading.value = true
   try {
-    list.value = await accountTree({ keyword: keyword.value || undefined })
+    ;[list.value] = await Promise.all([accountTree({ keyword: keyword.value || undefined }), loadScopes()])
     expandedKeys.value = allParentKeys(list.value)
   } finally {
     loading.value = false
