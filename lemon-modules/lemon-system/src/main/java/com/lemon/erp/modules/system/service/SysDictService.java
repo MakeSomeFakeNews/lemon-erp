@@ -7,6 +7,9 @@ import com.lemon.erp.common.exception.BizException;
 import com.lemon.erp.common.i18n.Messages;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.cache.CacheService;
+import com.lemon.erp.framework.data.Sort;
+import com.lemon.erp.framework.data.SortParam;
+import com.lemon.erp.framework.data.Sorts;
 import com.lemon.erp.framework.dict.DictExtension;
 import com.lemon.erp.framework.dict.DictLookup;
 import com.lemon.erp.framework.dict.DictSource;
@@ -72,7 +75,27 @@ public class SysDictService implements DictLookup {
         return PageResult.of(page);
     }
 
-    /** 全部业务字典类型（业务字典页面左侧列表） */
+    /** 业务字典页面可排序的列（名称按界面语言翻译，数据库中的名称与显示不一致，不参与排序） */
+    private static final Sorts.Fields BUSINESS_TYPE_SORTS = Sorts.fields("type");
+
+    /**
+     * 业务字典类型（业务字典页面，分页，issue #135）：keyword 匹配名称、类型编码、备注；
+     * types 为前端按界面语言的字典名称译文匹配到的类型编码（英文界面按英文名称搜索），与 keyword 任一匹配即可。默认按类型编码排序
+     */
+    public PageResult<SysDictType> pageBusinessTypes(long current, long size, String keyword, List<String> types, SortParam sortParam) {
+        Sort sort = BUSINESS_TYPE_SORTS.resolve(sortParam);
+        String kw = StringUtils.hasText(keyword) ? keyword.trim() : null;
+        List<String> matched = types == null ? List.of() : types.stream().filter(StringUtils::hasText).distinct().toList();
+        Page<SysDictType> page = typeMapper.selectPage(Page.of(current, size), Wrappers.<SysDictType>lambdaQuery()
+                .eq(SysDictType::getKind, DictKind.BUSINESS)
+                .and(kw != null, w -> w.like(SysDictType::getName, kw).or().like(SysDictType::getType, kw)
+                        .or().like(SysDictType::getRemark, kw).or(!matched.isEmpty()).in(!matched.isEmpty(), SysDictType::getType, matched))
+                .orderBy(true, sort == null || !sort.isDesc(), SysDictType::getType));
+        page.getRecords().forEach(this::fillExt);
+        return PageResult.of(page);
+    }
+
+    /** 全部业务字典类型（新租户复制业务字典） */
     public List<SysDictType> businessTypes() {
         List<SysDictType> list = typeMapper.selectList(Wrappers.<SysDictType>lambdaQuery().eq(SysDictType::getKind, DictKind.BUSINESS)
                 .orderByAsc(SysDictType::getType));

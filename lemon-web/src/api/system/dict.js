@@ -16,7 +16,8 @@ export const updateDictData = (id, data) => request.put(`/system/dict/data/${id}
 export const deleteDictData = (id) => request.delete(`/system/dict/data/${ids(id)}`)
 
 // 业务字典（当前租户的取值）
-export const listBizDictTypes = () => request.get('/system/biz-dict/types')
+/** 业务字典类型（分页）：keyword、types（按字典名称译文匹配到的类型编码，逗号分隔）、sortField / sortOrder */
+export const pageBizDictTypes = (params) => request.get('/system/biz-dict/types', { params })
 export const pageBizDictData = (params) => request.get('/system/biz-dict/data', { params })
 export const addBizDictData = (data) => request.post('/system/biz-dict/data', data)
 export const updateBizDictData = (id, data) => request.put(`/system/biz-dict/data/${id}`, data)

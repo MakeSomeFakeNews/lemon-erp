@@ -28,6 +28,11 @@ export default {
       column: 'Two columns'
     },
     mobileLayoutTip: 'Phones always use the drawer menu; the layout applies on desktop',
+    sideGroups: 'Sidebar groups',
+    sideGroupsCollapse: 'Collapsible',
+    sideGroupsAccordion: 'Accordion',
+    sideGroupsExpand: 'Expanded',
+    sideGroupsTip: 'How menu groups within a module (e.g. Supply Chain → Purchasing / Sales) are shown in the sidebar. Collapsible: only the group of the current page is expanded by default; click a group name to expand or collapse it, and the state is remembered in this browser. Accordion: only one group is expanded at a time. Expanded: all groups and pages are always shown',
     display: 'Display',
     tabs: 'Show tabs',
     compact: 'Compact mode',

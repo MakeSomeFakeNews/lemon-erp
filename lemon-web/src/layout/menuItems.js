@@ -8,8 +8,8 @@ import { HOME_PATH } from './useModuleNav'
 /**
  * 把菜单树转成 a-menu 的 items（侧边栏、顶部菜单、移动端抽屉共用）。
  * 一级目录是模块；模块下不填路由地址的二级目录是分组，按 groups 选择显示方式：
- * - 'group'   分组标题（不折叠），侧边栏当前模块、移动端完整菜单、顶部菜单的下拉面板使用
- * - 'submenu' 可折叠的子菜单，侧边菜单布局的多级树使用
+ * - 'group'   分组标题（不折叠），顶部菜单的下拉面板、收起成图标的侧边栏，以及界面设置「侧边栏分组」为始终展开时使用
+ * - 'submenu' 可折叠的子菜单，侧边栏（各布局、移动端抽屉）在「侧边栏分组」为可折叠 / 手风琴时使用
  */
 export const menuIcon = (name) => (name ? () => h(MenuIcon, { name }) : undefined)
 
@@ -22,9 +22,10 @@ export function toMenuItems(menus, { parentPath = '', depth = 0, groups = 'group
       const children = toMenuItems(m.children, { parentPath: fullPath, depth: depth + 1, groups })
       if (!children.length) return null
       if (depth === 0) return { key: fullPath, label: m.name, icon: menuIcon(m.icon), children }
-      // 分组通常没有路由地址，完整路径与模块相同，用菜单 ID 作 key
+      // 分组通常没有路由地址，完整路径与模块相同，用菜单 ID 作 key；子菜单与分组标题一样不显示图标
+      // （各分组有的配了图标、有的没有，文字对不齐）
       return groups === 'submenu'
-        ? { key: `group-${m.id}`, label: m.name, icon: menuIcon(m.icon), children }
+        ? { key: `group-${m.id}`, label: m.name, children }
         : { type: 'group', key: `group-${m.id}`, label: m.name, children }
     })
     .filter(Boolean)
@@ -43,6 +44,19 @@ export function parentKeys(items, key, parents = []) {
       const found = parentKeys(item.children, key, item.type === 'group' ? parents : [...parents, item.key])
       if (found) return found
     }
+  }
+  return null
+}
+
+/** 与 key 同一层（同一父项下）的可展开项的 key，含 key 本身（手风琴：展开一项时收起同层的其他项） */
+export function siblingKeys(items, key) {
+  for (const item of items) {
+    if (item.key === key) return items.filter((i) => i.children && i.type !== 'group').map((i) => i.key)
+  }
+  for (const item of items) {
+    if (!item.children) continue
+    const found = siblingKeys(item.children, key)
+    if (found) return found
   }
   return null
 }

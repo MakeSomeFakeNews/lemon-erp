@@ -4,6 +4,7 @@ import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.common.result.R;
 import com.lemon.erp.common.validation.Create;
 import com.lemon.erp.common.validation.Update;
+import com.lemon.erp.framework.data.SortParam;
 import com.lemon.erp.framework.log.OperLog;
 import com.lemon.erp.framework.log.OperType;
 import com.lemon.erp.modules.system.entity.SysDictData;
@@ -35,10 +36,15 @@ public class SysBizDictController {
 
     private final SysDictService dictService;
 
+    /** 业务字典类型（分页）：keyword 匹配名称、类型编码、备注，types 为前端按字典名称译文匹配到的类型编码；可按类型编码排序 */
     @GetMapping("/types")
     @PreAuthorize("@ss.hasPerm('sys:bizdict:list')")
-    public R<List<SysDictType>> types() {
-        return R.ok(dictService.businessTypes());
+    public R<PageResult<SysDictType>> types(@RequestParam(defaultValue = "1") long current,
+                                            @RequestParam(defaultValue = "10") long size,
+                                            @RequestParam(required = false) String keyword,
+                                            @RequestParam(required = false) List<String> types,
+                                            SortParam sort) {
+        return R.ok(dictService.pageBusinessTypes(current, size, keyword, types, sort));
     }
 
     @GetMapping("/data")

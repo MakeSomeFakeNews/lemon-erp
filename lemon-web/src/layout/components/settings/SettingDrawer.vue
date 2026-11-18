@@ -56,6 +56,14 @@
     </section>
 
     <section class="section">
+      <div class="section-title">
+        {{ $t('layout.settings.sideGroups') }}
+        <a-tooltip :title="$t('layout.settings.sideGroupsTip')"><QuestionCircleOutlined class="help" /></a-tooltip>
+      </div>
+      <a-segmented :value="settings.sideGroups" :options="sideGroupOptions" block @change="(v) => set('sideGroups', v)" />
+    </section>
+
+    <section class="section">
       <div class="section-title">{{ $t('layout.settings.display') }}</div>
       <div class="row">
         <span>{{ $t('layout.settings.tabs') }}</span>
@@ -93,7 +101,7 @@ import { BgColorsOutlined, CheckOutlined, QuestionCircleOutlined, UndoOutlined }
 import { LOCALES, currentLocale } from '@/locales'
 import { useAppStore } from '@/store/app'
 import { useConfigStore } from '@/store/config'
-import { LAYOUTS, PRESET_COLORS, ThemeMode } from '@/utils/uiSettings'
+import { LAYOUTS, PRESET_COLORS, SideGroups, ThemeMode } from '@/utils/uiSettings'
 import LayoutThumb from './LayoutThumb.vue'
 
 /** 界面设置抽屉：修改立即生效（实时预览），由 store/app.js 写入本地缓存并防抖保存到服务端 */
@@ -110,6 +118,11 @@ const modeOptions = computed(() => [
   { value: ThemeMode.LIGHT, label: t('layout.settings.light') },
   { value: ThemeMode.DARK, label: t('layout.settings.dark') },
   { value: ThemeMode.SYSTEM, label: t('layout.settings.system') }
+])
+const sideGroupOptions = computed(() => [
+  { value: SideGroups.COLLAPSE, label: t('layout.settings.sideGroupsCollapse') },
+  { value: SideGroups.ACCORDION, label: t('layout.settings.sideGroupsAccordion') },
+  { value: SideGroups.EXPAND, label: t('layout.settings.sideGroupsExpand') }
 ])
 const localeOptions = LOCALES.map((l) => ({ value: l.value, label: l.label }))
 

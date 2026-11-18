@@ -2,7 +2,7 @@ import { LOCALES } from '@/locales'
 
 /**
  * 界面设置（每个用户一份，保存在服务端 /profile/settings/ui，本地 localStorage 作为缓存）：
- * 主题模式、主题色、布局、多标签页、紧凑模式、侧边栏折叠，以及界面语言（见 store/app.js 的说明）
+ * 主题模式、主题色、布局、侧边栏分组、多标签页、紧凑模式、侧边栏折叠，以及界面语言（见 store/app.js 的说明）
  */
 
 /** 主题模式 */
@@ -18,6 +18,15 @@ export const ThemeMode = { LIGHT: 'light', DARK: 'dark', SYSTEM: 'system' }
  */
 export const LayoutMode = { MIX: 'mix', SIDE: 'side', TOP: 'top', COLUMN: 'column' }
 export const LAYOUTS = [LayoutMode.MIX, LayoutMode.SIDE, LayoutMode.TOP, LayoutMode.COLUMN]
+
+/**
+ * 侧边栏中模块下的分组（二级目录）的显示方式（issue #133），顶部模块 + 侧边菜单、侧边菜单、双栏布局和手机抽屉菜单通用：
+ * - collapse  可折叠（默认）：分组是可展开 / 收起的子菜单，默认只展开当前页面所在的分组，展开状态记在本浏览器
+ * - accordion 手风琴：同一层同时只展开一个分组，展开一个时收起其他
+ * - expand    始终展开：分组标题不可折叠，全部页面都显示（旧版本的样式）
+ * 侧边栏收起成图标时不显示分组（分隔线隔开），不受此项影响
+ */
+export const SideGroups = { COLLAPSE: 'collapse', ACCORDION: 'accordion', EXPAND: 'expand' }
 
 /** 品牌色（拂晓蓝），也是默认主题色 */
 export const BRAND_COLOR = '#1677ff'
@@ -40,6 +49,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   themeMode: ThemeMode.SYSTEM,
   primaryColor: BRAND_COLOR,
   layout: LayoutMode.MIX,
+  sideGroups: SideGroups.COLLAPSE,
   tabs: true,
   compact: false,
   collapsed: false
@@ -62,6 +72,7 @@ export function normalizeSettings(raw) {
     themeMode: Object.values(ThemeMode).includes(s.themeMode) ? s.themeMode : legacyMode,
     primaryColor: COLOR_RE.test(s.primaryColor) ? s.primaryColor.toLowerCase() : DEFAULT_SETTINGS.primaryColor,
     layout: LAYOUTS.includes(s.layout) ? s.layout : DEFAULT_SETTINGS.layout,
+    sideGroups: Object.values(SideGroups).includes(s.sideGroups) ? s.sideGroups : DEFAULT_SETTINGS.sideGroups,
     tabs: bool(s.tabs, DEFAULT_SETTINGS.tabs),
     compact: bool(s.compact, DEFAULT_SETTINGS.compact),
     collapsed: bool(s.collapsed, DEFAULT_SETTINGS.collapsed)
