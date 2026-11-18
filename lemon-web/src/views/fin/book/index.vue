@@ -10,6 +10,8 @@
             <PeriodPicker v-model:value="range.end" />
             <a-checkbox v-model:checked="showZero">{{ $t('fin.book.showZero') }}</a-checkbox>
             <a-button type="primary" @click="loadBalance">{{ $t('common.action.query') }}</a-button>
+            <a-button :disabled="!parentKeys.length" @click="expandAll">{{ $t('fin.book.expandAll') }}</a-button>
+            <a-button :disabled="!expandedKeys.length" @click="expandedKeys = []">{{ $t('fin.book.collapseAll') }}</a-button>
             <a-tag v-if="tb" :color="tb.balanced ? 'green' : 'red'" :bordered="false">{{ tb.balanced ? $t('fin.book.balanced') : $t('fin.book.unbalanced') }}</a-tag>
           </div>
           <a-table
@@ -17,14 +19,17 @@
             size="small"
             bordered
             :columns="balanceColumns"
-            :data-source="tb?.rows || []"
+            :data-source="balanceTree"
             :loading="balanceLoading"
             :pagination="false"
+            :expanded-row-keys="expandedKeys"
+            :custom-row="(record) => ({ onDblclick: () => toggleRow(record) })"
             :scroll="{ x: 1000, y: '100%' }"
+            @expanded-rows-change="(keys) => (expandedKeys = keys)"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'account'">
-                <span :style="{ paddingLeft: `${(record.level - 1) * 16}px`, fontWeight: record.level === 1 ? 500 : 400 }">
+                <span :title="record.children ? $t('fin.book.treeTip') : undefined" :style="{ fontWeight: record.level === 1 ? 500 : 400 }">
                   <a @click="openLedger(record)">{{ record.code }}</a> {{ record.name }}
                 </span>
               </template>
@@ -91,6 +96,7 @@
               <a-radio-button v-for="a in AUX_ITEMS" :key="a.value" :value="a.value">{{ a.label }}</a-radio-button>
             </a-radio-group>
             <AccountSelect v-model:value="aux.accountId" :placeholder="$t('fin.book.allAccounts')" allow-clear class="account" />
+            <a-input v-model:value="aux.keyword" :placeholder="$t('fin.book.auxKeyword')" allow-clear class="keyword" @press-enter="loadAux" />
             <span>{{ $t('fin.book.period') }}</span>
             <PeriodPicker v-model:value="range.begin" />
             <span>{{ $t('fin.book.to') }}</span>
@@ -151,13 +157,57 @@ const balanceColumns = [
 ]
 const tb = ref()
 const balanceLoading = ref(false)
+/** 展开的科目（accountId），每次查询后折叠到一级科目 */
+const expandedKeys = ref([])
 async function loadBalance() {
   balanceLoading.value = true
   try {
     tb.value = await trialBalance({ begin: range.begin, end: range.end, showZero: showZero.value })
+    expandedKeys.value = []
   } finally {
     balanceLoading.value = false
   }
+}
+
+/**
+ * 按科目编码组成树：上级编码为去掉末两位（一级科目 4 位），未显示的中间科目跳过，挂到最近的上级；
+ * 没有下级的行不带 children，表格不显示展开按钮
+ */
+const balanceTree = computed(() => {
+  const rows = [...(tb.value?.rows || [])].sort((a, b) => a.code.localeCompare(b.code))
+  const byCode = new Map()
+  const roots = []
+  for (const r of rows) {
+    const node = { ...r }
+    byCode.set(node.code, node)
+    let parent
+    for (let code = node.code.slice(0, -2); code.length >= 4 && !parent; code = code.slice(0, -2)) parent = byCode.get(code)
+    if (parent) (parent.children ||= []).push(node)
+    else roots.push(node)
+  }
+  return roots
+})
+/** 有下级的科目，「全部展开」时全部展开 */
+const parentKeys = computed(() => {
+  const keys = []
+  const walk = (nodes) =>
+    nodes.forEach((n) => {
+      if (!n.children) return
+      keys.push(n.accountId)
+      walk(n.children)
+    })
+  walk(balanceTree.value)
+  return keys
+})
+function expandAll() {
+  expandedKeys.value = parentKeys.value
+}
+/** 双击行展开 / 折叠下级科目 */
+function toggleRow(record) {
+  if (!record.children) return
+  window.getSelection()?.removeAllRanges()
+  const keys = expandedKeys.value
+  expandedKeys.value = keys.includes(record.accountId) ? keys.filter((k) => k !== record.accountId) : [...keys, record.accountId]
 }
 onMounted(loadBalance)
 
@@ -212,12 +262,12 @@ const auxColumns = computed(() => [
   { title: t('fin.book.periodCredit'), key: 'credit', width: 150, align: 'right' },
   { title: t('fin.book.closeBalance'), key: 'balance', width: 170, align: 'right' }
 ])
-const aux = reactive({ dimension: 'PROJECT', accountId: undefined, rows: [], loading: false, loaded: false })
+const aux = reactive({ dimension: 'PROJECT', accountId: undefined, keyword: undefined, rows: [], loading: false, loaded: false })
 async function loadAux() {
   aux.loaded = true
   aux.loading = true
   try {
-    const rows = await auxBalance({ dimension: aux.dimension, begin: range.begin, end: range.end, accountId: aux.accountId })
+    const rows = await auxBalance({ dimension: aux.dimension, begin: range.begin, end: range.end, accountId: aux.accountId, keyword: aux.keyword || undefined })
     aux.rows = rows.map((r, i) => ({ ...r, key: i }))
   } finally {
     aux.loading = false
@@ -235,6 +285,9 @@ async function loadAux() {
 }
 .account {
   width: 280px;
+}
+.keyword {
+  width: 180px;
 }
 .num {
   font-variant-numeric: tabular-nums;

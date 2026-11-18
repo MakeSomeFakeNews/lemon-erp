@@ -42,12 +42,13 @@ public class FinReportController {
         return R.ok(reportService.ledger(accountId, begin, end));
     }
 
-    /** 辅助核算余额：dimension 为辅助核算项目（部门、客户、供应商、项目、存货） */
+    /** 辅助核算余额：dimension 为辅助核算项目（部门、客户、供应商、项目、存货），keyword 按项目名称 / 编码模糊查询 */
     @GetMapping("/aux")
     @PreAuthorize("@ss.hasPerm('fin:book:list')")
     public R<List<AuxBalanceRow>> aux(@RequestParam AuxItem dimension, @RequestParam int begin, @RequestParam int end,
-                                      @RequestParam(required = false) Long accountId) {
-        return R.ok(reportService.auxBalance(dimension, begin, end, accountId));
+                                      @RequestParam(required = false) Long accountId,
+                                      @RequestParam(required = false) String keyword) {
+        return R.ok(reportService.auxBalance(dimension, begin, end, accountId, keyword));
     }
 
     @GetMapping("/balance-sheet")

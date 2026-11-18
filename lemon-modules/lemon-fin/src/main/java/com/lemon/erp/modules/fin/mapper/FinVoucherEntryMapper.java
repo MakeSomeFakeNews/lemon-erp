@@ -42,7 +42,10 @@ public interface FinVoucherEntryMapper extends BaseMapper<FinVoucherEntry> {
     /** 科目截至期末的余额（借 - 贷），含未记账凭证 */
     BigDecimal sumBalanceUpTo(@Param("accountId") Long accountId, @Param("period") int period);
 
-    /** @param dimension 辅助核算项目 */
+    /**
+     * @param dimension 辅助核算项目
+     * @param keyword   按辅助核算项目的名称 / 编码模糊匹配，可为空
+     */
     List<AuxBalanceRow> selectAuxBalance(@Param("dimension") AuxItem dimension, @Param("begin") int begin, @Param("end") int end,
-                                         @Param("accountId") Long accountId);
+                                         @Param("accountId") Long accountId, @Param("keyword") String keyword);
 }
