@@ -163,7 +163,11 @@ export default {
       mes_stop_reason: '停机原因',
       wms_in_category: '入库类别',
       wms_out_category: '出库类别',
-      scm_invoice_kind: '发票类型'
+      scm_invoice_kind: '发票类型',
+      fin_offset_item: '冲账项目',
+      scm_region: '客户区域',
+      sys_notice_type: '公告类型',
+      wms_material_brand: '商品品牌'
     }
   },
   dict: {

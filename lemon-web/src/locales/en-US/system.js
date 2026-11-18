@@ -163,7 +163,11 @@ export default {
       mes_stop_reason: 'Downtime Reason',
       wms_in_category: 'Inbound Category',
       wms_out_category: 'Outbound Category',
-      scm_invoice_kind: 'Invoice Type'
+      scm_invoice_kind: 'Invoice Type',
+      fin_offset_item: 'Offset Item',
+      scm_region: 'Customer Region',
+      sys_notice_type: 'Notice Type',
+      wms_material_brand: 'Brand'
     }
   },
   dict: {

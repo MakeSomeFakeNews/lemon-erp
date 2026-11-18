@@ -29,6 +29,11 @@ export default {
       column: '双栏'
     },
     mobileLayoutTip: '手机上统一使用抽屉菜单，布局在电脑上生效',
+    sideGroups: '侧边栏分组',
+    sideGroupsCollapse: '可折叠',
+    sideGroupsAccordion: '手风琴',
+    sideGroupsExpand: '始终展开',
+    sideGroupsTip: '模块下的分组（如 供应链 → 采购 / 销售）在侧边栏中的显示方式。可折叠：默认只展开当前页面所在的分组，点击分组名称展开或收起，展开状态记在本浏览器；手风琴：同时只展开一个分组；始终展开：显示全部分组和页面',
     display: '界面',
     tabs: '显示多标签页',
     compact: '紧凑模式',
