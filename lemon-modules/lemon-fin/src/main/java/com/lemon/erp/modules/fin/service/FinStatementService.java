@@ -4,10 +4,10 @@ import com.lemon.erp.common.util.Decimals;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lemon.erp.common.exception.BizException;
-import com.lemon.erp.framework.data.StatusTransitions;
 import com.lemon.erp.common.result.PageResult;
 import com.lemon.erp.framework.message.MessageCategory;
 import com.lemon.erp.framework.message.MessageSender;
+import com.lemon.erp.framework.portal.PortalKind;
 import com.lemon.erp.modules.fin.dto.StatementRequests;
 import com.lemon.erp.modules.fin.entity.FinSupplierStatement;
 import com.lemon.erp.modules.fin.entity.FinSupplierStatementLine;
@@ -20,12 +20,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**
  * 供应商对账：按期间汇总供应商还没有对过账的应付单（采购入库、退货、质量索赔等）生成对账单，
- * 发送后供应商在门户确认（可填写发票信息）或提出异议；有异议的可以删除后重新生成
+ * 发送后供应商在门户确认（可填写发票信息）或提出异议；有异议的可以删除后重新生成（状态流转与客户对账单共用 {@link StatementFlow}）
  */
 @Service
 @RequiredArgsConstructor
@@ -40,6 +39,10 @@ public class FinStatementService {
     private final MessageSender messageSender;
     private final DocNoService docNoService;
 
+    private static final StatementFlow<FinSupplierStatement> FLOW = new StatementFlow<>(FinSupplierStatement::getId,
+            FinSupplierStatement::getStatus, FinSupplierStatement::getSupplierRemark, FinSupplierStatement::getConfirmTime,
+            FinSupplierStatement::getSupplierId);
+
     /**
      * @param supplierId 供应商门户只看本供应商（不含草稿），内部为筛选条件
      */
@@ -52,10 +55,7 @@ public class FinStatementService {
 
     /** @param supplierId 供应商门户只能看本供应商已发送的，内部为空 */
     public FinSupplierStatement detail(Long id, Long supplierId) {
-        FinSupplierStatement st = id == null ? null : statementMapper.selectDetail(id);
-        if (st == null || (supplierId != null && (!supplierId.equals(st.getSupplierId()) || st.getStatus() == StatementStatus.DRAFT))) {
-            throw new BizException("fin.error.statementNotFound");
-        }
+        FinSupplierStatement st = FLOW.check(id == null ? null : statementMapper.selectDetail(id), supplierId);
         st.setLines(statementMapper.selectLines(id));
         return st;
     }
@@ -89,11 +89,8 @@ public class FinStatementService {
     @Transactional
     public void send(Long id) {
         FinSupplierStatement st = detail(id, null);
-        if (st.getStatus() != StatementStatus.DRAFT && st.getStatus() != StatementStatus.DISPUTED) {
-            throw new BizException("fin.error.statementHasAlreadySentConfirmed");
-        }
-        transit(id, st.getStatus(), StatementStatus.SENT);
-        portalNotifier.notify(st.getSupplierId(), MessageCategory.REMIND, "对账单待确认：" + st.getStatementNo(), // i18n-ignore
+        FLOW.send(statementMapper, st);
+        portalNotifier.notify(PortalKind.SUPPLIER, st.getSupplierId(), MessageCategory.REMIND, "对账单待确认：" + st.getStatementNo(), // i18n-ignore
                 st.getBeginDate() + " ~ " + st.getEndDate() + " 对账金额 " + st.getAmount().stripTrailingZeros().toPlainString(), // i18n-ignore
                 "/portal/statement");
     }
@@ -101,10 +98,7 @@ public class FinStatementService {
     /** 删除草稿或有异议的对账单，其中的应付单可以重新对账 */
     @Transactional
     public void delete(Long id) {
-        FinSupplierStatement st = detail(id, null);
-        if (st.getStatus() != StatementStatus.DRAFT && st.getStatus() != StatementStatus.DISPUTED) {
-            throw new BizException("fin.error.statementsSentConfirmedCannotDeleted");
-        }
+        FLOW.checkDeletable(detail(id, null));
         statementMapper.deleteLines(id);
         statementMapper.deleteById(id);
     }
@@ -113,23 +107,13 @@ public class FinStatementService {
     @Transactional
     public void confirm(Long id, Long supplierId, StatementRequests.Confirm req) {
         FinSupplierStatement st = detail(id, supplierId);
-        if (st.getStatus() != StatementStatus.SENT) {
-            throw new BizException("fin.error.statementNotPendingConfirmation");
-        }
         boolean agree = req.agree();
-        if (!agree && (req.remark() == null || req.remark().isBlank())) {
-            throw new BizException("fin.error.describeDispute");
-        }
-        StatusTransitions.change(statementMapper, FinSupplierStatement::getId, id, FinSupplierStatement::getStatus,
-                StatementStatus.SENT, agree ? StatementStatus.CONFIRMED : StatementStatus.DISPUTED, w -> w
-                        .set(FinSupplierStatement::getSupplierRemark, req.remark())
-                        .set(FinSupplierStatement::getConfirmTime, LocalDateTime.now())
-                        .set(agree, FinSupplierStatement::getInvoiceNo, req.invoiceNo())
-                        .set(agree, FinSupplierStatement::getInvoiceAmount, req.invoiceAmount())
-                        .set(agree, FinSupplierStatement::getInvoiceDate, req.invoiceDate()), "fin.error.statementStatusHasChangedRefreshTry");
-        messageSender.send(List.of(st.getCreateBy()), MessageSender.Message.of(agree ? MessageCategory.REMIND : MessageCategory.ALERT,
-                st.getSupplierName() + (agree ? " 已确认对账单 " : " 对对账单有异议 ") + st.getStatementNo(), // i18n-ignore
-                agree ? "对账金额 " + st.getAmount().stripTrailingZeros().toPlainString() : req.remark(), "/fin/statement")); // i18n-ignore
+        FLOW.respond(statementMapper, st, agree, req.remark(), w -> w
+                .set(agree, FinSupplierStatement::getInvoiceNo, req.invoiceNo())
+                .set(agree, FinSupplierStatement::getInvoiceAmount, req.invoiceAmount())
+                .set(agree, FinSupplierStatement::getInvoiceDate, req.invoiceDate()));
+        StatementFlow.notifyCreator(messageSender, st, st.getSupplierName(), agree, req.remark(),
+                "对账金额 " + st.getAmount().stripTrailingZeros().toPlainString(), "/fin/statement"); // i18n-ignore
     }
 
     /** 供应商补填发票信息（已确认的对账单） */
@@ -144,10 +128,5 @@ public class FinStatementService {
                 .set(FinSupplierStatement::getInvoiceAmount, req.invoiceAmount())
                 .set(FinSupplierStatement::getInvoiceDate, req.invoiceDate())
                 .eq(FinSupplierStatement::getId, id));
-    }
-
-    private void transit(Long id, StatementStatus from, StatementStatus to) {
-        StatusTransitions.change(statementMapper, FinSupplierStatement::getId, id, FinSupplierStatement::getStatus, from, to,
-                "fin.error.statementStatusHasChangedRefreshTry");
     }
 }

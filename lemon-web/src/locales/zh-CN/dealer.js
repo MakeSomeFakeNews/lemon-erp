@@ -30,6 +30,20 @@ export default {
     shipped: '已发货',
     canceled: '已撤销'
   },
+  statement: {
+    allStatus: '全部状态',
+    tip: '公司财务发来的对账单：核对期间内的发货、退货、付款和欠款，无误请确认，有差异请提出异议并说明',
+    statementNo: '对账单号',
+    period: '对账期间',
+    billAmount: '本期应付货款',
+    receiptAmount: '本期付款',
+    closing: '期末欠款',
+    confirmAction: '确认',
+    detailTitle: '对账单 {no}',
+    dispute: '有异议',
+    confirmStatement: '确认对账',
+    confirmTip: '确认截至 {end} 欠款 ¥{amount} 无误'
+  },
   report: {
     tip: '每月上报各产品的当月销量（卖给终端客户）和月末库存，同一月份重复上报会覆盖',
     report: '上报',

@@ -611,4 +611,10 @@ export default {
   3650: 'Maintain Item Prices', // 商品价格维护
   3651: 'Price Columns', // 价格列设置
   3652: 'View Cost Amounts', // 查看成本金额
+  425: 'Customer Statements', // 客户对账
+  4250: 'Generate Customer Statement', // 客户对账单生成
+  4251: 'Send Customer Statement', // 客户对账单发送
+  4252: 'Delete Customer Statement', // 客户对账单删除
+  426: 'Statements', // 对账单
+  4260: 'Confirm Statement', // 对账确认
 }

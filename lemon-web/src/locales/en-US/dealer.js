@@ -30,6 +30,20 @@ export default {
     shipped: 'Shipped',
     canceled: 'Withdrawn'
   },
+  statement: {
+    allStatus: 'All statuses',
+    tip: 'Statements from our finance team: check the shipments, returns, payments and balance owed for the period; confirm if correct, or raise a dispute with details',
+    statementNo: 'Statement No.',
+    period: 'Statement Period',
+    billAmount: 'Amount Due',
+    receiptAmount: 'Payments',
+    closing: 'Amount Owed',
+    confirmAction: 'Confirm',
+    detailTitle: 'Statement {no}',
+    dispute: 'Dispute',
+    confirmStatement: 'Confirm Statement',
+    confirmTip: 'Confirm that the amount owed as of {end} is ¥{amount}'
+  },
   report: {
     tip: 'Report monthly sales (to end customers) and month-end stock for each product; reporting the same month again overwrites it',
     report: 'Report',

@@ -3,7 +3,9 @@ package com.lemon.erp.modules.fin.service;
 import com.lemon.erp.framework.record.RecordType;
 import com.lemon.erp.framework.record.RecordTypeProvider;
 import com.lemon.erp.framework.security.SecurityUtils;
+import com.lemon.erp.modules.fin.entity.FinCustomerStatement;
 import com.lemon.erp.modules.fin.entity.FinSupplierStatement;
+import com.lemon.erp.modules.fin.mapper.FinCustomerStatementMapper;
 import com.lemon.erp.modules.fin.mapper.FinInvoiceMapper;
 import com.lemon.erp.modules.fin.mapper.FinSupplierStatementMapper;
 import com.lemon.erp.modules.fin.mapper.FinVoucherMapper;
@@ -14,7 +16,8 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * 财务业务记录类型（附件、变更历史）：凭证（原始凭证、发票扫描件）、供应商对账单（发票，财务与供应商门户共用）、发票（版式文件）
+ * 财务业务记录类型（附件、变更历史）：凭证（原始凭证、发票扫描件）、供应商对账单（发票，财务与供应商门户共用）、
+ * 客户对账单（签字盖章的扫描件，财务与经销商门户共用）、发票（版式文件）
  */
 @Component
 @RequiredArgsConstructor
@@ -23,6 +26,7 @@ public class FinRecordTypes implements RecordTypeProvider {
     private final FinVoucherMapper voucherMapper;
     private final FinSupplierStatementMapper statementMapper;
     private final FinInvoiceMapper invoiceMapper;
+    private final FinCustomerStatementMapper customerStatementMapper;
 
     @Override
     public List<RecordType> recordTypes() {
@@ -31,6 +35,9 @@ public class FinRecordTypes implements RecordTypeProvider {
                 // 对账单的发票等附件：财务与供应商门户共用
                 new RecordType("fin_statement", "fin.label.supplierStatement", "fin:statement:list,portal:statement:list",
                         "fin:statement:edit,portal:statement:confirm", null, this::statement),
+                // 客户对账单（客户签字盖章的扫描件等）：财务与经销商门户共用
+                new RecordType("fin_customer_statement", "fin.label.customerStatement", "fin:customerStatement:list,dealer:statement:list",
+                        "fin:customerStatement:edit,dealer:statement:confirm", null, this::customerStatement),
                 // 发票的版式文件（PDF / OFD）、XML
                 new RecordType("fin_invoice", "fin.label.invoice", "fin:invoice:list", "fin:invoice:edit", null, invoiceMapper::selectById));
     }
@@ -43,5 +50,11 @@ public class FinRecordTypes implements RecordTypeProvider {
         }
         Long supplierId = SecurityUtils.getLoginUser().supplierId();
         return supplierId == null || (supplierId.equals(st.getSupplierId()) && st.getStatus() != StatementStatus.DRAFT) ? st : null;
+    }
+
+    /** 经销商账号只能访问本客户已发送的客户对账单 */
+    private FinCustomerStatement customerStatement(long id) {
+        FinCustomerStatement st = customerStatementMapper.selectById(id);
+        return FinCustomerStatementService.FLOW.visible(st, SecurityUtils.getLoginUser().customerId()) ? st : null;
     }
 }

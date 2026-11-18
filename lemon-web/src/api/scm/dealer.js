@@ -12,6 +12,12 @@ export const pageDealerReport = (params) => request.get('/dealer/report', { para
 export const getDealerReport = (id) => request.get(`/dealer/report/${id}`)
 /** 上报某月（yyyyMM），data：{ remark, items: [{ materialId, sellQty, stockQty }] } */
 export const saveDealerReport = (period, data) => request.put(`/dealer/report/${period}`, data)
+/** 客户对账单：本客户已发送的；明细 params { current, size }，不传 size 时返回全部 */
+export const pageDealerStatement = (params) => request.get('/dealer/statement', { params })
+export const getDealerStatement = (id) => request.get(`/dealer/statement/${id}`)
+export const dealerStatementLines = (id, params) => request.get(`/dealer/statement/${id}/lines`, { params })
+/** data { agree, remark }，有异议时须说明 */
+export const confirmDealerStatement = (id, data) => request.post(`/dealer/statement/${id}/confirm`, data)
 
 /** 内部：渠道上报、外部订单导入 */
 export const pageChannelReport = (params) => request.get('/scm/channel/reports', { params })

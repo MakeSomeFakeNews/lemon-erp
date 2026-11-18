@@ -187,6 +187,15 @@ export const PRINT_TYPES = [
     note: true
   },
   {
+    key: 'fin.customerStatement',
+    module: n.modFin,
+    name: n.customerStatement,
+    fields: [n.customer, n.statementPeriod, n.beginBalance, n.periodAr, n.periodReceipt, n.periodDiscount, n.periodNetting, n.endBalance],
+    columns: [n.date, n.type, n.docNo, n.sourceSettle, num(n.increase), num(n.decrease), num(n.balance), n.remark],
+    signs: [n.tabulator, n.finReview, n.customerSeal],
+    note: true
+  },
+  {
     key: 'mes.workOrder',
     module: n.modMes,
     name: n.workOrder,

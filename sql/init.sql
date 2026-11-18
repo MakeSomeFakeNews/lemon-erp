@@ -90,6 +90,8 @@ DROP TABLE IF EXISTS fin_asset_check;
 DROP TABLE IF EXISTS fin_asset_move;
 DROP TABLE IF EXISTS mes_tech_doc;
 DROP TABLE IF EXISTS mes_ecn;
+DROP TABLE IF EXISTS fin_customer_statement_line;
+DROP TABLE IF EXISTS fin_customer_statement;
 DROP TABLE IF EXISTS fin_supplier_statement_line;
 DROP TABLE IF EXISTS fin_supplier_statement;
 DROP TABLE IF EXISTS scm_asn_item;
@@ -3590,6 +3592,55 @@ CREATE TABLE fin_supplier_statement_line (
     KEY idx_statement_line (statement_id),
     KEY idx_statement_line_bill (bill_id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '供应商对账单明细';
+
+-- 客户对账单（issue #134）：按期间生成客户的往来对账快照（期初、本期应收、收款、折让、对冲、期末和逐笔明细，口径同往来对账单），
+-- 发送后客户在经销商门户确认或提出异议；草稿和有异议的可以删除后重新生成
+CREATE TABLE fin_customer_statement (
+    id              BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id       BIGINT         NOT NULL DEFAULT 1 COMMENT '租户ID',
+    statement_no    VARCHAR(32)    NOT NULL COMMENT '对账单号',
+    customer_id     BIGINT         NOT NULL COMMENT '客户',
+    begin_date      DATE           NOT NULL COMMENT '对账期间起',
+    end_date        DATE           NOT NULL COMMENT '对账期间止',
+    opening         DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '期初余额',
+    bill_amount     DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '本期应收（应收单价税合计，退货、冲账为负）',
+    receipt_amount  DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '本期收款（收款实收 + 预收款）',
+    discount_amount DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '本期折让（收款核销时的折让 / 抹零）',
+    netting_amount  DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '本期应收应付对冲',
+    closing         DECIMAL(18, 2) NOT NULL DEFAULT 0 COMMENT '期末余额 = 期初 + 应收 - 收款 - 折让 - 对冲',
+    line_count      INT            NOT NULL DEFAULT 0 COMMENT '明细行数',
+    status          VARCHAR(16)    NOT NULL COMMENT '状态(字典 fin_statement_status) DRAFT草稿 SENT待确认 CONFIRMED已确认 DISPUTED有异议',
+    customer_remark VARCHAR(500)            DEFAULT NULL COMMENT '客户意见',
+    confirm_time    DATETIME                DEFAULT NULL COMMENT '客户确认 / 提出异议的时间',
+    confirm_by      BIGINT                  DEFAULT NULL COMMENT '确认 / 提出异议的门户账号',
+    remark          VARCHAR(255)            DEFAULT NULL COMMENT '备注',
+    create_by       BIGINT                  DEFAULT NULL COMMENT '创建人',
+    create_time     DATETIME                DEFAULT NULL COMMENT '创建时间',
+    update_time     DATETIME                DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_customer_statement_no (statement_no, tenant_id),
+    KEY idx_customer_statement_customer (customer_id, end_date)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '客户对账单';
+
+CREATE TABLE fin_customer_statement_line (
+    id              BIGINT         NOT NULL AUTO_INCREMENT COMMENT '主键',
+    tenant_id       BIGINT         NOT NULL DEFAULT 1 COMMENT '租户ID',
+    statement_id    BIGINT         NOT NULL COMMENT '对账单',
+    line_no         INT            NOT NULL COMMENT '行号（按日期排序）',
+    biz_date        DATE           NOT NULL COMMENT '业务日期',
+    type            VARCHAR(16)    NOT NULL COMMENT '类型 BILL应收单 SETTLEMENT收款 ADVANCE预收款 NETTING应收应付对冲',
+    doc_no          VARCHAR(32)    NOT NULL COMMENT '单号',
+    source_type     VARCHAR(32)             DEFAULT NULL COMMENT '应收单的来源(字典 fin_bill_source) / 收款的结算方式(字典 fin_settle_method)',
+    source_no       VARCHAR(32)             DEFAULT NULL COMMENT '来源单号',
+    increase_amount DECIMAL(18, 2)          DEFAULT NULL COMMENT '增加（应收）',
+    decrease_amount DECIMAL(18, 2)          DEFAULT NULL COMMENT '减少（收款含折让、预收、对冲）',
+    discount_amount DECIMAL(18, 2)          DEFAULT NULL COMMENT '其中折让',
+    balance         DECIMAL(18, 2) NOT NULL COMMENT '余额',
+    remark          VARCHAR(255)            DEFAULT NULL COMMENT '备注',
+    create_time     DATETIME                DEFAULT NULL COMMENT '创建时间',
+    PRIMARY KEY (id),
+    KEY idx_customer_statement_line (statement_id, line_no)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '客户对账单明细';
 
 -- 工程变更（ECN）：复制基准 BOM 为新版本修改，审批后按生效日期切换默认 BOM
 CREATE TABLE mes_ecn (
@@ -7094,7 +7145,7 @@ INSERT INTO sys_dict_type (id, name, type, status, remark, create_time, update_t
 (132, '招标状态', 'scm_tender_status', 1, '招标的状态', NOW(), NOW()),
 (133, '送货通知状态', 'scm_asn_status', 1, '供应商送货通知的状态', NOW(), NOW()),
 (134, '供应商确认', 'scm_supplier_confirm', 1, '供应商对采购订单的确认结果', NOW(), NOW()),
-(135, '对账单状态', 'fin_statement_status', 1, '供应商对账单的状态', NOW(), NOW());
+(135, '对账单状态', 'fin_statement_status', 1, '供应商 / 客户对账单的状态', NOW(), NOW());
 INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, status, create_time, update_time) VALUES
 ('scm_contract_type', '框架协议', 'FRAMEWORK', 'blue', 1, 1, NOW(), NOW()),
 ('scm_contract_type', '固定数量合同', 'FIXED', 'green', 2, 1, NOW(), NOW()),
@@ -8051,3 +8102,23 @@ INSERT INTO sys_dict_data (dict_type, dict_label, dict_value, tag_color, sort, s
 ('wms_transfer_resolution', '退回调出仓', 'RETURN', 'blue', 1, 1, 1, NOW(), NOW()),
 ('wms_transfer_resolution', '确认损耗', 'LOSS', 'red', 2, 1, 1, NOW(), NOW()),
 ('wms_transfer_resolution', '让步接收', 'ACCEPT', 'green', 3, 1, 1, NOW(), NOW());
+
+-- 客户对账单（issue #134）：应收应付下「客户对账」排在供应商对账之后（往来对账单、冲账单顺延）；经销商门户「对账单」（确认或提出异议）。
+-- 普通用户、总经理、出纳查看，会计全部；经销商门户账号查看和确认；单号规则 KDZ
+UPDATE sys_menu SET sort = 9 WHERE id = 348;
+UPDATE sys_menu SET sort = 10 WHERE id = 377;
+INSERT INTO sys_menu (id, parent_id, name, type, path, component, perms, icon, sort, visible, status, create_time, update_time) VALUES
+(425, 932, '客户对账', 'C', 'customer-statement', 'fin/customer-statement/index', 'fin:customerStatement:list', 'SolutionOutlined', 8, 1, 1, NOW(), NOW()),
+(4250, 425, '客户对账单生成', 'F', NULL, NULL, 'fin:customerStatement:add', NULL, 1, 1, 1, NOW(), NOW()),
+(4251, 425, '客户对账单发送', 'F', NULL, NULL, 'fin:customerStatement:edit', NULL, 2, 1, 1, NOW(), NOW()),
+(4252, 425, '客户对账单删除', 'F', NULL, NULL, 'fin:customerStatement:remove', NULL, 3, 1, 1, NOW(), NOW()),
+(426, 14, '对账单', 'C', 'statement', 'dealer/statement/index', 'dealer:statement:list', 'ReconciliationOutlined', 3, 1, 1, NOW(), NOW()),
+(4260, 426, '对账确认', 'F', NULL, NULL, 'dealer:statement:confirm', NULL, 1, 1, 1, NOW(), NOW());
+INSERT INTO sys_role_menu (role_id, menu_id)
+SELECT g.role_id, g.menu_id FROM (
+    SELECT 2 AS role_id, 425 AS menu_id UNION ALL SELECT 3, 425 UNION ALL SELECT 10, 425
+    UNION ALL SELECT 9, 425 UNION ALL SELECT 9, 4250 UNION ALL SELECT 9, 4251 UNION ALL SELECT 9, 4252
+    UNION ALL SELECT 16, 426 UNION ALL SELECT 16, 4260
+) g
+WHERE EXISTS (SELECT 1 FROM sys_role r WHERE r.id = g.role_id)
+  AND NOT EXISTS (SELECT 1 FROM sys_role_menu x WHERE x.role_id = g.role_id AND x.menu_id = g.menu_id);

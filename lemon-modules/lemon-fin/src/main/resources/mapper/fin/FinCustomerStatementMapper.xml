@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lemon.erp.modules.fin.mapper.FinCustomerStatementMapper">
+
+    <sql id="columns">
+        st.*, c.code AS customer_code, c.name AS customer_name, u.nickname AS create_by_name, cu.nickname AS confirm_by_name
+    </sql>
+
+    <sql id="joins">
+        FROM fin_customer_statement st
+        LEFT JOIN scm_customer c ON c.id = st.customer_id
+        LEFT JOIN sys_user u ON u.id = st.create_by
+        LEFT JOIN sys_user cu ON cu.id = st.confirm_by
+    </sql>
+
+    <select id="selectPageList" resultType="com.lemon.erp.modules.fin.entity.FinCustomerStatement">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        <where>
+            <if test="customerId != null">st.customer_id = #{customerId}</if>
+            <if test="portal">AND st.status &lt;&gt; 'DRAFT'</if>
+            <if test="status != null">AND st.status = #{status}</if>
+            <if test="keyword != null and keyword != ''">
+                AND (st.statement_no LIKE CONCAT('%', #{keyword}, '%') OR c.name LIKE CONCAT('%', #{keyword}, '%')
+                     OR c.code LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY st.id DESC
+    </select>
+
+    <select id="selectDetail" resultType="com.lemon.erp.modules.fin.entity.FinCustomerStatement">
+        SELECT <include refid="columns"/>
+        <include refid="joins"/>
+        WHERE st.id = #{id}
+    </select>
+
+    <select id="selectLines" resultType="com.lemon.erp.modules.fin.entity.FinCustomerStatementLine">
+        SELECT id, statement_id, line_no, biz_date, type, doc_no, source_type, source_no, increase_amount AS increase,
+               decrease_amount AS decrease, discount_amount AS discount, balance, remark
+        FROM fin_customer_statement_line
+        WHERE statement_id = #{statementId}
+        ORDER BY line_no
+    </select>
+
+    <insert id="insertLines">
+        INSERT INTO fin_customer_statement_line (statement_id, line_no, biz_date, type, doc_no, source_type, source_no, increase_amount,
+                                                 decrease_amount, discount_amount, balance, remark, create_time) VALUES
+        <foreach collection="lines" item="l" separator=",">
+            (#{l.statementId}, #{l.lineNo}, #{l.bizDate}, #{l.type}, #{l.docNo}, #{l.sourceType}, #{l.sourceNo}, #{l.increase},
+             #{l.decrease}, #{l.discount}, #{l.balance}, #{l.remark}, NOW())
+        </foreach>
+    </insert>
+
+    <delete id="deleteLines">
+        DELETE FROM fin_customer_statement_line WHERE statement_id = #{statementId}
+    </delete>
+
+</mapper>
