@@ -38,7 +38,9 @@ public class FinPartnerMergeHandler implements PartnerMergeHandler {
         mergeMapper.mergeNoteLog(customer, sourceIds, targetId);
         mergeMapper.mergeVoucherEntry(customer, sourceIds, targetId);
         mergeMapper.mergeNetting(customer, sourceIds, targetId);
-        if (!customer) {
+        if (customer) {
+            mergeMapper.mergeCustomerStatement(sourceIds, targetId);
+        } else {
             mergeMapper.mergeSupplierStatement(sourceIds, targetId);
         }
     }

@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * 供应商对账单的请求
+ * 对账单（供应商对账单、客户对账单）的请求
  */
 public final class StatementRequests {
 
@@ -38,5 +38,19 @@ public final class StatementRequests {
             @NotNull(message = "{fin.valid.enterInvoiceNumber}") @Size(max = 64) String invoiceNo,
             @NotNull(message = "{fin.valid.enterInvoiceAmount}") @DecimalMin(value = "0", message = "{fin.valid.invoiceAmountCannotLess}") @Digits(integer = 16, fraction = 2) BigDecimal invoiceAmount,
             @NotNull(message = "{fin.valid.selectInvoiceDate}") LocalDate invoiceDate) {
+    }
+
+    /** 生成客户对账单：期间内的往来明细快照（期初、本期应收、收款、折让、对冲、期末） */
+    public record CustomerGenerate(
+            @NotNull(message = "{fin.valid.selectCustomer}") Long customerId,
+            @NotNull(message = "{fin.valid.selectStatementPeriod}") LocalDate beginDate,
+            @NotNull(message = "{fin.valid.selectStatementPeriod}") LocalDate endDate,
+            @Size(max = 255, message = "{fin.valid.remarkCannotExceedCharacters}") String remark) {
+    }
+
+    /** 客户在经销商门户确认或提出异议，有异议时须说明 */
+    public record Respond(
+            @NotNull(message = "{fin.valid.chooseConfirmDispute}") Boolean agree,
+            @Size(max = 500, message = "{fin.valid.descriptionCannotExceedCharacters2}") String remark) {
     }
 }

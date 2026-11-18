@@ -30,12 +30,14 @@ public interface FinPartnerLedgerMapper {
     BigDecimal sumNettingsBefore(@Param("billKind") BillKind billKind, @Param("partnerId") Long partnerId, @Param("date") LocalDate date);
 
     /**
-     * 期间内的明细，按日期排序
+     * 期间内的明细，按日期排序，running 为期间开始到本行（含）的余额变动累计
      *
-     * @return [{bizDate, type（BILL / SETTLEMENT / ADVANCE / NETTING）, docNo, sourceType, sourceNo, amount, remark}]
+     * @param page 为 null 时返回全部（打印、导出、生成客户对账单）
      */
-    List<FinAnalysis.PartnerFlow> selectRows(@Param("billKind") BillKind billKind, @Param("settleKind") SettleKind settleKind,
-                                         @Param("partnerId") Long partnerId, @Param("begin") LocalDate begin, @Param("end") LocalDate end);
+    List<FinAnalysis.LedgerRow> selectFlows(IPage<FinAnalysis.LedgerRow> page, @Param("q") FinAnalysis.LedgerQuery query);
+
+    /** 期间合计（全部明细） */
+    FinAnalysis.LedgerTotals selectFlowTotals(@Param("q") FinAnalysis.LedgerQuery query);
 
     /** 往来汇总：一个往来单位一行（当前余额），默认按净欠款降序，sort 为列头排序；withAp 挂接关联供应商的应付（仅应收） */
     IPage<PartnerSummaryRow> selectSummary(IPage<PartnerSummaryRow> page, @Param("q") PartnerSummaryRow.Query query,

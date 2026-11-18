@@ -41,6 +41,7 @@ public class FinDocNos {
                 doc(LOAN, "fin.label.employeeLoan"),
                 doc(FinFundService.TRANSFER_NO, "fin.label.fundTransfer"),
                 doc(FinStatementService.DOC_NO, "fin.label.supplierStatement"),
+                doc(FinCustomerStatementService.DOC_NO, "fin.label.customerStatement"),
                 doc(FinAssetCheckService.DOC_NO, "fin.label.assetCount"),
                 doc(FinConsumableService.DOC_NO, "fin.label.consumableRequisition"),
                 doc(FinOffsetService.DOC_NO, "fin.label.offsetDoc"),

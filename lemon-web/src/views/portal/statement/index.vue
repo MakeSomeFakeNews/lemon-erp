@@ -41,8 +41,8 @@
       <template v-if="detail" #extra>
         <span v-perm="'portal:statement:confirm'">
           <a-space v-if="detail.status === StatementStatus.SENT">
-            <a-button danger @click="openConfirm(false)">{{ $t('portal.statement.dispute') }}</a-button>
-            <a-button type="primary" @click="openConfirm(true)">{{ $t('portal.statement.confirmStatement') }}</a-button>
+            <a-button danger @click="respondRef.open(false)">{{ $t('portal.statement.dispute') }}</a-button>
+            <a-button type="primary" @click="respondRef.open(true, Number(detail.amount))">{{ $t('portal.statement.confirmStatement') }}</a-button>
           </a-space>
           <a-button v-else-if="detail.status === StatementStatus.CONFIRMED" @click="openInvoice">{{ detail.invoiceNo ? $t('portal.statement.editInvoice') : $t('portal.statement.fillInvoice') }}</a-button>
         </span>
@@ -65,25 +65,7 @@
       </template>
     </SubPage>
 
-    <a-modal v-model:open="confirmOpen" :title="confirm.agree ? $t('portal.statement.confirmStatement') : $t('portal.statement.raiseDispute')" :confirm-loading="saving" @ok="submitConfirm">
-      <a-form layout="vertical">
-        <template v-if="confirm.agree">
-          <a-alert type="info" show-icon class="block" :message="$t('portal.statement.confirmTip')" />
-          <a-row :gutter="12">
-            <a-col :span="12"><a-form-item :label="$t('portal.statement.invoiceNo')"><a-input v-model:value="confirm.invoiceNo" :maxlength="64" /></a-form-item></a-col>
-            <a-col :span="12">
-              <a-form-item :label="$t('portal.statement.invoiceAmount')"><a-input-number v-model:value="confirm.invoiceAmount" :min="0" :precision="2" prefix="¥" class="full" /></a-form-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-item :label="$t('portal.statement.invoiceDate')"><a-date-picker v-model:value="confirm.invoiceDate" value-format="YYYY-MM-DD" class="full" /></a-form-item>
-            </a-col>
-          </a-row>
-        </template>
-        <a-form-item :label="confirm.agree ? $t('common.field.description') : $t('portal.statement.disputeRemark')" :required="!confirm.agree">
-          <a-textarea v-model:value="confirm.remark" :rows="3" :maxlength="500" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+    <StatementRespondModal ref="respondRef" invoice :tip="$t('portal.statement.confirmTip')" :submitter="(data) => confirmPortalStatement(detail.id, data)" @done="refresh" />
 
     <a-modal v-model:open="invoiceOpen" :title="$t('portal.statement.invoiceInfo')" :confirm-loading="saving" @ok="submitInvoice">
       <a-form layout="vertical">
@@ -104,6 +86,7 @@ import DictTag from '@/components/DictTag.vue'
 import SubPage from '@/components/SubPage.vue'
 import TableToolbar from '@/components/TableToolbar.vue'
 import StatementLines from '@/components/fin/StatementLines.vue'
+import StatementRespondModal from '@/components/fin/StatementRespondModal.vue'
 import { confirmPortalStatement, getPortalStatement, pagePortalStatement, savePortalInvoice } from '@/api/portal'
 import { formatMoney } from '@/components/fin/fin'
 import { today } from '@/components/wms/wms'
@@ -147,26 +130,7 @@ async function refresh() {
 }
 
 const saving = ref(false)
-const confirmOpen = ref(false)
-const confirm = ref({})
-function openConfirm(agree) {
-  confirm.value = { agree, remark: '', invoiceNo: '', invoiceAmount: agree ? Number(detail.value.amount) : undefined, invoiceDate: today() }
-  confirmOpen.value = true
-}
-async function submitConfirm() {
-  if (!confirm.value.agree && !confirm.value.remark?.trim()) return message.warning(t('portal.statement.msgDispute'))
-  const data = { ...confirm.value }
-  if (!data.agree || !data.invoiceNo) Object.assign(data, { invoiceNo: null, invoiceAmount: null, invoiceDate: null })
-  saving.value = true
-  try {
-    await confirmPortalStatement(detail.value.id, data)
-    message.success(data.agree ? t('portal.statement.confirmed') : t('portal.statement.disputed'))
-    confirmOpen.value = false
-    refresh()
-  } finally {
-    saving.value = false
-  }
-}
+const respondRef = ref()
 const invoiceOpen = ref(false)
 const invoice = ref({})
 function openInvoice() {

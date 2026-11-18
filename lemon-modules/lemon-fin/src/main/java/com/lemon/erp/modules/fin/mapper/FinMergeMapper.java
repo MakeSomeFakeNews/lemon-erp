@@ -37,5 +37,7 @@ public interface FinMergeMapper {
 
     int mergeNetting(@Param("customer") boolean customer, @Param("ids") List<Long> sourceIds, @Param("targetId") Long targetId);
 
+    int mergeCustomerStatement(@Param("ids") List<Long> sourceIds, @Param("targetId") Long targetId);
+
     int mergeSupplierStatement(@Param("ids") List<Long> sourceIds, @Param("targetId") Long targetId);
 }

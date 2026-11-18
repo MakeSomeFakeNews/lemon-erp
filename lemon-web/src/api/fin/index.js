@@ -275,6 +275,18 @@ export const generateStatement = (data) => request.post('/fin/statement', data)
 export const sendStatement = (id) => request.post(`/fin/statement/${id}/send`)
 export const deleteStatement = (id) => request.delete(`/fin/statement/${id}`)
 
+/** 客户对账单（issue #134） */
+export const pageCustomerStatement = (params) => request.get('/fin/customer-statement', { params })
+export const getCustomerStatement = (id) => request.get(`/fin/customer-statement/${id}`)
+/** 明细：params { current, size }，不传 size 时返回全部（打印、导出） */
+export const customerStatementLines = (id, params) => request.get(`/fin/customer-statement/${id}/lines`, { params })
+/** 生成：data { customerId, beginDate, endDate, remark } */
+export const generateCustomerStatement = (data) => request.post('/fin/customer-statement', data)
+export const sendCustomerStatement = (id) => request.post(`/fin/customer-statement/${id}/send`)
+/** 登记客户签回的结果：data { agree, remark } */
+export const registerCustomerStatement = (id, data) => request.post(`/fin/customer-statement/${id}/confirm`, data)
+export const deleteCustomerStatement = (id) => request.delete(`/fin/customer-statement/${id}`)
+
 /** 凭证科目设置：[{ role, group, label, dimension, dictType, defaultCode, dimensionDefaults, accountId, items }] */
 export const accountRules = () => request.get('/fin/account-rule')
 /** 保存一个用途的设置：{ accountId, items: { 维度取值: 科目ID } }，为空的使用预置科目 */

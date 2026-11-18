@@ -23,31 +23,78 @@
           AND netting_date &lt; #{date}
     </select>
 
-    <select id="selectRows" resultType="com.lemon.erp.modules.fin.dto.FinAnalysis$PartnerFlow">
-        SELECT t.biz_date AS "bizDate", t.type AS "type", t.doc_no AS "docNo", t.source_type AS "sourceType",
-               t.source_no AS "sourceNo", t.amount AS "amount", t.remark AS "remark"
-        FROM (
-            SELECT b.bill_date AS biz_date, 'BILL' AS type, 1 AS seq, b.bill_no AS doc_no, b.source_type AS source_type,
-                   b.source_no AS source_no, b.amount AS amount, b.remark AS remark, b.id AS id
-            FROM fin_bill b
-            WHERE b.kind = #{billKind} AND b.partner_id = #{partnerId} AND b.bill_date &gt;= #{begin} AND b.bill_date &lt;= #{end}
+    <!-- 一方的往来明细（本方，或挂接应付时关联供应商的应付）。up = 1 增加余额：本方的应收应付单增加、收付款 / 预收预付 / 对冲减少；
+         挂接的应付方向相反（linked = 1）。收付款的金额含折让（discount 为其中的折让）。
+         属性：bk / sk 单据、收付款种类的表达式，pid 往来单位的表达式，nettingAr 对冲按客户（customer_id）还是供应商（supplier_id），linked 0 / 1 -->
+    <sql id="partyFlows">
+        SELECT b.bill_date AS biz_date, 'BILL' AS type, ${linked} AS linked, 1 AS seq, b.id AS id, b.bill_no AS doc_no,
+               b.source_type AS source_type, b.source_no AS source_no, b.amount AS amount, 0 AS discount, b.remark AS remark,
+               1 - ${linked} AS up
+        FROM fin_bill b
+        WHERE b.kind = ${bk} AND b.partner_id = ${pid} AND b.bill_date &gt;= #{q.begin} AND b.bill_date &lt;= #{q.end}
+        UNION ALL
+        SELECT s.settle_date, 'SETTLEMENT', ${linked}, 2, s.id, s.settle_no, s.method, NULL, s.amount + s.discount_amount, s.discount_amount,
+               s.remark, ${linked}
+        FROM fin_settlement s
+        WHERE s.kind = ${sk} AND s.partner_id = ${pid} AND s.status = 'APPROVED'
+          AND s.settle_date &gt;= #{q.begin} AND s.settle_date &lt;= #{q.end}
+        UNION ALL
+        SELECT a.advance_date, 'ADVANCE', ${linked}, 3, a.id, a.advance_no, a.method, NULL, a.amount, 0, a.remark, ${linked}
+        FROM fin_advance a
+        WHERE a.kind = ${sk} AND a.partner_id = ${pid} AND a.advance_date &gt;= #{q.begin} AND a.advance_date &lt;= #{q.end}
+        UNION ALL
+        <!-- 应收应付对冲：应收、应付各减少对冲金额 -->
+        SELECT n.netting_date, 'NETTING', ${linked}, 4, n.id, n.netting_no, NULL, NULL, n.amount, 0, n.remark, ${linked}
+        FROM fin_netting n
+        WHERE <choose><when test="${nettingAr}">n.customer_id</when><otherwise>n.supplier_id</otherwise></choose> = ${pid}
+          AND n.netting_date &gt;= #{q.begin} AND n.netting_date &lt;= #{q.end}
+    </sql>
+
+    <!-- 期间内的全部明细：本方 + 挂接的应付（q.linkedSupplierId 不为空时） -->
+    <sql id="flows">
+        <include refid="partyFlows">
+            <property name="bk" value="#{q.billKind}"/>
+            <property name="sk" value="#{q.settleKind}"/>
+            <property name="pid" value="#{q.partnerId}"/>
+            <property name="nettingAr" value="q.billKind.name() == 'AR'"/>
+            <property name="linked" value="0"/>
+        </include>
+        <if test="q.linkedSupplierId != null">
             UNION ALL
-            SELECT s.settle_date, 'SETTLEMENT', 2, s.settle_no, s.method, NULL, s.amount + s.discount_amount, s.remark, s.id
-            FROM fin_settlement s
-            WHERE s.kind = #{settleKind} AND s.partner_id = #{partnerId} AND s.status = 'APPROVED'
-              AND s.settle_date &gt;= #{begin} AND s.settle_date &lt;= #{end}
-            UNION ALL
-            SELECT a.advance_date, 'ADVANCE', 3, a.advance_no, a.method, NULL, a.amount, a.remark, a.id
-            FROM fin_advance a
-            WHERE a.kind = #{settleKind} AND a.partner_id = #{partnerId} AND a.advance_date &gt;= #{begin} AND a.advance_date &lt;= #{end}
-            UNION ALL
-            <!-- 应收应付对冲：应收、应付各减少对冲金额 -->
-            SELECT n.netting_date, 'NETTING', 4, n.netting_no, NULL, NULL, n.amount, n.remark, n.id
-            FROM fin_netting n
-            WHERE <choose><when test="billKind.name() == 'AR'">n.customer_id</when><otherwise>n.supplier_id</otherwise></choose> = #{partnerId}
-              AND n.netting_date &gt;= #{begin} AND n.netting_date &lt;= #{end}
-        ) t
-        ORDER BY t.biz_date, t.seq, t.id
+            <include refid="partyFlows">
+                <property name="bk" value="'AP'"/>
+                <property name="sk" value="'PAYMENT'"/>
+                <property name="pid" value="#{q.linkedSupplierId}"/>
+                <property name="nettingAr" value="false"/>
+                <property name="linked" value="1"/>
+            </include>
+        </if>
+    </sql>
+
+    <!-- 明细按日期排序（同一天本方在前，再按应收应付单、收付款、预收预付、对冲），running 为期间开始到本行（含）的余额变动累计，
+         分页时每页的余额 = 期初 + running，不依赖之前的页（窗口函数在 LIMIT 之前计算，MySQL 8 与 H2 都支持） -->
+    <select id="selectFlows" resultType="com.lemon.erp.modules.fin.dto.FinAnalysis$LedgerRow">
+        SELECT f.biz_date AS "bizDate", f.type AS "type", f.doc_no AS "docNo", f.source_type AS "sourceType", f.source_no AS "sourceNo",
+               f.remark AS "remark", f.linked AS "linkedAp",
+               CASE WHEN f.up = 1 THEN f.amount END AS "increase",
+               CASE WHEN f.up = 1 THEN NULL ELSE f.amount END AS "decrease",
+               CASE WHEN f.discount &lt;&gt; 0 THEN f.discount END AS "discount",
+               SUM(CASE WHEN f.up = 1 THEN f.amount ELSE 0 - f.amount END)
+                   OVER (ORDER BY f.biz_date, f.linked, f.seq, f.id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS "running"
+        FROM (<include refid="flows"/>) f
+        ORDER BY f.biz_date, f.linked, f.seq, f.id
+    </select>
+
+    <!-- 期间合计（全部明细，与分页无关）：行数、增加、减少；本方的应收应付单、收付款实收 + 预收预付、折让、对冲 -->
+    <select id="selectFlowTotals" resultType="com.lemon.erp.modules.fin.dto.FinAnalysis$LedgerTotals">
+        SELECT COUNT(*) AS "count",
+               COALESCE(SUM(CASE WHEN f.up = 1 THEN f.amount ELSE 0 END), 0) AS "increase",
+               COALESCE(SUM(CASE WHEN f.up = 1 THEN 0 ELSE f.amount END), 0) AS "decrease",
+               COALESCE(SUM(CASE WHEN f.linked = 0 AND f.type = 'BILL' THEN f.amount ELSE 0 END), 0) AS "bill",
+               COALESCE(SUM(CASE WHEN f.linked = 0 AND f.type IN ('SETTLEMENT', 'ADVANCE') THEN f.amount - f.discount ELSE 0 END), 0) AS "receipt",
+               COALESCE(SUM(CASE WHEN f.linked = 0 THEN f.discount ELSE 0 END), 0) AS "discount",
+               COALESCE(SUM(CASE WHEN f.linked = 0 AND f.type = 'NETTING' THEN f.amount ELSE 0 END), 0) AS "netting"
+        FROM (<include refid="flows"/>) f
     </select>
 
     <!-- 往来汇总：各往来单位当前的期初往来余额、业务单据余额、预收预付未冲抵余额、坏账核销累计、收付款折让累计（本位币）。

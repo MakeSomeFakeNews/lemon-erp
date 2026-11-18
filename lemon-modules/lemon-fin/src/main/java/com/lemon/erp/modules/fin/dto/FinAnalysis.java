@@ -1,7 +1,9 @@
 package com.lemon.erp.modules.fin.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.lemon.erp.modules.fin.model.BillKind;
 import com.lemon.erp.modules.fin.model.PartnerLedgerType;
+import com.lemon.erp.modules.fin.model.SettleKind;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -230,34 +232,67 @@ public final class FinAnalysis {
 
     // ---------------------------------------------------------------- 往来对账单
 
-    /** 往来流水（数据库查询结果）：应收应付单、收付款单、预收预付款 */
+    /**
+     * 往来对账单的查询条件
+     *
+     * @param linkedSupplierId 挂接应付时关联的供应商，不挂接为 null
+     */
+    public record LedgerQuery(BillKind billKind, SettleKind settleKind, Long partnerId, Long linkedSupplierId, LocalDate begin,
+                              LocalDate end) {
+    }
+
+    /**
+     * 往来明细（数据库查询结果）：应收应付单计入增加，收付款（含折让）、预收预付、对冲计入减少（挂接的应付相反）；
+     * running 为期间开始到本行（含）的余额变动累计
+     */
     @Data
-    public static class PartnerFlow {
+    public static class LedgerRow {
         private LocalDate bizDate;
         private PartnerLedgerType type;
         private String docNo;
         private String sourceType;
         private String sourceNo;
-        private BigDecimal amount;
         private String remark;
+        private BigDecimal increase;
+        private BigDecimal decrease;
+        /** 收付款中的折让（已含在 decrease 中），没有为 null */
+        private BigDecimal discount;
+        private BigDecimal running;
+        private boolean linkedAp;
     }
 
     /**
-     * 对账单的一行：应收应付单计入增加，收付款计入减少（另一列为空）
+     * 往来对账单的期间合计（全部明细）：bill 本方的应收应付单，receipt 收付款实收 + 预收预付，discount 收付款折让，netting 对冲
+     */
+    @Data
+    public static class LedgerTotals {
+        private long count;
+        private BigDecimal increase;
+        private BigDecimal decrease;
+        private BigDecimal bill;
+        private BigDecimal receipt;
+        private BigDecimal discount;
+        private BigDecimal netting;
+    }
+
+    /**
+     * 对账单的一行：应收应付单计入增加，收付款计入减少（另一列为空）；discount 为收付款中的折让（已含在减少中）
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record StatementLine(LocalDate bizDate, PartnerLedgerType type, String docNo, String sourceType, String sourceNo,
                                 String remark, @JsonInclude(JsonInclude.Include.ALWAYS) BigDecimal increase,
-                                @JsonInclude(JsonInclude.Include.ALWAYS) BigDecimal decrease, BigDecimal balance, boolean linkedAp) {
+                                @JsonInclude(JsonInclude.Include.ALWAYS) BigDecimal decrease, BigDecimal discount, BigDecimal balance,
+                                boolean linkedAp) {
     }
 
     /**
-     * 往来对账单
+     * 往来对账单（issue #134 分页）：opening / increase / decrease / closing 基于期间内的全部明细；rows 为全部明细或其中一页，
+     * total 为明细总行数，pageOpening 为 rows 第一行之前的余额（第一页即期初，之后的页为承前页余额）
      *
      * @param linkedSupplierName 挂接应付时关联的供应商（编码 名称），没有挂接为 null；此时期初、期末为 应收 − 应付，
      *                           关联供应商的应付单计入减少、付款 / 预付 / 对冲计入增加（明细 linkedAp = true）
      */
     public record PartnerStatement(String partnerName, BigDecimal opening, List<StatementLine> rows, BigDecimal increase,
-                                   BigDecimal decrease, BigDecimal closing, String linkedSupplierName) {
+                                   BigDecimal decrease, BigDecimal closing, String linkedSupplierName, long total, BigDecimal pageOpening) {
     }
 }

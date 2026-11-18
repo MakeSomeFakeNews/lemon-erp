@@ -1612,7 +1612,7 @@ export const StatementStatus = Object.freeze({
   DRAFT: 'DRAFT',
   SENT: 'SENT', // 已发送
   CONFIRMED: 'CONFIRMED',
-  DISPUTED: 'DISPUTED', // 供应商有异议
+  DISPUTED: 'DISPUTED', // 对方有异议
 })
 
 /** com.lemon.erp.modules.fin.model.StdCostStatus（字典 fin_std_cost_status） */

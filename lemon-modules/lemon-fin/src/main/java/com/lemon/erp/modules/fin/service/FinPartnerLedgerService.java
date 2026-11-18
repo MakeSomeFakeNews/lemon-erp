@@ -1,6 +1,7 @@
 package com.lemon.erp.modules.fin.service;
 
 import com.lemon.erp.common.exception.BizException;
+import com.lemon.erp.common.util.Decimals;
 import com.lemon.erp.framework.data.Sort;
 import com.lemon.erp.framework.data.SortParam;
 import com.lemon.erp.framework.data.Sorts;
@@ -20,7 +21,6 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -40,47 +40,65 @@ public class FinPartnerLedgerService {
     private final ScmSupplierService supplierService;
 
     /**
-     * @param kind   AR 应收（客户）/ AP 应付（供应商）
-     * @param withAp 挂接应付（仅应收，需要应付的查看权限）：同时列出关联供应商的应付，余额 = 应收 − 应付
-     * @return {partnerName, opening, rows: [{bizDate, type, docNo, sourceType, sourceNo, increase, decrease, balance, remark, linkedAp}],
-     * increase, decrease, closing, linkedSupplierName}
+     * @param kind    AR 应收（客户）/ AP 应付（供应商）
+     * @param withAp  挂接应付（仅应收，需要应付的查看权限）：同时列出关联供应商的应付，余额 = 应收 − 应付
+     * @param current 页码，与 size 都为空时返回全部明细（打印、导出）
+     * @return {partnerName, opening, rows: [{bizDate, type, docNo, sourceType, sourceNo, increase, decrease, discount, balance, remark, linkedAp}],
+     * increase, decrease, closing, linkedSupplierName, total, pageOpening}；合计与期末基于全部明细，每行余额基于该行之前的全部明细
      */
-    public FinAnalysis.PartnerStatement statement(BillKind kind, Long partnerId, LocalDate begin, LocalDate end, boolean withAp) {
+    public FinAnalysis.PartnerStatement statement(BillKind kind, Long partnerId, LocalDate begin, LocalDate end, boolean withAp,
+                                                  Long current, Long size) {
         FinBillService.checkKind(kind);
         boolean ar = kind == BillKind.AR;
         if (!permissionService.hasPerm(ar ? "fin:ar:list" : "fin:ap:list")) {
             throw new BizException(ar ? "fin.error.noPermissionViewReceivables" : "fin.error.noPermissionViewPayables");
         }
+        checkRange(begin, end);
+        ScmSupplier linked = billService.linkedAp(kind, withAp) ? supplierService.linkedSupplier(partnerId) : null;
+        FinAnalysis.LedgerQuery query = new FinAnalysis.LedgerQuery(kind, kind.settleKind(), partnerId, linked == null ? null : linked.getId(),
+                begin, end);
+        BigDecimal opening = openingOf(kind, partnerId, begin);
+        if (linked != null) {
+            opening = opening.subtract(openingOf(BillKind.AP, linked.getId(), begin));
+        }
+        FinAnalysis.LedgerTotals totals = ledgerMapper.selectFlowTotals(query);
+        Page<FinAnalysis.LedgerRow> page = size == null ? null : Page.of(current == null ? 1 : current, size, totals.getCount(), false);
+        List<FinAnalysis.StatementLine> rows = lines(ledgerMapper.selectFlows(page, query), opening);
+        BigDecimal pageOpening = rows.isEmpty() ? opening : pageOpening(rows.get(0));
+        return new FinAnalysis.PartnerStatement(billService.partnerName(kind, partnerId), opening, rows, totals.getIncrease(),
+                totals.getDecrease(), opening.add(totals.getIncrease()).subtract(totals.getDecrease()),
+                linked == null ? null : linked.getCode() + " " + linked.getName(), totals.getCount(), pageOpening);
+    }
+
+    /**
+     * 客户对账单的快照（不挂接应付，权限由调用方检查）：期初、期间合计和全部明细
+     */
+    public Ledger customerLedger(Long customerId, LocalDate begin, LocalDate end) {
+        checkRange(begin, end);
+        FinAnalysis.LedgerQuery query = new FinAnalysis.LedgerQuery(BillKind.AR, SettleKind.RECEIPT, customerId, null, begin, end);
+        BigDecimal opening = openingOf(BillKind.AR, customerId, begin);
+        return new Ledger(opening, ledgerMapper.selectFlowTotals(query), lines(ledgerMapper.selectFlows(null, query), opening));
+    }
+
+    /** @param totals 期间合计，期末 = opening + increase − decrease */
+    public record Ledger(BigDecimal opening, FinAnalysis.LedgerTotals totals, List<FinAnalysis.StatementLine> rows) {
+    }
+
+    private static void checkRange(LocalDate begin, LocalDate end) {
         if (begin == null || end == null || end.isBefore(begin)) {
             throw new BizException("fin.error.invalidDateRange");
         }
-        ScmSupplier linked = billService.linkedAp(kind, withAp) ? supplierService.linkedSupplier(partnerId) : null;
-        BigDecimal opening = openingOf(kind, partnerId, begin);
-        List<Flow> flows = new ArrayList<>(flowsOf(kind, partnerId, begin, end, false));
-        if (linked != null) {
-            opening = opening.subtract(openingOf(BillKind.AP, linked.getId(), begin));
-            flows = merge(flows, flowsOf(BillKind.AP, linked.getId(), begin, end, true));
-        }
-        BigDecimal balance = opening;
-        BigDecimal increase = BigDecimal.ZERO;
-        BigDecimal decrease = BigDecimal.ZERO;
-        List<FinAnalysis.StatementLine> rows = new ArrayList<>();
-        for (Flow f : flows) {
-            FinAnalysis.PartnerFlow r = f.row();
-            BigDecimal amount = r.getAmount();
-            // 本方的单据增加余额；挂接的应付方向相反：应付单减少，付款、预付、对冲增加
-            boolean up = (r.getType() == PartnerLedgerType.BILL) != f.linked();
-            balance = up ? balance.add(amount) : balance.subtract(amount);
-            rows.add(new FinAnalysis.StatementLine(r.getBizDate(), r.getType(), r.getDocNo(), r.getSourceType(), r.getSourceNo(),
-                    r.getRemark(), up ? amount : null, up ? null : amount, balance, f.linked()));
-            if (up) {
-                increase = increase.add(amount);
-            } else {
-                decrease = decrease.add(amount);
-            }
-        }
-        return new FinAnalysis.PartnerStatement(billService.partnerName(kind, partnerId), opening, rows, increase, decrease, balance,
-                linked == null ? null : linked.getCode() + " " + linked.getName());
+    }
+
+    private static List<FinAnalysis.StatementLine> lines(List<FinAnalysis.LedgerRow> rows, BigDecimal opening) {
+        return rows.stream().map(r -> new FinAnalysis.StatementLine(r.getBizDate(), r.getType(), r.getDocNo(), r.getSourceType(),
+                r.getSourceNo(), r.getRemark(), r.getIncrease(), r.getDecrease(), r.getDiscount(), opening.add(r.getRunning()),
+                r.isLinkedAp())).toList();
+    }
+
+    /** 某行之前的余额 = 该行余额 − 增加 + 减少 */
+    private static BigDecimal pageOpening(FinAnalysis.StatementLine first) {
+        return first.balance().subtract(Decimals.nz(first.increase())).add(Decimals.nz(first.decrease()));
     }
 
     /** 期初余额 = 之前的应收应付单 − 收付款（含折让）− 预收预付 − 应收应付对冲 */
@@ -90,28 +108,6 @@ public class FinPartnerLedgerService {
                 .subtract(ledgerMapper.sumSettlementsBefore(settleKind, partnerId, begin))
                 .subtract(ledgerMapper.sumAdvancesBefore(settleKind, partnerId, begin))
                 .subtract(ledgerMapper.sumNettingsBefore(kind, partnerId, begin));
-    }
-
-    private List<Flow> flowsOf(BillKind kind, Long partnerId, LocalDate begin, LocalDate end, boolean linked) {
-        return ledgerMapper.selectRows(kind, kind.settleKind(), partnerId, begin, end).stream().map(r -> new Flow(r, linked)).toList();
-    }
-
-    /** 两组已按日期排序的明细按日期合并，同一天本方在前 */
-    private static List<Flow> merge(List<Flow> own, List<Flow> linked) {
-        List<Flow> out = new ArrayList<>(own.size() + linked.size());
-        int i = 0;
-        int j = 0;
-        while (i < own.size() || j < linked.size()) {
-            if (j >= linked.size() || i < own.size() && !own.get(i).row().getBizDate().isAfter(linked.get(j).row().getBizDate())) {
-                out.add(own.get(i++));
-            } else {
-                out.add(linked.get(j++));
-            }
-        }
-        return out;
-    }
-
-    private record Flow(FinAnalysis.PartnerFlow row, boolean linked) {
     }
 
     /**

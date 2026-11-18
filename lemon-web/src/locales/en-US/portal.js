@@ -65,17 +65,12 @@ export default {
     confirmTime: 'Confirmed At',
     ourRemark: 'Our Comments',
     attachments: 'Invoices and Attachments (scanned invoices can be uploaded)',
-    raiseDispute: 'Raise Dispute',
     confirmTip: 'Confirm the statement amount is correct; you can enter invoice details now or after confirming',
     invoiceNo: 'Invoice No.',
     invoiceAmount: 'Invoice Amount',
     invoiceDate: 'Invoice Date',
-    disputeRemark: 'Dispute Details',
     invoiceInfo: 'Invoice Information',
     statementNo: 'Statement No.',
-    msgDispute: 'Please describe the dispute',
-    confirmed: 'Statement confirmed',
-    disputed: 'Dispute submitted',
     msgInvoice: 'Please complete the invoice information'
   },
   tender: {

@@ -65,17 +65,12 @@ export default {
     confirmTime: '确认时间',
     ourRemark: '我方意见',
     attachments: '发票及附件（可上传发票扫描件）',
-    raiseDispute: '提出异议',
     confirmTip: '确认对账金额无误，可同时填写发票信息（也可确认后再填写）',
     invoiceNo: '发票号码',
     invoiceAmount: '发票金额',
     invoiceDate: '开票日期',
-    disputeRemark: '异议说明',
     invoiceInfo: '发票信息',
     statementNo: '对账单号',
-    msgDispute: '请说明异议',
-    confirmed: '已确认对账',
-    disputed: '已提交异议',
     msgInvoice: '请填写完整的发票信息'
   },
   tender: {

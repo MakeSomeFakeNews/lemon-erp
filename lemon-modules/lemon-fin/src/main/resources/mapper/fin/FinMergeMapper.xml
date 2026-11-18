@@ -34,10 +34,16 @@
         SELECT 'fin.merge.voucherEntry', COUNT(*), 0 FROM fin_voucher_entry WHERE <include refid="auxColumn"/> IN <include refid="ids"/>
         UNION ALL
         SELECT 'fin.merge.netting', COUNT(*), 0 FROM fin_netting WHERE <include refid="auxColumn"/> IN <include refid="ids"/>
-        <if test="!customer">
-            UNION ALL
-            SELECT 'fin.merge.supplierStatement', COUNT(*), 0 FROM fin_supplier_statement WHERE supplier_id IN <include refid="ids"/>
-        </if>
+        <choose>
+            <when test="customer">
+                UNION ALL
+                SELECT 'fin.merge.customerStatement', COUNT(*), 0 FROM fin_customer_statement WHERE customer_id IN <include refid="ids"/>
+            </when>
+            <otherwise>
+                UNION ALL
+                SELECT 'fin.merge.supplierStatement', COUNT(*), 0 FROM fin_supplier_statement WHERE supplier_id IN <include refid="ids"/>
+            </otherwise>
+        </choose>
     </select>
 
     <update id="mergeBill">
@@ -78,6 +84,10 @@
 
     <update id="mergeNetting">
         UPDATE fin_netting SET <include refid="auxColumn"/> = #{targetId} WHERE <include refid="auxColumn"/> IN <include refid="ids"/>
+    </update>
+
+    <update id="mergeCustomerStatement">
+        UPDATE fin_customer_statement SET customer_id = #{targetId} WHERE customer_id IN <include refid="ids"/>
     </update>
 
     <update id="mergeSupplierStatement">

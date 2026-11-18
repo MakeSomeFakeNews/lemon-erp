@@ -18,8 +18,9 @@
         <a-tooltip v-if="kind === BillKind.AR && canLinkAp" :title="$t('fin.linkedAp.statementTip')">
           <a-checkbox v-model:checked="withAp">{{ $t('fin.linkedAp.label') }}</a-checkbox>
         </a-tooltip>
-        <a-button type="primary" :disabled="!partnerId" @click="load">{{ $t('common.action.query') }}</a-button>
-        <a-button :disabled="!data" @click="print"><template #icon><PrinterOutlined /></template>{{ $t('common.action.print') }}</a-button>
+        <a-button type="primary" :disabled="!partnerId" @click="search">{{ $t('common.action.query') }}</a-button>
+        <a-button :disabled="!data" :loading="printing" @click="print"><template #icon><PrinterOutlined /></template>{{ $t('common.action.print') }}</a-button>
+        <a-button :disabled="!data" :loading="exporting" @click="exportAll"><template #icon><DownloadOutlined /></template>{{ $t('common.action.export') }}</a-button>
         <span class="sub-text">{{ kind === BillKind.AR ? $t('fin.partnerStatement.arTip') : $t('fin.partnerStatement.apTip') }}</span>
       </div>
 
@@ -40,16 +41,21 @@
         :columns="columns"
         :data-source="rows"
         :loading="loading"
-        :pagination="false"
-        :row-class-name="(r) => (r.type === OPENING ? 'total-row' : '')"
+        :pagination="data ? pagination : false"
+        :row-class-name="(r) => ([OPENING, CARRIED].includes(r.type) ? 'total-row' : '')"
         :locale="{ emptyText: partnerId ? $t('common.msg.noData') : kind === BillKind.AR ? $t('fin.partnerStatement.selectCustomerFirst') : $t('fin.partnerStatement.selectSupplierFirst') }"
         :scroll="{ x: 1100, y: '100%' }"
+        @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'type'">{{ typeText(record) }}</template>
-          <template v-else-if="column.key === 'source'">{{ sourceText(record) }}</template>
-          <template v-else-if="['increase', 'decrease'].includes(column.key)">
-            <span :class="{ neg: Number(record[column.key]) < 0 }">{{ moneyOrBlank(record[column.key]) }}</span>
+          <template v-if="column.key === 'type'">{{ ledgerTypeText(record, labels) }}</template>
+          <template v-else-if="column.key === 'source'">{{ ledgerSourceText(record, dict) }}</template>
+          <template v-else-if="column.key === 'increase'">
+            <span :class="{ neg: Number(record.increase) < 0 }">{{ moneyOrBlank(record.increase) }}</span>
+          </template>
+          <template v-else-if="column.key === 'decrease'">
+            <span :class="{ neg: Number(record.decrease) < 0 }">{{ moneyOrBlank(record.decrease) }}</span>
+            <div v-if="Number(record.discount)" class="sub-text">{{ $t('fin.partnerStatement.discountOf', { amount: formatMoney(record.discount) }) }}</div>
           </template>
           <template v-else-if="column.key === 'balance'">
             <span :class="['bold', { neg: Number(record.balance) < 0 }]">{{ formatMoney(record.balance) }}</span>
@@ -72,21 +78,27 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 import { useI18n } from 'vue-i18n'
-import { PrinterOutlined } from '@ant-design/icons-vue'
+import { DownloadOutlined, PrinterOutlined } from '@ant-design/icons-vue'
 import PartnerSelect from '@/components/scm/PartnerSelect.vue'
 import { partnerStatement } from '@/api/fin'
 import { formatMoney, moneyOrBlank } from '@/components/fin/fin'
+import {
+  CARRIED, OPENING, exportLedger, ledgerColumns, ledgerLabels, ledgerPrintDoc, ledgerSourceText, ledgerTypeText, printField, withOpening
+} from '@/components/fin/partnerLedger'
 import { useDict } from '@/composables/useDict'
-import { findDict } from '@/utils/dict'
 import { printDocs } from '@/utils/print'
 import { useUserStore } from '@/store/user'
 
-import { BillKind, PartnerLedgerType } from '@/constants/enums'
-/** 往来对账单：客户 / 供应商在期间内的应收应付、收付款、预收预付和逐笔余额，可打印给对方核对 */
+import { BillKind } from '@/constants/enums'
+/**
+ * 往来对账单：客户 / 供应商在期间内的应收应付、收付款、预收预付和逐笔余额，可打印给对方核对。
+ * 明细分页（issue #134）：每页的余额基于该页之前的全部明细（后端计算），第一页首行为期初余额，之后的页为承前页余额；
+ * 合计、期末基于全部明细；打印、导出取全部明细
+ */
 const { t } = useI18n()
 const dict = useDict('fin_bill_source', 'fin_settle_method')
 // 从往来汇总进入（?kind=AR&partnerId=&partnerName=）时直接查询该单位
@@ -101,70 +113,31 @@ if (route.query.partnerId) useRouter().replace({ query: {} })
 const range = ref([dayjs().startOf('year').format('YYYY-MM-DD'), dayjs().format('YYYY-MM-DD')])
 const data = ref()
 const loading = ref(false)
+const pagination = reactive({
+  current: 1,
+  pageSize: 50,
+  total: 0,
+  showSizeChanger: true,
+  pageSizeOptions: ['20', '50', '100', '200', '500'],
+  showTotal: (total) => t('common.table.total', { total })
+})
 
-const labels = computed(() =>
-  kind.value === BillKind.AR
-    ? {
-        partner: t('fin.partnerStatement.customer'),
-        billAmount: t('fin.partnerStatement.arAmount'),
-        settleAmount: t('fin.partnerStatement.receiptAmount'),
-        bill: t('fin.partnerStatement.arBill'),
-        settle: t('fin.partnerStatement.receipt'),
-        advance: t('fin.partnerStatement.advanceReceipt'),
-        periodIncrease: t('fin.partnerStatement.periodAr'),
-        periodDecrease: t('fin.partnerStatement.periodReceipt'),
-        title: t('fin.partnerStatement.customerTitle'),
-        confirm: t('fin.partnerStatement.customerConfirm')
-      }
-    : {
-        partner: t('fin.partnerStatement.supplier'),
-        billAmount: t('fin.partnerStatement.apAmount'),
-        settleAmount: t('fin.partnerStatement.paymentAmount'),
-        bill: t('fin.partnerStatement.apBill'),
-        settle: t('fin.partnerStatement.payment'),
-        advance: t('fin.partnerStatement.advancePayment'),
-        periodIncrease: t('fin.partnerStatement.periodAp'),
-        periodDecrease: t('fin.partnerStatement.periodPayment'),
-        title: t('fin.partnerStatement.supplierTitle'),
-        confirm: t('fin.partnerStatement.supplierConfirm')
-      }
-)
-const columns = computed(() => [
-  { title: t('common.field.date'), dataIndex: 'bizDate', width: 110 },
-  { title: t('common.field.type'), key: 'type', width: 130 },
-  { title: t('fin.partnerStatement.docNo'), dataIndex: 'docNo', width: 160 },
-  { title: t('fin.partnerStatement.source'), key: 'source', width: 200, ellipsis: true },
-  { title: labels.value.billAmount, key: 'increase', width: 150, align: 'right' },
-  { title: labels.value.settleAmount, key: 'decrease', width: 150, align: 'right' },
-  { title: t('fin.partnerStatement.balance'), key: 'balance', width: 140, align: 'right' },
-  { title: t('common.field.remark'), dataIndex: 'remark', ellipsis: true }
-])
-/** 前端合成的期初行类型（不是后端 PartnerLedgerType 的取值） */
-const OPENING = 'OPENING'
-const rows = computed(() =>
-  data.value ? [{ type: OPENING, bizDate: range.value[0], balance: data.value.opening }, ...data.value.rows] : []
-)
+const labels = computed(() => ledgerLabels(kind.value))
+const columns = computed(() => ledgerColumns(labels.value))
+// 每页首行：第一页为期初余额，之后为承前页余额
+const rows = computed(() => {
+  if (!data.value) return []
+  const first = pagination.current === 1
+  return [{ type: first ? OPENING : CARRIED, bizDate: first ? range.value[0] : '', balance: data.value.pageOpening }, ...data.value.rows]
+})
 
-function typeText(r) {
-  if (r.linkedAp) {
-    return {
-      BILL: t('fin.linkedAp.apBill'),
-      SETTLEMENT: t('fin.linkedAp.payment'),
-      ADVANCE: t('fin.linkedAp.prepayment'),
-      NETTING: t('fin.linkedAp.netting')
-    }[r.type]
-  }
-  const l = labels.value
-  return { OPENING: t('fin.partnerStatement.opening'), BILL: l.bill, SETTLEMENT: l.settle, ADVANCE: l.advance, NETTING: t('fin.partnerStatement.netting') }[r.type]
-}
-function sourceText(r) {
-  if (r.type === OPENING || r.type === PartnerLedgerType.NETTING) return ''
-  if (r.type === PartnerLedgerType.BILL) {
-    const src = findDict(dict.fin_bill_source, r.sourceType)?.label || r.sourceType || ''
-    return [src, r.sourceNo].filter(Boolean).join(' ')
-  }
-  return findDict(dict.fin_settle_method, r.sourceType)?.label || r.sourceType || ''
-}
+const params = () => ({
+  kind: kind.value,
+  partnerId: partnerId.value,
+  begin: range.value[0],
+  end: range.value[1],
+  withAp: kind.value === BillKind.AR && withAp.value
+})
 
 let seq = 0
 async function load() {
@@ -172,52 +145,65 @@ async function load() {
   const current = ++seq
   loading.value = true
   try {
-    const res = await partnerStatement({
-      kind: kind.value,
-      partnerId: partnerId.value,
-      begin: range.value[0],
-      end: range.value[1],
-      withAp: kind.value === BillKind.AR && withAp.value
-    })
-    if (current === seq) data.value = res
+    const res = await partnerStatement({ ...params(), current: pagination.current, size: pagination.pageSize })
+    if (current !== seq) return
+    data.value = res
+    pagination.total = res.total
   } finally {
     if (current === seq) loading.value = false
   }
+}
+function search() {
+  pagination.current = 1
+  load()
+}
+function onTableChange(p) {
+  pagination.current = p.current
+  pagination.pageSize = p.pageSize
+  load()
 }
 function onKindChange() {
   partnerId.value = undefined
   data.value = undefined
 }
-watch([partnerId, range, withAp], load)
+watch([partnerId, range, withAp], search)
 if (partnerId.value) load()
 
-function print() {
-  const d = data.value
-  const l = labels.value
-  printDocs({
-    title: l.title,
-    fields: [
+/** 打印、导出：全部明细（不分页） */
+async function loadAll() {
+  return partnerStatement(params())
+}
+const printing = ref(false)
+async function print() {
+  printing.value = true
+  try {
+    const d = await loadAll()
+    const l = labels.value
+    const fields = [
       [l.partner, d.partnerName],
       ...(d.linkedSupplierName ? [[t('fin.linkedAp.linkedSupplier'), d.linkedSupplierName]] : []),
-      [t('fin.partnerStatement.statementPeriod'), t('fin.partnerStatement.range', { begin: range.value[0], end: range.value[1] })],
-      [t('fin.partnerStatement.opening'), formatMoney(d.opening)],
-      [t('fin.partnerStatement.closing'), formatMoney(d.closing)]
-    ],
-    columns: [
-      { title: t('common.field.date'), key: 'bizDate' },
-      { title: t('common.field.type'), key: 'type', value: typeText },
-      { title: t('fin.partnerStatement.docNo'), key: 'docNo' },
-      { title: t('fin.partnerStatement.source'), key: 'source', value: sourceText },
-      { title: t('fin.partnerStatement.increase'), key: 'increase', value: (r) => moneyOrBlank(r.increase), align: 'right' },
-      { title: t('fin.partnerStatement.decrease'), key: 'decrease', value: (r) => moneyOrBlank(r.decrease), align: 'right' },
-      { title: t('fin.partnerStatement.balance'), key: 'balance', value: (r) => formatMoney(r.balance), align: 'right' },
-      { title: t('common.field.remark'), key: 'remark' }
-    ],
-    rows: rows.value,
-    totals: { bizDate: t('fin.partnerStatement.periodTotal'), increase: formatMoney(d.increase), decrease: formatMoney(d.decrease), balance: formatMoney(d.closing) },
-    signs: [t('fin.partnerStatement.preparer'), t('fin.partnerStatement.financeReview'), l.confirm],
-    note: t('fin.partnerStatement.note')
-  }, `${l.title} ${d.partnerName}`, 'fin.partnerStatement')
+      printField(t('fin.partnerStatement.statementPeriod'), t('fin.partnerStatement.range', { begin: range.value[0], end: range.value[1] }), 'statementPeriod'),
+      printField(t('fin.partnerStatement.opening'), formatMoney(d.opening), 'beginBalance'),
+      printField(t('fin.partnerStatement.closing'), formatMoney(d.closing), 'endBalance')
+    ]
+    await printDocs(ledgerPrintDoc({ title: l.title, fields, rows: withOpening(d.rows, range.value[0], d.opening), totals: d, labels: l, dict }),
+      `${l.title} ${d.partnerName}`, 'fin.partnerStatement')
+  } finally {
+    printing.value = false
+  }
+}
+const exporting = ref(false)
+async function exportAll() {
+  exporting.value = true
+  try {
+    const d = await loadAll()
+    const l = labels.value
+    const period = t('fin.partnerStatement.range', { begin: range.value[0], end: range.value[1] })
+    await exportLedger(`${l.title}_${d.partnerName}`, [[l.partner, d.partnerName], [t('fin.partnerStatement.statementPeriod'), period]],
+      withOpening(d.rows, range.value[0], d.opening), d, l, dict)
+  } finally {
+    exporting.value = false
+  }
 }
 </script>
 

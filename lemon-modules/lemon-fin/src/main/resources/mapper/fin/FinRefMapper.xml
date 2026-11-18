@@ -11,6 +11,7 @@
             WHEN EXISTS (SELECT 1 FROM fin_offset WHERE partner_id = #{id} AND kind = 'AR') THEN '冲账单'
             WHEN EXISTS (SELECT 1 FROM fin_io_doc WHERE partner_id = #{id} AND partner_type = 'CUSTOMER') THEN '其他收支单'
             WHEN EXISTS (SELECT 1 FROM fin_netting WHERE customer_id = #{id}) THEN 'fin.label.nettingDoc'
+            WHEN EXISTS (SELECT 1 FROM fin_customer_statement WHERE customer_id = #{id}) THEN 'fin.label.customerStatement'
         END
     </select>
 
